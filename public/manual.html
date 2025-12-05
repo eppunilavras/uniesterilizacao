@@ -21,7 +21,7 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700;900&display=swap" rel="stylesheet">
     
-    <!-- Font para Código de Barras -->
+    <!-- Font para Código de Barras (Usada na simulação) -->
     <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39+Text&display=swap" rel="stylesheet">
 
     <style>
@@ -41,24 +41,27 @@
 
         /* Simulação da Etiqueta Térmica */
         .sticker-preview {
-            width: 300px;
-            height: 180px;
+            width: 240px; /* Reduzido levemente para caber melhor no layout do manual */
+            height: 144px; /* Mantendo proporção 50x30 */
             background-color: white;
-            border: 1px solid #ddd;
-            padding: 10px;
+            border: 1px solid #cbd5e1;
+            padding: 8px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             font-family: 'Arial', sans-serif;
             position: relative;
+            margin: 0 auto;
+            color: black;
         }
         
         .sticker-barcode {
             font-family: 'Libre Barcode 39 Text', cursive;
-            font-size: 36px;
+            font-size: 42px;
             text-align: center;
             line-height: 1;
+            white-space: nowrap;
         }
 
         .fade-in { animation: fadeIn 0.4s ease-in-out; }
@@ -72,8 +75,8 @@
         
         /* Mockup Containers */
         .mockup-container {
-            font-family: 'Noto Sans', sans-serif; /* Garante que o mockup use a mesma fonte do app */
-            user-select: none; /* Evita seleção de texto no mockup */
+            font-family: 'Noto Sans', sans-serif; 
+            user-select: none;
         }
     </style>
 </head>
@@ -612,6 +615,106 @@
                         </div>
                     `
                 },
+                admin_labels: {
+                    title: "Personalização de Etiquetas",
+                    content: `
+                        <p class="mb-6">Personalize o visual das etiquetas térmicas para se adequar à sua impressora (Zebra, Elgin, etc).</p>
+
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <div class="bg-white p-4 rounded-xl border border-slate-200">
+                                <h4 class="font-bold text-[#021D34] mb-3 flex items-center gap-2">
+                                    <i data-lucide="layout-template" class="text-unilavras-blue"></i> Layout e Dimensões
+                                </h4>
+                                <ul class="space-y-2 text-sm text-slate-600">
+                                    <li><strong>Tamanho Automático:</strong> Deixa a impressora decidir o tamanho. Ideal para configurações padrão.</li>
+                                    <li><strong>Manual:</strong> Defina Largura, Altura e Margem em milímetros (mm).</li>
+                                    <li><strong>Transformações:</strong> Rotacione (90º, 180º) ou espelhe a impressão caso saia invertida na sua máquina.</li>
+                                </ul>
+                            </div>
+
+                            <div class="bg-white p-4 rounded-xl border border-slate-200">
+                                <h4 class="font-bold text-[#021D34] mb-3 flex items-center gap-2">
+                                    <i data-lucide="eye" class="text-purple-600"></i> Conteúdo Visível
+                                </h4>
+                                <p class="text-sm text-slate-600 mb-2">Marque o que deve aparecer na etiqueta:</p>
+                                <div class="flex flex-wrap gap-2">
+                                    <span class="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded">Logo</span>
+                                    <span class="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded">Nome do Aluno</span>
+                                    <span class="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded">Tipo de Material</span>
+                                    <span class="bg-slate-100 text-slate-600 text-xs px-2 py-1 rounded">Data</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 bg-blue-50 border border-blue-100 p-4 rounded-lg">
+                            <h4 class="font-bold text-blue-800 text-sm mb-2 flex items-center gap-2"><i data-lucide="qr-code"></i> Barcode vs QR Code</h4>
+                            <p class="text-xs text-blue-700">
+                                Você pode alternar entre <strong>Código de Barras (Code39)</strong> e <strong>QR Code</strong>. O QR Code é mais robusto e lê mais rápido em câmeras de celular, enquanto o Código de Barras é padrão em leitores a laser antigos.
+                            </p>
+                        </div>
+
+                        <h3 class="font-bold text-unilavras-dark text-lg mb-4 mt-8 border-t pt-6">Simulação Visual</h3>
+                        <div class="grid md:grid-cols-2 gap-6">
+                            <!-- Simulação Barcode -->
+                            <div class="text-center">
+                                <p class="text-xs font-bold text-slate-500 mb-2 uppercase">Opção 1: Código de Barras (Padrão)</p>
+                                <div class="sticker-preview transform scale-90 origin-top">
+                                    <div class="flex justify-between items-end border-b border-black pb-1 mb-1">
+                                        <div class="flex items-center gap-1">
+                                            <img src="https://i.ibb.co/MxXMmxS0/Logo-Unilavras-Oficial-2019.png" class="h-3 grayscale opacity-80">
+                                            <div class="flex flex-col leading-none text-left">
+                                                <span class="text-[8px] font-black text-black">UNILAVRAS</span>
+                                                <span class="text-[5px] font-bold text-slate-800 uppercase">Esterilização</span>
+                                            </div>
+                                        </div>
+                                        <span class="text-[8px] font-bold text-black">04/12</span>
+                                    </div>
+                                    <div class="flex-1 flex items-center justify-center">
+                                        <div style="font-family: 'Libre Barcode 39 Text', cursive; font-size: 42px; line-height: 1;">*XA92B*</div>
+                                    </div>
+                                    <div class="border-t border-black pt-1 mt-1">
+                                        <div class="flex justify-between text-[8px] font-bold uppercase text-black">
+                                            <span>ALUNO: MARIA O.</span>
+                                        </div>
+                                        <div class="flex justify-between text-[8px] font-bold uppercase mt-1 text-black">
+                                            <span>ITEM: KIT CLÍNICO</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-2">Compatível com leitores laser antigos.</p>
+                            </div>
+
+                            <!-- Simulação QR Code -->
+                            <div class="text-center">
+                                <p class="text-xs font-bold text-slate-500 mb-2 uppercase">Opção 2: QR Code (Moderno)</p>
+                                <div class="sticker-preview transform scale-90 origin-top">
+                                    <div class="flex justify-between items-end border-b border-black pb-1 mb-1">
+                                        <div class="flex items-center gap-1">
+                                            <img src="https://i.ibb.co/MxXMmxS0/Logo-Unilavras-Oficial-2019.png" class="h-3 grayscale opacity-80">
+                                            <div class="flex flex-col leading-none text-left">
+                                                <span class="text-[8px] font-black text-black">UNILAVRAS</span>
+                                                <span class="text-[5px] font-bold text-slate-800 uppercase">Esterilização</span>
+                                            </div>
+                                        </div>
+                                        <span class="text-[8px] font-bold text-black">04/12</span>
+                                    </div>
+                                    <div class="flex-1 flex items-center justify-center">
+                                        <i data-lucide="qr-code" class="w-16 h-16 text-black"></i>
+                                    </div>
+                                    <div class="border-t border-black pt-1 mt-1">
+                                        <div class="flex justify-between text-[8px] font-bold uppercase text-black">
+                                            <span>ALUNO: MARIA O.</span>
+                                        </div>
+                                        <div class="flex justify-between text-[8px] font-bold uppercase mt-1 text-black">
+                                            <span>ITEM: KIT CLÍNICO</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-2">Leitura mais rápida, ideal para celulares.</p>
+                            </div>
+                        </div>
+                    `
+                },
                 admin_tools: {
                     title: "Ferramentas & Recados",
                     content: `
@@ -783,6 +886,7 @@
                 sidebarNav.appendChild(createItem('dashboard_admin', 'admin', 'Painel BI', 'bar-chart-3'));
                 sidebarNav.appendChild(createItem('users_admin', 'admin', 'Gestão de Usuários', 'users'));
                 sidebarNav.appendChild(createItem('materials_mgmt', 'admin', 'Gestão de Materiais', 'package'));
+                sidebarNav.appendChild(createItem('admin_labels', 'admin', 'Personalizar Etiquetas', 'scan-line'));
                 sidebarNav.appendChild(createItem('admin_tools', 'admin', 'Recados e Backup', 'settings-2'));
                 sidebarNav.appendChild(createItem('logs', 'admin', 'Logs de Auditoria', 'file-text'));
             }

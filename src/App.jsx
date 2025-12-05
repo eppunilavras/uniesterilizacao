@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useContext, useRef, useCallback } 
 import { 
   initializeApp, 
   getApp, 
-  getApps 
+  getApps,
+  getAnalytics
 } from 'firebase/app';
 import { 
   getAuth, 
@@ -117,10 +118,12 @@ const firebaseConfig = {
   projectId: "uniesterilizacao",
   storageBucket: "uniesterilizacao.firebasestorage.app",
   messagingSenderId: "357777665758",
-  appId: "1:357777665758:web:fda95ec0f6188cd5ee5c4f"
+  appId: "1:357777665758:web:fda95ec0f6188cd5ee5c4f",
+  measurementId: "G-CQ921DK3GX"
 };
 
 const app = !getApps().length ? initializeApp(JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : JSON.stringify(firebaseConfig))) : getApp();
+const analytics = getAnalytics(app);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'unilavras-main';
