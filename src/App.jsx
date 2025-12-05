@@ -2,9 +2,9 @@ import React, { useState, useEffect, useMemo, useContext, useRef, useCallback } 
 import { 
   initializeApp, 
   getApp, 
-  getApps,
-  getAnalytics
+  getApps
 } from 'firebase/app';
+import { getAnalytics } from 'firebase/analytics';
 import { 
   getAuth, 
   signInWithEmailAndPassword,
