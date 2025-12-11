@@ -2,7 +2,8 @@ import {
   Clock, 
   AlertCircle, 
   CheckCircle2, 
-  CheckSquare 
+  CheckSquare,
+  AlertTriangle // <--- NOVO IMPORT
 } from 'lucide-react';
 
 // URLs dos Logos
@@ -32,6 +33,12 @@ export const STATUS_CONFIG = {
       label: 'Retirado', 
       color: 'bg-[#009DE0]/10 text-[#021D34] border-[#009DE0]/20', 
       icon: CheckSquare 
+  },
+  // --- NOVO STATUS ---
+  'problema': { 
+      label: 'Com Ocorrência', 
+      color: 'bg-red-50 text-red-700 border-red-200', 
+      icon: AlertTriangle 
   },
 };
 
