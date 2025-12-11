@@ -59,35 +59,35 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender }) => {
     }
 
     return (
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden w-full max-w-full">
             
             {/* --- VISÃO DESKTOP (TABELA TRADICIONAL) --- */}
             <div className={`hidden md:block overflow-x-auto`}>
-                <table className="w-full text-sm text-left">
+                <table className="w-full text-sm text-left table-fixed">
                     <thead className="bg-[#021D34] text-white">
                         <tr>
                             {columns.map((col, idx) => (
                                 <th 
                                     key={col.key || idx} 
                                     onClick={() => col.sortable && handleSort(col.key)} 
-                                    className={`p-4 font-semibold ${col.sortable ? 'cursor-pointer hover:bg-white/10 select-none' : ''}`}
+                                    className={`p-4 font-semibold ${col.sortable ? 'cursor-pointer hover:bg-white/10 select-none' : ''} ${col.key === 'select' ? 'w-12' : ''}`}
                                 >
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 truncate">
                                         {col.label}
                                         {sortCol === col.key && (
-                                            sortDir === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>
+                                            sortDir === 'asc' ? <ArrowUp size={14} className="shrink-0"/> : <ArrowDown size={14} className="shrink-0"/>
                                         )}
                                     </div>
                                 </th>
                             ))}
-                            {actions && <th className="p-4 text-center">Ações</th>}
+                            {actions && <th className="p-4 text-center w-32">Ações</th>}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                         {currentData.map((row, i) => (
                             <tr key={row.id || i} className="hover:bg-slate-50 transition-colors">
                                 {columns.map((col, idx) => (
-                                    <td key={col.key || idx} className="p-4 text-slate-700">
+                                    <td key={col.key || idx} className="p-4 text-slate-700 truncate max-w-[200px]">
                                         {col.render ? col.render(row) : row[col.key]}
                                     </td>
                                 ))}
@@ -103,7 +103,7 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender }) => {
                 {mobileRender ? (
                     <div className="divide-y divide-slate-100">
                         {currentData.map((row, i) => (
-                            <div key={row.id || i} className="p-4 hover:bg-slate-50 transition-colors">
+                            <div key={row.id || i} className="p-4 hover:bg-slate-50 transition-colors w-full max-w-full overflow-hidden">
                                 {mobileRender(row)}
                                 {actions && (
                                     <div className="mt-3 pt-2 border-t border-slate-100 flex justify-end gap-2">
@@ -114,14 +114,14 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender }) => {
                         ))}
                     </div>
                 ) : (
-                    // Fallback Genérico (Caso mobileRender não seja passado)
+                    // Fallback Genérico
                     <div className="divide-y divide-slate-100">
                         {currentData.map((row, i) => (
-                            <div key={row.id || i} className="p-4 space-y-2">
+                            <div key={row.id || i} className="p-4 space-y-2 w-full max-w-full overflow-hidden">
                                 {columns.map((col, idx) => (
-                                    <div key={idx} className="flex justify-between items-center text-sm">
-                                        <span className="font-bold text-slate-500">{col.label}</span>
-                                        <div className="text-right">
+                                    <div key={idx} className="flex justify-between items-center text-sm gap-4">
+                                        <span className="font-bold text-slate-500 shrink-0">{col.label}</span>
+                                        <div className="text-right truncate min-w-0 flex-1">
                                             {col.render ? col.render(row) : row[col.key]}
                                         </div>
                                     </div>
@@ -141,7 +141,7 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender }) => {
             {totalPages > 1 && (
                 <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50">
                     <span className="text-xs text-slate-500">
-                        Pág {page}/{totalPages} ({sortedData.length} itens)
+                        Pág {page}/{totalPages}
                     </span>
                     <div className="flex gap-2">
                         <button 

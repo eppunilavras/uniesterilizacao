@@ -159,7 +159,7 @@ export default function HistoryView({ userProfile }) {
     };
 
     // =================================================================================
-    // 2. LÓGICA DE RELATÓRIO TÉCNICO (EXCLUSIVO ADMIN) - ATUALIZADO
+    // 2. LÓGICA DE RELATÓRIO TÉCNICO (EXCLUSIVO ADMIN)
     // =================================================================================
     useEffect(() => {
         if (mode !== 'tech_report') return;
@@ -243,7 +243,7 @@ export default function HistoryView({ userProfile }) {
     };
 
     // =================================================================================
-    // 3. RASTREAMENTO E LISTA GERAL
+    // 3. RASTREAMENTO E LISTA GERAL (COM CORREÇÕES MOBILE)
     // =================================================================================
     const handleScan = (results) => {
         if (results && results.length > 0) {
@@ -283,7 +283,7 @@ export default function HistoryView({ userProfile }) {
             try {
                 const itemsRef = collection(db, 'artifacts', appId, 'public', 'data', 'items');
                 if (search.length > 2) {
-                    const term = formatSearchTerm(search); // Aplica formatação aqui também
+                    const term = formatSearchTerm(search); 
                     const queries = [];
                     const isStd = userProfile.role === 'student';
                     
@@ -371,7 +371,7 @@ export default function HistoryView({ userProfile }) {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 w-full max-w-full overflow-hidden">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                 <h2 className="font-bold text-[#021D34] text-2xl flex items-center gap-2 w-full md:w-auto">
                     <History className="text-[#009DE0]"/> Histórico
@@ -398,11 +398,11 @@ export default function HistoryView({ userProfile }) {
                 </div>
 
                 {/* --- MODO MOBILE: Select Nativo (Sem Scroll) --- */}
-                <div className="block md:hidden w-full">
+                <div className="block md:hidden w-full max-w-full">
                     <select 
                         value={mode} 
                         onChange={handleMobileModeChange}
-                        className="w-full p-3 bg-white border border-slate-300 rounded-lg text-slate-700 font-bold shadow-sm focus:border-[#009DE0] focus:ring-1 focus:ring-[#009DE0] outline-none appearance-none"
+                        className="w-full p-3 bg-white border border-slate-300 rounded-lg text-slate-700 font-bold shadow-sm focus:border-[#009DE0] focus:ring-1 focus:ring-[#009DE0] outline-none appearance-none max-w-full"
                         style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em`, paddingRight: `2.5rem` }}
                     >
                         <option value="list">Lista Geral</option>
@@ -505,10 +505,10 @@ export default function HistoryView({ userProfile }) {
 
             {/* ABA 3: LISTA GERAL */}
             {mode === 'list' && (
-                <div className="space-y-4 animate-in fade-in duration-300">
+                <div className="space-y-4 animate-in fade-in duration-300 w-full max-w-full">
                     <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between">
-                        <div className="flex flex-col md:flex-row gap-4 w-full flex-1">
-                            <div className="relative flex-1 w-full">
+                        <div className="flex flex-col md:flex-row gap-4 w-full flex-1 min-w-0">
+                            <div className="relative flex-1 w-full min-w-0">
                                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400"/>
                                 <input className="w-full pl-10 p-2 border rounded-lg text-sm outline-none focus:border-[#009DE0]" placeholder={isStudent ? "Buscar Material..." : "Nome, Material ou Código..."} value={search} onChange={e => setSearch(e.target.value)}/>
                                 {loading && <div className="absolute right-3 top-2.5 w-4 h-4 border-2 border-[#009DE0] border-t-transparent rounded-full animate-spin"/>}
@@ -536,17 +536,17 @@ export default function HistoryView({ userProfile }) {
                         mobileRender={(i) => (
                             <div className="flex items-center gap-3">
                                 {isAdminOrTech && (
-                                    <div className="flex items-center h-full">
+                                    <div className="flex items-center h-full shrink-0">
                                         <input type="checkbox" checked={selectedIds.includes(i.id)} onChange={() => setSelectedIds(p => p.includes(i.id) ? p.filter(x => x !== i.id) : [...p, i.id])} className="w-5 h-5 rounded text-[#009DE0] focus:ring-[#009DE0]"/>
                                     </div>
                                 )}
-                                <div className="flex-1" onClick={() => { setSelectedItem(i); setMode('details'); }}>
-                                    <div className="flex justify-between">
-                                        <span className="font-mono font-bold text-[#009DE0] text-lg">{i.code}</span>
-                                        <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase border h-fit ${STATUS_CONFIG[i.status].color}`}>{STATUS_CONFIG[i.status].label}</span>
+                                <div className="flex-1 min-w-0" onClick={() => { setSelectedItem(i); setMode('details'); }}>
+                                    <div className="flex justify-between items-start">
+                                        <span className="font-mono font-bold text-[#009DE0] text-lg break-all">{i.code}</span>
+                                        <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase border h-fit ${STATUS_CONFIG[i.status].color} shrink-0`}>{STATUS_CONFIG[i.status].label}</span>
                                     </div>
-                                    <p className="font-bold text-slate-800">{i.studentName}</p>
-                                    <p className="text-sm text-slate-500">{i.type}</p>
+                                    <p className="font-bold text-slate-800 truncate">{i.studentName}</p>
+                                    <p className="text-sm text-slate-500 truncate">{i.type}</p>
                                     <p className="text-xs text-slate-400 mt-1">{formatDate(i.createdAt)}</p>
                                 </div>
                             </div>
@@ -575,7 +575,6 @@ export default function HistoryView({ userProfile }) {
                         <div className="bg-[#021D34] p-6 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                             <div>
                                 <div className="flex items-center gap-3 mb-1">
-                                    {/* --- CORREÇÃO DE OVERFLOW: break-all --- */}
                                     <h2 className="text-2xl font-bold font-mono tracking-wider break-all">{selectedItem.code}</h2>
                                     <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-white text-slate-900 border border-slate-300 shadow-sm shrink-0">{STATUS_CONFIG[selectedItem.status].label}</span>
                                 </div>

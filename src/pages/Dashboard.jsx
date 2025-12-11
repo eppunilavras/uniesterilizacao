@@ -54,7 +54,6 @@ export default function Dashboard({ userProfile }) {
     // --- Recados (Otimizado: Limitado aos últimos 10) ---
     useEffect(() => {
         const now = new Date();
-        // Traz apenas anúncios ativos ou recentes para não ler o banco todo
         const q = query(
             collection(db, 'artifacts', appId, 'public', 'data', 'announcements'), 
             orderBy('createdAt', 'desc'),
@@ -77,32 +76,27 @@ export default function Dashboard({ userProfile }) {
         return () => unsubAnn();
     }, []);
 
-    // --- Dados Principais (CORREÇÃO DE LEITURA: Filtro no Banco) ---
+    // --- Dados Principais ---
     useEffect(() => {
         let startDate = new Date();
-        let endDate = new Date(2100, 11, 31); // Futuro distante
+        let endDate = new Date(2100, 11, 31); 
         const now = new Date();
 
-        // Configuração das datas de filtro
         if (period === '7d') startDate.setDate(now.getDate() - 7);
         if (period === '30d') startDate.setDate(now.getDate() - 30);
         if (period === 'year') startDate = new Date(now.getFullYear(), 0, 1);
         if (period === 'custom') {
-            if (!customStart) return; // Não busca se não tiver data
+            if (!customStart) return; 
             startDate = new Date(customStart);
             if (customEnd) endDate = new Date(customEnd + 'T23:59:59');
         }
 
-        // Zera as horas para garantir comparação correta do dia
         if (period !== 'custom') startDate.setHours(0,0,0,0);
 
-        // Montagem da Query Otimizada
         let constraints = [
-            orderBy('createdAt', 'desc') // Ordena por data
+            orderBy('createdAt', 'desc')
         ];
 
-        // Adiciona filtros de segurança
-        // Nota: O Firestore exige que o filtro de intervalo (<, >) seja no mesmo campo do orderBy
         constraints.push(where('createdAt', '>=', startDate));
         constraints.push(where('createdAt', '<=', endDate));
 
@@ -118,8 +112,7 @@ export default function Dashboard({ userProfile }) {
         const unsubItems = onSnapshot(q, (s) => {
             processData(s.docs);
         }, (error) => {
-            console.error("Erro no Dashboard (Provavelmente falta índice):", error);
-            // Se der erro de índice, o console mostrará o link para criar.
+            console.error("Erro no Dashboard:", error);
         });
 
         return () => unsubItems();
@@ -133,7 +126,6 @@ export default function Dashboard({ userProfile }) {
 
         docs.forEach(d => {
             const data = d.data();
-            // A data já foi filtrada no banco, podemos confiar
             const date = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
 
             if (data.status === 'recebido') counts.rec++;
@@ -180,12 +172,13 @@ export default function Dashboard({ userProfile }) {
     };
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row justify-between items-end gap-4">
+        <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500 w-full max-w-full overflow-x-hidden">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold text-[#021D34]">Olá, {userProfile.name.split(' ')[0]}</h2>
-                    <p className="text-slate-500 flex items-center gap-2">
-                        <Activity size={16}/> Resumo em tempo real da central de esterilização.
+                    <h2 className="text-2xl md:text-3xl font-bold text-[#021D34]">Olá, {userProfile.name.split(' ')[0]}</h2>
+                    <p className="text-slate-500 flex items-center gap-2 text-sm md:text-base">
+                        <Activity size={16}/> Resumo em tempo real da central.
                     </p>
                 </div>
                 
@@ -198,16 +191,17 @@ export default function Dashboard({ userProfile }) {
                     </select>
                     
                     {period === 'custom' && (
-                        <div className="flex gap-2">
-                            <input type="date" value={customStart} onChange={e=>setCustomStart(e.target.value)} className="p-2 border rounded text-sm"/>
-                            <input type="date" value={customEnd} onChange={e=>setCustomEnd(e.target.value)} className="p-2 border rounded text-sm"/>
+                        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                            <input type="date" value={customStart} onChange={e=>setCustomStart(e.target.value)} className="p-2 border rounded text-sm w-full"/>
+                            <input type="date" value={customEnd} onChange={e=>setCustomEnd(e.target.value)} className="p-2 border rounded text-sm w-full"/>
                         </div>
                     )}
                 </div>
             </div>
 
+            {/* Announcements */}
             {anns.length > 0 && (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                     {anns.map(a => (
                         <div key={a.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow group relative flex flex-col h-full">
                             {a.imageUrl ? (
@@ -219,7 +213,7 @@ export default function Dashboard({ userProfile }) {
                             ) : (
                                 <div className="h-2 bg-[#009DE0] w-full shrink-0"/>
                             )}
-                            <div className="p-5 flex-1 flex flex-col">
+                            <div className="p-4 md:p-5 flex-1 flex flex-col">
                                 <h4 className="font-bold text-[#021D34] text-lg mb-2">{a.title}</h4>
                                 <p className="text-sm text-slate-600 line-clamp-3 whitespace-pre-wrap mb-2">{a.content}</p>
                                 
@@ -237,7 +231,8 @@ export default function Dashboard({ userProfile }) {
                 </div>
             )}
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* StatCards - Grid ajustado */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                 <StatCard title="Recebidos" count={stats.current.rec} icon={Clock} color="text-slate-600" bg="bg-slate-100" />
                 <StatCard title="Em Processo" count={stats.current.em} icon={AlertCircle} color="text-orange-600" bg="bg-orange-50" />
                 <StatCard title="Prontos" count={stats.current.pront} icon={CheckCircle2} color="text-green-600" bg="bg-green-50" />
@@ -245,11 +240,12 @@ export default function Dashboard({ userProfile }) {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <h3 className="font-bold text-[#021D34] mb-6 flex items-center gap-2">
+                {/* AreaChart Container */}
+                <div className="lg:col-span-2 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm w-full min-w-0">
+                    <h3 className="font-bold text-[#021D34] mb-6 flex items-center gap-2 text-sm md:text-base">
                         <TrendingUp className="text-[#009DE0]"/> Fluxo de Entrada ({period === 'custom' ? 'Período' : period})
                     </h3>
-                    <div className="h-72 w-full">
+                    <div className="h-64 md:h-72 w-full min-w-0">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={stats.timeline}>
                                 <defs>
@@ -259,8 +255,8 @@ export default function Dashboard({ userProfile }) {
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0"/>
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 12}} dy={10} minTickGap={30}/>
-                                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 12}}/>
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 10}} dy={10} minTickGap={30}/>
+                                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 10}}/>
                                 <Tooltip 
                                     contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
                                     formatter={(value) => [value, "Quantidade"]}
@@ -271,12 +267,13 @@ export default function Dashboard({ userProfile }) {
                     </div>
                 </div>
 
-                <div className="space-y-6">
-                    <div className="bg-gradient-to-br from-[#021D34] to-[#009DE0] p-6 rounded-2xl shadow-lg text-white">
-                        <h3 className="font-bold flex items-center gap-2 mb-4 text-white/90">
+                <div className="space-y-6 w-full min-w-0">
+                    {/* Insights */}
+                    <div className="bg-gradient-to-br from-[#021D34] to-[#009DE0] p-4 md:p-6 rounded-2xl shadow-lg text-white">
+                        <h3 className="font-bold flex items-center gap-2 mb-4 text-white/90 text-sm md:text-base">
                             <Lightbulb className="text-yellow-400"/> Insights
                         </h3>
-                        <ul className="space-y-3 text-sm text-white/80">
+                        <ul className="space-y-3 text-xs md:text-sm text-white/80">
                             {insights.length > 0 ? insights.map((ins, i) => (
                                 <li key={i} className="flex gap-2">
                                     <span className="mt-1.5 w-1.5 h-1.5 bg-yellow-400 rounded-full flex-shrink-0"/>
@@ -288,8 +285,9 @@ export default function Dashboard({ userProfile }) {
                         </ul>
                     </div>
 
-                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-[300px] flex flex-col">
-                        <h3 className="font-bold text-[#021D34] mb-2 flex items-center gap-2">
+                    {/* BarChart Container */}
+                    <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm h-[300px] flex flex-col w-full min-w-0">
+                        <h3 className="font-bold text-[#021D34] mb-2 flex items-center gap-2 text-sm md:text-base">
                             <BarChart3 className="text-[#009DE0]"/> Por Tipo
                         </h3>
                         <div className="flex-1 w-full min-h-0">
@@ -297,14 +295,14 @@ export default function Dashboard({ userProfile }) {
                                 <BarChart
                                     layout="vertical"
                                     data={stats.types.slice(0, 10)}
-                                    margin={{ top: 5, right: 30, left: 10, bottom: 5 }}
+                                    margin={{ top: 5, right: 10, left: 0, bottom: 5 }} // Margem direita reduzida
                                 >
                                     <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0"/>
                                     <XAxis type="number" hide />
                                     <YAxis 
                                         dataKey="name" 
                                         type="category" 
-                                        width={100} 
+                                        width={80} // Largura do texto reduzida para caber no mobile
                                         tick={{fill: '#64748B', fontSize: 10}}
                                         interval={0}
                                     />
@@ -326,16 +324,16 @@ export default function Dashboard({ userProfile }) {
             </div>
 
             {userProfile.role !== 'student' && stats.topStudents.length > 0 && (
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <h3 className="font-bold text-[#021D34] mb-6 flex items-center gap-2">
+                <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm w-full min-w-0">
+                    <h3 className="font-bold text-[#021D34] mb-6 flex items-center gap-2 text-sm md:text-base">
                         <UserCog className="text-[#009DE0]"/> Top 5 Alunos Mais Ativos
                     </h3>
-                    <div className="h-64 w-full">
+                    <div className="h-64 w-full min-w-0">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={stats.topStudents} layout="vertical" margin={{left: 20}}>
+                            <BarChart data={stats.topStudents} layout="vertical" margin={{left: 0}}>
                                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0"/>
                                 <XAxis type="number" hide/>
-                                <YAxis dataKey="name" type="category" width={150} tick={{fill: '#64748B', fontSize: 12}}/>
+                                <YAxis dataKey="name" type="category" width={100} tick={{fill: '#64748B', fontSize: 10}}/>
                                 <Tooltip 
                                     cursor={{fill: '#F1F5F9'}} 
                                     contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}

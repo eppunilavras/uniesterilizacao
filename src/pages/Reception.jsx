@@ -46,13 +46,24 @@ export default function Reception({ userProfile }) {
     const [cart, setCart] = useState([]);
     const [createdItems, setCreatedItems] = useState([]);
 
-    // Estados de Paginação e Busca de Itens (Novos)
+    // Estados de Paginação e Busca de Itens (Responsivo)
     const [itemSearch, setItemSearch] = useState('');
     const [itemPage, setItemPage] = useState(0);
-    const ITEMS_PER_PAGE = 15;
+    
+    // Define 6 itens no mobile (2x3) e 15 no desktop
+    const [itemsPerPage, setItemsPerPage] = useState(window.innerWidth < 768 ? 6 : 15);
 
     const { addToast } = useToast();
     const { printItems } = usePrint();
+
+    // --- MONITOR DE TAMANHO DE TELA ---
+    useEffect(() => {
+        const handleResize = () => {
+            setItemsPerPage(window.innerWidth < 768 ? 6 : 15);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // --- BUSCA OTIMIZADA DE ALUNOS ---
     useEffect(() => {
@@ -95,17 +106,17 @@ export default function Reception({ userProfile }) {
         return () => unsub();
     }, []);
 
-    // Reinicia a página ao pesquisar item
+    // Reinicia a página ao pesquisar item ou mudar o layout
     useEffect(() => {
         setItemPage(0);
-    }, [itemSearch]);
+    }, [itemSearch, itemsPerPage]);
 
     // LÓGICA DE PAGINAÇÃO E FILTRO DE ITENS
     const filteredTypes = types.filter(t => 
         t.name.toLowerCase().includes(itemSearch.toLowerCase())
     );
-    const totalItemPages = Math.ceil(filteredTypes.length / ITEMS_PER_PAGE);
-    const visibleTypes = filteredTypes.slice(itemPage * ITEMS_PER_PAGE, (itemPage + 1) * ITEMS_PER_PAGE);
+    const totalItemPages = Math.ceil(filteredTypes.length / itemsPerPage);
+    const visibleTypes = filteredTypes.slice(itemPage * itemsPerPage, (itemPage + 1) * itemsPerPage);
 
     const nextPage = () => setItemPage(p => (p + 1) % totalItemPages); // Circular
     const prevPage = () => setItemPage(p => (p - 1 + totalItemPages) % totalItemPages); // Circular
@@ -204,7 +215,7 @@ export default function Reception({ userProfile }) {
 
     return (
         <div className="space-y-6">
-            {/* CABEÇALHO PADRONIZADO */}
+            {/* CABEÇALHO */}
             <h2 className="font-bold text-[#021D34] text-2xl flex items-center gap-2">
                 <PackagePlus className="text-[#009DE0]"/> Recepção
             </h2>
@@ -220,7 +231,7 @@ export default function Reception({ userProfile }) {
                                     onClick={() => { 
                                         setSelectedStudent(null); 
                                         setSearch(''); 
-                                        setCart([]); // LIMPA O CARRINHO AO TROCAR ALUNO
+                                        setCart([]); 
                                     }} 
                                     className="text-xs text-red-500 hover:underline"
                                 >
@@ -292,8 +303,7 @@ export default function Reception({ userProfile }) {
                                 <span className="w-6 h-6 rounded-full bg-[#021D34] text-white flex items-center justify-center text-xs">2</span> Materiais
                             </h3>
                             
-                            {/* PESQUISA DE ITENS - SÓ APARECE SE TIVER MUITOS ITENS */}
-                            {types.length > ITEMS_PER_PAGE && (
+                            {types.length > itemsPerPage && (
                                 <div className="relative w-full md:w-64">
                                     <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400"/>
                                     <input 
@@ -306,69 +316,58 @@ export default function Reception({ userProfile }) {
                             )}
                         </div>
                         
-                        {/* ÁREA DE SELEÇÃO (CARROSSEL) */}
-                        <div className="relative"> 
+                        {/* GRID DE MATERIAIS - Sem padding lateral excessivo */}
+                        <div className="w-full"> 
                             
-                            {/* BOTÃO ANTERIOR (SÓ SE HOUVER PAGINAÇÃO) */}
-                            {totalItemPages > 1 && (
+                            {/* GRID DE ITENS (PÁGINA ATUAL) */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 min-h-[300px] md:min-h-[480px] animate-in fade-in">
+                                {visibleTypes.map(t => (
+                                    <button 
+                                        key={t.id} 
+                                        onClick={() => setCart([...cart, { ...t, uid: Math.random() }])} 
+                                        className="p-4 border rounded-xl hover:bg-[#009DE0] hover:text-white hover:border-[#009DE0] active:scale-95 active:bg-blue-600 active:border-blue-600 transition-all duration-75 text-center md:text-left flex flex-col items-center md:items-start gap-2 group select-none h-full justify-center md:justify-start"
+                                    >
+                                        <PackagePlus size={24} className="text-slate-300 group-hover:text-white"/>
+                                        <span className="font-medium text-sm md:text-base leading-tight">{t.name}</span>
+                                    </button>
+                                ))}
+                                {/* Placeholders para manter altura consistente */}
+                                {Array.from({ length: itemsPerPage - visibleTypes.length }).map((_, index) => (
+                                    <div key={`placeholder-${index}`} className="opacity-0 pointer-events-none">
+                                        <div className="p-4 border rounded-xl text-left flex flex-col gap-2 h-full">
+                                            <PackagePlus size={24}/>
+                                            <span className="font-medium text-sm md:text-base leading-tight"> </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* CONTROLES DE PAGINAÇÃO (Rodapé) - Solução para o Mobile */}
+                        {totalItemPages > 1 && (
+                            <div className="flex items-center justify-between mt-4 bg-slate-50 p-2 rounded-xl border border-slate-100">
                                 <button 
                                     onClick={prevPage}
-                                    // Posição ajustada: Esquerda do padding do grid, fora da área de cartões.
-                                    className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 p-2 bg-white rounded-full shadow-lg border border-slate-200 hover:bg-slate-50 text-[#009DE0] transition-transform hover:scale-110"
+                                    className="p-3 rounded-lg hover:bg-white hover:shadow-sm text-slate-500 hover:text-[#009DE0] transition-all"
                                 >
                                     <ChevronLeft size={20}/>
                                 </button>
-                            )}
 
-                            {/* GRID WRAPPER: Adicionado px-10 para dar espaço lateral para as setas */}
-                            <div className="px-10"> 
-                                {/* GRID DE ITENS (PÁGINA ATUAL) */}
-                                {/* min-h fixo para manter a altura de 5 linhas (15 itens) */}
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 min-h-[480px] animate-in fade-in">
-                                    {visibleTypes.map(t => (
-                                        <button 
-                                            key={t.id} 
-                                            onClick={() => setCart([...cart, { ...t, uid: Math.random() }])} 
-                                            className="p-4 border rounded-xl hover:bg-[#009DE0] hover:text-white hover:border-[#009DE0] active:scale-95 active:bg-blue-600 active:border-blue-600 transition-all duration-75 text-left flex flex-col gap-2 group select-none h-full"
-                                        >
-                                            <PackagePlus size={24} className="text-slate-300 group-hover:text-white"/>
-                                            <span className="font-medium text-sm md:text-base leading-tight">{t.name}</span>
-                                        </button>
-                                    ))}
-                                    {/* Placeholder elements para manter 15 slots e altura uniforme */}
-                                    {Array.from({ length: ITEMS_PER_PAGE - visibleTypes.length }).map((_, index) => (
-                                        <div key={`placeholder-${index}`} className="opacity-0 pointer-events-none">
-                                            {/* ESTRUTURA ATUALIZADA: Repete as classes de layout do botão para garantir tamanho idêntico */}
-                                            <div className="p-4 border rounded-xl text-left flex flex-col gap-2 h-full">
-                                                <PackagePlus size={24}/>
-                                                <span className="font-medium text-sm md:text-base leading-tight"> </span>
-                                            </div>
-                                        </div>
+                                <div className="flex gap-1.5">
+                                    {Array.from({ length: totalItemPages }).map((_, idx) => (
+                                        <div 
+                                            key={idx} 
+                                            className={`w-2 h-2 rounded-full transition-colors ${idx === itemPage ? 'bg-[#009DE0] scale-125' : 'bg-slate-300'}`}
+                                        />
                                     ))}
                                 </div>
-                            </div>
-                            
-                            {/* BOTÃO PRÓXIMO (SÓ SE HOUVER PAGINAÇÃO) */}
-                            {totalItemPages > 1 && (
+
                                 <button 
                                     onClick={nextPage}
-                                    // Posição ajustada: Direita do padding do grid, fora da área de cartões.
-                                    className="absolute right-0 translate-x-1/2 top-1/2 -translate-y-1/2 z-20 p-2 bg-white rounded-full shadow-lg border border-slate-200 hover:bg-slate-50 text-[#009DE0] transition-transform hover:scale-110"
+                                    className="p-3 rounded-lg hover:bg-white hover:shadow-sm text-slate-500 hover:text-[#009DE0] transition-all"
                                 >
                                     <ChevronRight size={20}/>
                                 </button>
-                            )}
-                        </div>
-
-                        {/* INDICADOR DE PÁGINA */}
-                        {totalItemPages > 1 && (
-                            <div className="flex justify-center gap-1 mt-4">
-                                {Array.from({ length: totalItemPages }).map((_, idx) => (
-                                    <div 
-                                        key={idx} 
-                                        className={`w-2 h-2 rounded-full transition-colors ${idx === itemPage ? 'bg-[#009DE0]' : 'bg-slate-200'}`}
-                                    />
-                                ))}
                             </div>
                         )}
                     </div>
