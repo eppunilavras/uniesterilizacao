@@ -3,7 +3,7 @@ import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'fir
 import { getDoc, doc } from 'firebase/firestore';
 import { ShieldAlert, Loader2 } from 'lucide-react';
 
-// Imports internos (ajustados para a nova estrutura)
+// Imports internos
 import { auth, db, appId } from '../config/firebase';
 import { LOGOS } from '../constants';
 import { useToast } from '../contexts/ToastContext';
@@ -36,13 +36,13 @@ export default function LoginScreen({ globalError }) {
             if (userDoc.exists()) {
                 const userData = userDoc.data();
                 if (userData.active === false) {
-                    await logEvent('LOGIN_FAIL', 'Login bloqueado - Usuário inativo', { email });
+                    // Log de falha removido daqui para evitar inconsistência/permissão
                     await signOut(auth); // Desloga imediatamente
                     throw { code: 'auth/account-inactive' }; // Joga erro customizado para o catch
                 }
             }
             
-            // Se chegou aqui, está ativo.
+            // Se chegou aqui, está ativo e logado.
             await logEvent('LOGIN', 'Usuário fez login com sucesso', { email }, cred.user);
             
             if (keepSigned) {
@@ -52,10 +52,7 @@ export default function LoginScreen({ globalError }) {
             }
 
         } catch (error) {
-            // Se não foi erro de conta inativa, loga a falha genérica
-            if (error.code !== 'auth/account-inactive') {
-                await logEvent('LOGIN_FAIL', 'Tentativa de login falhou', { email, error: error.code });
-            }
+            // Log de falha removido daqui (causava erro de permissão pois o usuário não está logado)
             addToast(translateFirebaseError(error), 'error');
             setIsSubmitting(false);
         }

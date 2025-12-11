@@ -3,7 +3,8 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { 
   collection, query, where, orderBy, limit, startAt, endAt, 
-  startAfter, getDocs, updateDoc, doc, setDoc, serverTimestamp 
+  startAfter, getDocs, updateDoc, doc, setDoc, serverTimestamp,
+  writeBatch // <--- IMPORTADO
 } from 'firebase/firestore';
 import { 
   Search, Edit2, Trash2, Loader2, ArrowDown, Upload, 
@@ -63,7 +64,7 @@ export default function UserManagement({ userProfile }) {
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
 
-    // Estados para Importação CSV (Mantidos iguais)
+    // Estados para Importação CSV
     const [importing, setImporting] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [csvPreview, setCsvPreview] = useState([]); 
@@ -74,7 +75,7 @@ export default function UserManagement({ userProfile }) {
     const { addToast } = useToast();
     const { confirm, alert } = useDialog();
 
-    // Helpers de Busca e Firebase (Mantidos)
+    // Helpers de Busca e Firebase
     const formatSearchTerm = (text) => {
 		if (!text) return '';
 		if (text.startsWith('"') && text.endsWith('"') && text.length > 2) return text.slice(1, -1);
@@ -90,8 +91,6 @@ export default function UserManagement({ userProfile }) {
     };
 
     const checkCpfExists = async (cpf, excludeUid = null) => {
-        // Limpa o CPF para verificar no banco (assumindo que no banco está limpo ou formatado consistentemente)
-        // Se no banco você salva SOMENTE NÚMEROS:
         const cleanCpf = cpf.replace(/\D/g, ''); 
         const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'users_directory'), where('cpf', '==', cleanCpf));
         const snap = await getDocs(q);
@@ -100,7 +99,7 @@ export default function UserManagement({ userProfile }) {
         return true;
     };
 
-    // --- CARREGAMENTO DE USUÁRIOS (fetchUsers e loadMore mantidos iguais) ---
+    // --- CARREGAMENTO DE USUÁRIOS ---
     const fetchUsers = async (searchTerm = '') => {
         setLoading(true); setHasMore(true); setLastDoc(null);
         try {
@@ -154,17 +153,16 @@ export default function UserManagement({ userProfile }) {
         return () => clearTimeout(timer);
     }, [search, filterRole]);
 
-    // --- NOVA FUNÇÃO DE SAVE COM REACT HOOK FORM ---
+    // --- FUNÇÃO DE SAVE COM CORREÇÃO DE BATCH ---
     const onSubmit = async (data) => {
-        // Validação extra: Senha obrigatória na criação
         if (!editing && (!data.password || data.password.length < 6)) {
             addToast('Senha deve ter no mínimo 6 caracteres para novos usuários.', 'error');
             return;
         }
 
         try {
-            // Limpa o CPF para salvar no banco apenas números
             const cleanCpf = data.cpf.replace(/\D/g, '');
+            const batch = writeBatch(db); // <--- INICIA BATCH
 
             if (editing) {
                 // Lógica de Edição
@@ -180,9 +178,13 @@ export default function UserManagement({ userProfile }) {
                 }
 
                 const updates = { name: data.name, email: data.email, cpf: cleanCpf, role: data.role, active: data.active };
-                await updateDoc(doc(db, 'artifacts', appId, 'users', editing.uid, 'profile', 'data'), updates);
-                await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users_directory', editing.uid), updates);
                 
+                // Adiciona operações ao Batch
+                batch.update(doc(db, 'artifacts', appId, 'users', editing.uid, 'profile', 'data'), updates);
+                batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'users_directory', editing.uid), updates);
+                
+                await batch.commit(); // <--- EXECUTA TUDO JUNTO
+
                 await logEvent('USER_MGMT', `Usuário atualizado: ${data.name}`, { uid: editing.uid, changes: updates, executor: userProfile.email });
                 addToast('Dados atualizados!', 'success');
             } else {
@@ -199,15 +201,19 @@ export default function UserManagement({ userProfile }) {
                 const newData = { 
                     name: data.name, email: data.email, cpf: cleanCpf, role: data.role, active: true, createdAt: serverTimestamp() 
                 };
-                await setDoc(doc(db, 'artifacts', appId, 'users', cred.user.uid, 'profile', 'data'), newData);
-                await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users_directory', cred.user.uid), newData);
+                
+                // Adiciona operações ao Batch
+                batch.set(doc(db, 'artifacts', appId, 'users', cred.user.uid, 'profile', 'data'), newData);
+                batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'users_directory', cred.user.uid), newData);
+                
+                await batch.commit(); // <--- EXECUTA TUDO JUNTO
                 
                 await logEvent('USER_MGMT', `Novo usuário cadastrado: ${data.name}`, { email: data.email, role: data.role, executor: userProfile.email });
                 await signOut(secondaryAuth);
                 addToast('Usuário criado!', 'success');
             }
             
-            reset(); // Limpa o formulário
+            reset();
             setEditing(null);
             setView('list');
             fetchUsers(search); 
@@ -220,14 +226,13 @@ export default function UserManagement({ userProfile }) {
     // Handler para abrir o formulário de edição
     const handleEditClick = (u) => {
         setEditing(u);
-        // Preenche o formulário com os dados do usuário, aplicando a máscara no CPF
         reset({
             name: u.name,
             email: u.email,
             cpf: maskCPF(u.cpf),
             role: u.role,
             active: u.active !== false,
-            password: '' // Senha vazia na edição
+            password: ''
         });
         setView('form');
     };
@@ -238,7 +243,7 @@ export default function UserManagement({ userProfile }) {
         setView('form');
     };
 
-    // Handler de exclusão (Mantido igual)
+    // Handler de exclusão COM BATCH
     const handleDelete = async (u) => {
         if (u.uid === userProfile.uid) { addToast('Não pode excluir a si mesmo.', 'error'); return; }
         const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'items'), where('studentId', '==', u.uid), limit(1));
@@ -247,19 +252,22 @@ export default function UserManagement({ userProfile }) {
 
         if(!await confirm({ title: 'Desativar Usuário', message: `Deseja realmente excluir/desativar ${u.name}?`, isDestructive: true })) return;
         
-        await updateDoc(doc(db, 'artifacts', appId, 'users', u.uid, 'profile', 'data'), { active: false });
-        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users_directory', u.uid), { active: false });
-        
-        await logEvent('USER_MGMT', `Usuário desativado: ${u.name}`, { targetUid: u.uid, executor: userProfile.email });
-        addToast('Usuário desativado.', 'success');
-        fetchUsers(search);
+        try {
+            const batch = writeBatch(db); // <--- INICIA BATCH
+            batch.update(doc(db, 'artifacts', appId, 'users', u.uid, 'profile', 'data'), { active: false });
+            batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'users_directory', u.uid), { active: false });
+            await batch.commit(); // <--- EXECUTA
+
+            await logEvent('USER_MGMT', `Usuário desativado: ${u.name}`, { targetUid: u.uid, executor: userProfile.email });
+            addToast('Usuário desativado.', 'success');
+            fetchUsers(search);
+        } catch(e) {
+            addToast('Erro ao desativar usuário.', 'error');
+            console.error(e);
+        }
     };
 
-    // --- FUNÇÕES DE IMPORTAÇÃO CSV (Mantidas iguais por brevidade, apenas renderização muda) ---
-    // ... (handleFileSelect, executeImport, toggleSelect, toggleAll mantidos iguais ao original)
-    // Para economizar espaço na resposta, estou omitindo a repetição das funções CSV pois elas não mudaram a lógica,
-    // mas certifique-se de mantê-las no seu código final. Vou incluir o handleFileSelect para garantir.
-    
+    // --- FUNÇÕES DE IMPORTAÇÃO CSV ---
     const handleFileSelect = (e) => {
          const file = e.target.files[0];
          if (!file) return;
@@ -330,8 +338,13 @@ export default function UserManagement({ userProfile }) {
              try {
                  const cred = await createUserWithEmailAndPassword(secondaryAuth, user.email, user.password);
                  const data = { name: user.name, email: user.email, cpf: user.cpf, role: user.role, active: true, createdAt: serverTimestamp() };
-                 await setDoc(doc(db, 'artifacts', appId, 'users', cred.user.uid, 'profile', 'data'), data);
-                 await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'users_directory', cred.user.uid), data);
+                 
+                 // CORREÇÃO: BATCH POR USUÁRIO NA IMPORTAÇÃO
+                 const batch = writeBatch(db);
+                 batch.set(doc(db, 'artifacts', appId, 'users', cred.user.uid, 'profile', 'data'), data);
+                 batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'users_directory', cred.user.uid), data);
+                 await batch.commit();
+
                  await logEvent('USER_MGMT', `Importação CSV: Criado ${user.name}`, { email: user.email, role: user.role, executor: userProfile.email });
                  success++;
              } catch (err) {
@@ -398,7 +411,6 @@ export default function UserManagement({ userProfile }) {
             )}
 
             {showImportModal && (
-                // ... (MODAL DE IMPORTAÇÃO MANTIDO IGUAL - OMITIDO P/ BREVIDADE, MAS DEVE ESTAR AQUI)
                  <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col animate-in zoom-in-95">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center">
@@ -438,7 +450,6 @@ export default function UserManagement({ userProfile }) {
 
             {view === 'list' ? (
                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                    {/* ... (CÓDIGO DA TABELA MANTIDO IGUAL - APENAS O BOTÃO EDITAR CHAMA handleEditClick) */}
                     <div className="flex flex-col md:flex-row gap-4 mb-4">
                          <div className="relative flex-1">
                             <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400"/>
@@ -499,7 +510,6 @@ export default function UserManagement({ userProfile }) {
                 <div className="bg-white p-8 rounded-xl border border-slate-200 max-w-2xl mx-auto shadow-sm">
                     <h3 className="font-bold text-lg mb-6 border-b pb-2">{editing ? 'Editar Usuário' : 'Cadastrar Novo'}</h3>
                     
-                    {/* FORMULÁRIO CONTROLADO PELO REACT HOOK FORM */}
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                         <div className="grid md:grid-cols-2 gap-4">
                             <div>
@@ -517,7 +527,7 @@ export default function UserManagement({ userProfile }) {
                                     {...register("cpf")}
                                     onChange={(e) => {
                                         const masked = maskCPF(e.target.value);
-                                        setValue('cpf', masked); // Atualiza visualmente e no form
+                                        setValue('cpf', masked);
                                     }}
                                     maxLength={14}
                                 />
@@ -536,7 +546,6 @@ export default function UserManagement({ userProfile }) {
                                 {errors.email && <span className="text-xs text-red-500">{errors.email.message}</span>}
                             </div>
                             
-                            {/* Campo Senha */}
                             {!editing ? (
                                 <div>
                                     <label className="text-xs font-bold text-slate-500 mb-1 block">Senha Inicial</label>
