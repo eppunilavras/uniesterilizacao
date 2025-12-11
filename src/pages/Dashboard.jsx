@@ -5,7 +5,9 @@ import {
   orderBy, 
   limit, 
   where, 
-  onSnapshot 
+  onSnapshot,
+  getDocs,
+  getCountFromServer // Agregação
 } from 'firebase/firestore';
 import { 
   AreaChart, 
@@ -28,7 +30,9 @@ import {
   TrendingUp, 
   Lightbulb, 
   BarChart3, 
-  UserCog 
+  UserCog,
+  RotateCw, 
+  Loader2
 } from 'lucide-react';
 
 // Imports internos
@@ -51,7 +55,10 @@ export default function Dashboard({ userProfile }) {
     const [customEnd, setCustomEnd] = useState('');
     const [insights, setInsights] = useState([]);
     
-    // --- Recados (Otimizado: Limitado aos últimos 10) ---
+    const [loading, setLoading] = useState(false);
+    const [lastUpdated, setLastUpdated] = useState(new Date());
+
+    // --- Recados (Mantido em Tempo Real pois são poucos - Limit 10) ---
     useEffect(() => {
         const now = new Date();
         const q = query(
@@ -76,100 +83,139 @@ export default function Dashboard({ userProfile }) {
         return () => unsubAnn();
     }, []);
 
-    // --- Dados Principais ---
-    useEffect(() => {
-        let startDate = new Date();
-        let endDate = new Date(2100, 11, 31); 
-        const now = new Date();
+    // --- CARREGAMENTO OTIMIZADO DE DADOS ---
+    const loadDashboardData = async () => {
+        setLoading(true);
+        try {
+            // 1. Definir datas
+            let startDate = new Date();
+            let endDate = new Date(2100, 11, 31); 
+            const now = new Date();
 
-        if (period === '7d') startDate.setDate(now.getDate() - 7);
-        if (period === '30d') startDate.setDate(now.getDate() - 30);
-        if (period === 'year') startDate = new Date(now.getFullYear(), 0, 1);
-        if (period === 'custom') {
-            if (!customStart) return; 
-            startDate = new Date(customStart);
-            if (customEnd) endDate = new Date(customEnd + 'T23:59:59');
-        }
-
-        if (period !== 'custom') startDate.setHours(0,0,0,0);
-
-        let constraints = [
-            orderBy('createdAt', 'desc')
-        ];
-
-        constraints.push(where('createdAt', '>=', startDate));
-        constraints.push(where('createdAt', '<=', endDate));
-
-        if (userProfile.role === 'student') {
-            constraints.push(where('studentId', '==', userProfile.uid));
-        }
-
-        const q = query(
-            collection(db, 'artifacts', appId, 'public', 'data', 'items'), 
-            ...constraints
-        );
-
-        const unsubItems = onSnapshot(q, (s) => {
-            processData(s.docs);
-        }, (error) => {
-            console.error("Erro no Dashboard:", error);
-        });
-
-        return () => unsubItems();
-    }, [userProfile, period, customStart, customEnd]);
-
-    const processData = (docs) => {
-        const counts = { rec:0, em:0, pront:0, ret:0 };
-        const typeCount = {};
-        const dailyCount = {};
-        const studentCount = {};
-
-        docs.forEach(d => {
-            const data = d.data();
-            const date = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-
-            if (data.status === 'recebido') counts.rec++;
-            if (data.status === 'em_esterilizacao') counts.em++;
-            if (data.status === 'pronto') counts.pront++;
-            if (data.status === 'retirado') counts.ret++;
-
-            typeCount[data.type] = (typeCount[data.type] || 0) + 1;
-
-            const dayKey = date.toLocaleDateString('pt-BR');
-            dailyCount[dayKey] = (dailyCount[dayKey] || 0) + 1;
-
-            if (userProfile.role !== 'student') {
-                studentCount[data.studentName] = (studentCount[data.studentName] || 0) + 1;
+            if (period === '7d') startDate.setDate(now.getDate() - 7);
+            if (period === '30d') startDate.setDate(now.getDate() - 30);
+            if (period === 'year') startDate = new Date(now.getFullYear(), 0, 1);
+            if (period === 'custom') {
+                if (!customStart) { setLoading(false); return; }
+                startDate = new Date(customStart);
+                if (customEnd) endDate = new Date(customEnd + 'T23:59:59');
             }
-        });
 
-        const typesData = Object.entries(typeCount).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value);
-        const timelineData = Object.entries(dailyCount).map(([name, value]) => ({ name, value })).sort((a,b) => {
-            const [da, ma, ya] = a.name.split('/');
-            const [db, mb, yb] = b.name.split('/');
-            return new Date(ya, ma-1, da) - new Date(yb, mb-1, db);
-        });
-        const topStudentsData = Object.entries(studentCount).map(([name, value]) => ({ name, value })).sort((a,b) => b.value - a.value).slice(0, 5);
+            if (period !== 'custom') startDate.setHours(0,0,0,0);
 
-        const newInsights = [];
-        if (typesData.length > 0) newInsights.push(`Material mais comum: "${typesData[0].name}" (${typesData[0].value} itens).`);
-        if (timelineData.length > 0) {
-            const busiestDay = timelineData.reduce((prev, current) => (prev.value > current.value) ? prev : current);
-            newInsights.push(`Pico de movimento: ${busiestDay.name} (${busiestDay.value} itens).`);
+            // 2. Construir Constraints Básicas
+            const baseConstraints = [
+                where('createdAt', '>=', startDate),
+                where('createdAt', '<=', endDate)
+            ];
+
+            if (userProfile.role === 'student') {
+                baseConstraints.push(where('studentId', '==', userProfile.uid));
+            }
+
+            const itemsRef = collection(db, 'artifacts', appId, 'public', 'data', 'items');
+
+            // --- PARTE A: AGREGAÇÃO (CONTADORES TOTAIS) ---
+            const statusTypes = ['recebido', 'em_esterilizacao', 'pronto', 'retirado'];
+            
+            const countPromises = statusTypes.map(async (statusKey) => {
+                const q = query(itemsRef, ...baseConstraints, where('status', '==', statusKey));
+                const snapshot = await getCountFromServer(q);
+                // --- CORREÇÃO AQUI: .count (propriedade) e não .count() (função) ---
+                return { status: statusKey, count: snapshot.data().count };
+            });
+
+            // --- PARTE B: DADOS PARA GRÁFICOS (AMOSTRA RECENTE) ---
+            const chartQuery = query(
+                itemsRef, 
+                ...baseConstraints, 
+                orderBy('createdAt', 'desc'), 
+                limit(100) 
+            );
+            
+            // Executa tudo em paralelo
+            const [countsResult, chartSnapshot] = await Promise.all([
+                Promise.all(countPromises),
+                getDocs(chartQuery)
+            ]);
+
+            // Processa Contadores (Cards)
+            const newCounts = { rec:0, em:0, pront:0, ret:0 };
+            countsResult.forEach(res => {
+                if(res.status === 'recebido') newCounts.rec = res.count;
+                if(res.status === 'em_esterilizacao') newCounts.em = res.count;
+                if(res.status === 'pronto') newCounts.pront = res.count;
+                if(res.status === 'retirado') newCounts.ret = res.count;
+            });
+
+            // Processa Gráficos (Baseado na amostra de 100)
+            const typeCount = {};
+            const dailyCount = {};
+            const studentCount = {};
+            const chartDocs = chartSnapshot.docs.map(d => d.data());
+
+            chartDocs.forEach(data => {
+                const date = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+                
+                // Por Tipo
+                typeCount[data.type] = (typeCount[data.type] || 0) + 1;
+
+                // Por Dia
+                const dayKey = date.toLocaleDateString('pt-BR');
+                dailyCount[dayKey] = (dailyCount[dayKey] || 0) + 1;
+
+                // Por Aluno
+                if (userProfile.role !== 'student') {
+                    studentCount[data.studentName] = (studentCount[data.studentName] || 0) + 1;
+                }
+            });
+
+            // Formatação para Recharts
+            const typesData = Object.entries(typeCount)
+                .map(([name, value]) => ({ name, value }))
+                .sort((a,b) => b.value - a.value);
+            
+            const timelineData = Object.entries(dailyCount)
+                .map(([name, value]) => ({ name, value }))
+                .sort((a,b) => {
+                    const [da, ma, ya] = a.name.split('/');
+                    const [db, mb, yb] = b.name.split('/');
+                    return new Date(ya, ma-1, da) - new Date(yb, mb-1, db);
+                });
+            
+            const topStudentsData = Object.entries(studentCount)
+                .map(([name, value]) => ({ name, value }))
+                .sort((a,b) => b.value - a.value)
+                .slice(0, 5);
+
+            // Insights simples
+            const newInsights = [];
+            if (typesData.length > 0) newInsights.push(`Material recente mais comum: "${typesData[0].name}".`);
+            if (timelineData.length > 0) newInsights.push(`Atividade recente concentrada em: ${timelineData[timelineData.length-1].name}.`);
+            if (chartSnapshot.size === 100) newInsights.push(`Exibindo dados baseados nos últimos 100 registros do período.`);
+
+            setStats({
+                current: newCounts, // Totais EXATOS (via agregação)
+                previous: { rec:0, em:0, pront:0, ret:0 }, 
+                types: typesData,   // Baseado nos últimos 100
+                timeline: timelineData, // Baseado nos últimos 100
+                topStudents: topStudentsData // Baseado nos últimos 100
+            });
+            setInsights(newInsights);
+            setLastUpdated(new Date());
+
+        } catch (error) {
+            console.error("Erro no Dashboard:", error);
+        } finally {
+            setLoading(false);
         }
-        if (userProfile.role === 'student' && counts.ret > 0) {
-            newInsights.push(`Você já retirou ${counts.ret} materiais.`);
-        }
-
-        setStats({
-            current: counts,
-            previous: { rec:0, em:0, pront:0, ret:0 }, 
-            types: typesData,
-            timeline: timelineData,
-            topStudents: topStudentsData
-        });
-        setInsights(newInsights);
     };
+
+    // Dispara o carregamento quando mudar os filtros
+    useEffect(() => {
+        loadDashboardData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userProfile, period, customStart, customEnd]);
 
     return (
         <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500 w-full max-w-full overflow-x-hidden">
@@ -178,11 +224,14 @@ export default function Dashboard({ userProfile }) {
                 <div>
                     <h2 className="text-2xl md:text-3xl font-bold text-[#021D34]">Olá, {userProfile.name.split(' ')[0]}</h2>
                     <p className="text-slate-500 flex items-center gap-2 text-sm md:text-base">
-                        <Activity size={16}/> Resumo em tempo real da central.
+                        <Activity size={16}/> Visão geral da central.
+                        <span className="text-xs text-slate-400 ml-2 border-l pl-2">
+                            Atualizado às {lastUpdated.toLocaleTimeString()}
+                        </span>
                     </p>
                 </div>
                 
-                <div className="flex flex-col sm:flex-row gap-2 bg-white p-2 rounded-lg border shadow-sm w-full md:w-auto">
+                <div className="flex flex-col sm:flex-row gap-2 bg-white p-2 rounded-lg border shadow-sm w-full md:w-auto items-center">
                     <select value={period} onChange={(e) => setPeriod(e.target.value)} className="p-2 bg-slate-50 border rounded text-sm outline-none focus:border-[#009DE0] font-medium text-slate-700 w-full md:w-auto">
                         <option value="7d">Últimos 7 dias</option>
                         <option value="30d">Últimos 30 dias</option>
@@ -196,10 +245,19 @@ export default function Dashboard({ userProfile }) {
                             <input type="date" value={customEnd} onChange={e=>setCustomEnd(e.target.value)} className="p-2 border rounded text-sm w-full"/>
                         </div>
                     )}
+
+                    <button 
+                        onClick={loadDashboardData} 
+                        disabled={loading}
+                        className="p-2 bg-[#021D34] text-white rounded hover:bg-[#009DE0] disabled:opacity-50 transition-colors"
+                        title="Atualizar Dados"
+                    >
+                        {loading ? <Loader2 className="animate-spin" size={18}/> : <RotateCw size={18}/>}
+                    </button>
                 </div>
             </div>
 
-            {/* Announcements */}
+            {/* Announcements (Mantido igual) */}
             {anns.length > 0 && (
                 <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                     {anns.map(a => (
@@ -231,7 +289,7 @@ export default function Dashboard({ userProfile }) {
                 </div>
             )}
 
-            {/* StatCards - Grid ajustado */}
+            {/* StatCards - Usam os dados da AGREGACÃO (Exatos) */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                 <StatCard title="Recebidos" count={stats.current.rec} icon={Clock} color="text-slate-600" bg="bg-slate-100" />
                 <StatCard title="Em Processo" count={stats.current.em} icon={AlertCircle} color="text-orange-600" bg="bg-orange-50" />
@@ -241,29 +299,32 @@ export default function Dashboard({ userProfile }) {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* AreaChart Container */}
-                <div className="lg:col-span-2 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm w-full min-w-0">
+                <div className="lg:col-span-2 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm w-full min-w-0 flex flex-col">
                     <h3 className="font-bold text-[#021D34] mb-6 flex items-center gap-2 text-sm md:text-base">
-                        <TrendingUp className="text-[#009DE0]"/> Fluxo de Entrada ({period === 'custom' ? 'Período' : period})
+                        <TrendingUp className="text-[#009DE0]"/> Fluxo Recente ({stats.timeline.length} dias)
                     </h3>
-                    <div className="h-64 md:h-72 w-full min-w-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={stats.timeline}>
-                                <defs>
-                                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#009DE0" stopOpacity={0.3}/>
-                                        <stop offset="95%" stopColor="#009DE0" stopOpacity={0}/>
-                                    </linearGradient>
-                                </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0"/>
-                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 10}} dy={10} minTickGap={30}/>
-                                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 10}}/>
-                                <Tooltip 
-                                    contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                                    formatter={(value) => [value, "Quantidade"]}
-                                />
-                                <Area type="monotone" dataKey="value" stroke="#009DE0" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
-                            </AreaChart>
-                        </ResponsiveContainer>
+                    <div className="h-64 md:h-72 w-full min-w-0 flex-1 relative" style={{ minHeight: '250px' }}>
+                         {/* CORREÇÃO DO RECHARTS: Adicionado style absolute wrapper para evitar erro de resize */}
+                         <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={stats.timeline}>
+                                    <defs>
+                                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#009DE0" stopOpacity={0.3}/>
+                                            <stop offset="95%" stopColor="#009DE0" stopOpacity={0}/>
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0"/>
+                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 10}} dy={10} minTickGap={30}/>
+                                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 10}}/>
+                                    <Tooltip 
+                                        contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                                        formatter={(value) => [value, "Quantidade"]}
+                                    />
+                                    <Area type="monotone" dataKey="value" stroke="#009DE0" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
                 </div>
 
@@ -286,38 +347,40 @@ export default function Dashboard({ userProfile }) {
                     </div>
 
                     {/* BarChart Container */}
-                    <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm h-[300px] flex flex-col w-full min-w-0">
+                    <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm h-[300px] flex flex-col w-full min-w-0 relative">
                         <h3 className="font-bold text-[#021D34] mb-2 flex items-center gap-2 text-sm md:text-base">
-                            <BarChart3 className="text-[#009DE0]"/> Por Tipo
+                            <BarChart3 className="text-[#009DE0]"/> Tipos (Amostra Recente)
                         </h3>
-                        <div className="flex-1 w-full min-h-0">
-                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart
-                                    layout="vertical"
-                                    data={stats.types.slice(0, 10)}
-                                    margin={{ top: 5, right: 10, left: 0, bottom: 5 }} // Margem direita reduzida
-                                >
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0"/>
-                                    <XAxis type="number" hide />
-                                    <YAxis 
-                                        dataKey="name" 
-                                        type="category" 
-                                        width={80} // Largura do texto reduzida para caber no mobile
-                                        tick={{fill: '#64748B', fontSize: 10}}
-                                        interval={0}
-                                    />
-                                    <Tooltip 
-                                        cursor={{fill: '#F1F5F9'}}
-                                        contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                                        formatter={(value) => [value, "Quantidade"]}
-                                    />
-                                    <Bar dataKey="value" fill="#009DE0" radius={[0, 4, 4, 0]} barSize={16}>
-                                        {stats.types.map((entry, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
+                        <div className="flex-1 w-full min-h-0 relative" style={{ minHeight: '200px' }}>
+                             <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart
+                                        layout="vertical"
+                                        data={stats.types.slice(0, 10)}
+                                        margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0"/>
+                                        <XAxis type="number" hide />
+                                        <YAxis 
+                                            dataKey="name" 
+                                            type="category" 
+                                            width={80} 
+                                            tick={{fill: '#64748B', fontSize: 10}}
+                                            interval={0}
+                                        />
+                                        <Tooltip 
+                                            cursor={{fill: '#F1F5F9'}}
+                                            contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                                            formatter={(value) => [value, "Quantidade"]}
+                                        />
+                                        <Bar dataKey="value" fill="#009DE0" radius={[0, 4, 4, 0]} barSize={16}>
+                                            {stats.types.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                            ))}
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -326,24 +389,26 @@ export default function Dashboard({ userProfile }) {
             {userProfile.role !== 'student' && stats.topStudents.length > 0 && (
                 <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm w-full min-w-0">
                     <h3 className="font-bold text-[#021D34] mb-6 flex items-center gap-2 text-sm md:text-base">
-                        <UserCog className="text-[#009DE0]"/> Top 5 Alunos Mais Ativos
+                        <UserCog className="text-[#009DE0]"/> Top Alunos (Atividade Recente)
                     </h3>
-                    <div className="h-64 w-full min-w-0">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={stats.topStudents} layout="vertical" margin={{left: 0}}>
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0"/>
-                                <XAxis type="number" hide/>
-                                <YAxis dataKey="name" type="category" width={100} tick={{fill: '#64748B', fontSize: 10}}/>
-                                <Tooltip 
-                                    cursor={{fill: '#F1F5F9'}} 
-                                    contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                                    formatter={(value, name, props) => [value, "Materiais"]}
-                                />
-                                <Bar dataKey="value" fill="#009DE0" radius={[0, 4, 4, 0]} barSize={20}>
-                                    { stats.topStudents.map((entry, index) => <Cell key={`cell-${index}`} fill={['#009DE0', '#021D34', '#F97316', '#22C55E', '#64748B'][index % 5]} />) }
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
+                    <div className="h-64 w-full min-w-0 relative">
+                        <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={stats.topStudents} layout="vertical" margin={{left: 0}}>
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0"/>
+                                    <XAxis type="number" hide/>
+                                    <YAxis dataKey="name" type="category" width={100} tick={{fill: '#64748B', fontSize: 10}}/>
+                                    <Tooltip 
+                                        cursor={{fill: '#F1F5F9'}} 
+                                        contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                                        formatter={(value) => [value, "Materiais"]}
+                                    />
+                                    <Bar dataKey="value" fill="#009DE0" radius={[0, 4, 4, 0]} barSize={20}>
+                                        { stats.topStudents.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % 5]} />) }
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
                 </div>
             )}

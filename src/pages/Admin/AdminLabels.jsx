@@ -4,7 +4,8 @@ import {
   Settings2, ScanBarcode, ScanLine, Eye, Type, Layout, 
   AlignLeft, AlignCenter, AlignRight, 
   FlipHorizontal, ArrowLeftRight, ArrowUpDown, Smartphone,
-  Image as ImageIcon, Heading, RotateCcw, Save
+  Image as ImageIcon, Heading, RotateCcw, Save,
+  Monitor // Ícone adicionado
 } from 'lucide-react';
 import { db, appId } from '../../config/firebase';
 import { useToast } from '../../contexts/ToastContext';
@@ -118,6 +119,21 @@ export default function AdminLabels() {
     const subtitleStyle = { fontSize: fontSizeTitleSub, fontWeight: 'bold', display: 'block', transform: `translate(${settings.subtitleX}mm, ${settings.subtitleY}mm)` };
     const dateStyle = { fontSize: fontSizeDate, fontWeight: 'bold', display: 'inline-block', transform: `translate(${settings.dateX}mm, ${settings.dateY}mm)`, marginLeft: settings.headerAlign === 'flex-start' ? 'auto' : 0, marginRight: settings.headerAlign === 'flex-end' ? 'auto' : 0 };
 
+    // --- BLOQUEIO MOBILE [MODIFICAÇÃO] ---
+    if (screenWidth < 768) { 
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center bg-white rounded-xl border border-slate-200 shadow-sm animate-in zoom-in-95">
+                <div className="bg-slate-50 p-4 rounded-full mb-4">
+                    <Monitor className="w-12 h-12 text-[#009DE0]" />
+                </div>
+                <h3 className="text-xl font-bold text-[#021D34] mb-2">Editor Indisponível no Mobile</h3>
+                <p className="text-slate-500 text-sm max-w-xs mx-auto">
+                    A configuração e calibração de etiquetas exige precisão visual. Por favor, utilize um computador para acessar esta ferramenta.
+                </p>
+            </div>
+        );
+    }
+
     return (
         <div className="flex flex-col lg:flex-row gap-6 items-start w-full max-w-full overflow-x-hidden">
             
@@ -133,8 +149,6 @@ export default function AdminLabels() {
                 </div>
 
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 md:p-6">
-                    {/* ... (CONTEÚDO DAS ABAS MANTIDO IGUAL - OMITIDO PARA BREVIDADE POIS NÃO HOUVE MUDANÇA INTERNA) ... */}
-                    
                     {activeTab === 'layout' && (
                         <div className="space-y-5 animate-in fade-in">
                             <div className="grid grid-cols-2 gap-4">
@@ -165,7 +179,6 @@ export default function AdminLabels() {
                     )}
                     {activeTab === 'header' && (
                         <div className="space-y-6 animate-in fade-in">
-                            {/* Conteúdo Header mantido... */}
                             <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200">
                                 <span className="text-sm font-bold text-[#021D34]">Exibir Cabeçalho</span>
                                 <button onClick={() => setSettings({...settings, showHeader: !settings.showHeader})} className={`w-12 h-6 rounded-full p-1 transition-colors ${settings.showHeader ? 'bg-green-500' : 'bg-slate-300'}`}>

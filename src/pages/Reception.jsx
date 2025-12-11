@@ -22,7 +22,8 @@ import {
   Printer,
   ChevronLeft,
   ChevronRight,
-  Trash2 
+  Trash2,
+  Monitor // Ícone adicionado
 } from 'lucide-react';
 
 // Imports internos
@@ -52,6 +53,9 @@ export default function Reception({ userProfile }) {
     
     // Define 6 itens no mobile (2x3) e 15 no desktop
     const [itemsPerPage, setItemsPerPage] = useState(window.innerWidth < 768 ? 6 : 15);
+    
+    // Estado para bloqueio mobile [MODIFICAÇÃO]
+    const [isMobileBlock, setIsMobileBlock] = useState(window.innerWidth < 768);
 
     const { addToast } = useToast();
     const { printItems } = usePrint();
@@ -59,7 +63,9 @@ export default function Reception({ userProfile }) {
     // --- MONITOR DE TAMANHO DE TELA ---
     useEffect(() => {
         const handleResize = () => {
-            setItemsPerPage(window.innerWidth < 768 ? 6 : 15);
+            const width = window.innerWidth;
+            setItemsPerPage(width < 768 ? 6 : 15);
+            setIsMobileBlock(width < 768); // Atualiza o bloqueio se redimensionar
         };
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
@@ -178,6 +184,23 @@ export default function Reception({ userProfile }) {
             addToast('Erro ao registrar materiais.', 'error');
         }
     };
+
+    // --- BLOQUEIO MOBILE [MODIFICAÇÃO] ---
+    if (isMobileBlock) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center animate-in zoom-in-95">
+                <div className="bg-blue-50 p-6 rounded-full mb-6">
+                    <Monitor className="w-16 h-16 text-[#009DE0]" />
+                </div>
+                <h2 className="text-2xl font-bold text-[#021D34] mb-3">Acesso Restrito a Computadores</h2>
+                <p className="text-slate-500 max-w-md mx-auto">
+                    A tela de <strong>Recepção</strong> requer uma área de visualização maior para gerenciar entregas e leituras com segurança. 
+                    <br/><br/>
+                    Por favor, acesse o sistema através de um computador ou tablet em modo paisagem.
+                </p>
+            </div>
+        );
+    }
 
     if (step === 3) return (
         <div className="animate-in zoom-in">
