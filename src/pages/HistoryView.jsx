@@ -10,12 +10,9 @@ import {
   startAfter, 
   startAt, 
   endAt, 
-  writeBatch, 
-  doc 
 } from 'firebase/firestore';
 import { 
   History, 
-  Trash2, 
   Search, 
   ArrowDown, 
   Loader2,
@@ -29,7 +26,7 @@ import {
   XCircle,
   UserCog,       
   GraduationCap,
-  ChevronRight // Mantido pois é usado na paginação, embora não mais no histórico
+  MessageSquare 
 } from 'lucide-react';
 
 // Imports internos
@@ -37,7 +34,7 @@ import { db, appId } from '../config/firebase';
 import { useDialog } from '../contexts/DialogContext';
 import { useToast } from '../contexts/ToastContext';
 import { usePrint } from '../contexts/PrintContext'; 
-import { logEvent } from '../utils/logger';
+import { logEvent } from '../utils/logger'; 
 import { formatDate, maskCPF } from '../utils/formatters'; 
 import { STATUS_CONFIG, LOGOS, LOG_TYPES } from '../constants';
 import { playSound } from '../utils/audio';
@@ -50,7 +47,7 @@ export default function HistoryView({ userProfile }) {
     // --- ESTADOS DA LISTA GERAL ---
     const [history, setHistory] = useState([]);
     const [search, setSearch] = useState('');
-    const [selectedIds, setSelectedIds] = useState([]);
+    // const [selectedIds, setSelectedIds] = useState([]); // REMOVIDO: Não é mais necessário
     const [loading, setLoading] = useState(false);
     const [lastDoc, setLastDoc] = useState(null); 
     const [hasMore, setHasMore] = useState(true); 
@@ -76,7 +73,7 @@ export default function HistoryView({ userProfile }) {
     
     const [generatingReport, setGeneratingReport] = useState(false);
 
-    const { confirm } = useDialog(); // Removido 'alert' pois não é mais usado na lista
+    const { confirm } = useDialog(); 
     const { addToast } = useToast();
     const { printItems } = usePrint(); 
 
@@ -87,19 +84,13 @@ export default function HistoryView({ userProfile }) {
     // --- HELPER: FORMATAÇÃO DE BUSCA INTELIGENTE ---
     const formatSearchTerm = (text) => {
         if (!text) return '';
-        
-        // 1. Se tem Letra E Número (ex: "x7z9"), assume que é CÓDIGO -> TUDO MAIÚSCULO
         if (/[a-zA-Z]/.test(text) && /\d/.test(text)) {
             return text.toUpperCase();
         }
-
-        // 2. Se só tem números (ex: "123"), assume CPF -> Mantém números
         const cleanNumbers = text.replace(/\D/g, '');
         if (cleanNumbers.length > 0 && !/[a-zA-Z]/.test(text)) {
             return cleanNumbers;
         }
-        
-        // 3. Caso contrário (só letras), assume Nome -> Title Case (ex: "joao" -> "Joao")
         return text.toLowerCase().replace(/(?:^|\s)\S/g, a => a.toUpperCase());
     };
 
@@ -275,18 +266,15 @@ export default function HistoryView({ userProfile }) {
                     const term = formatSearchTerm(search); 
                     const queries = [];
                     const isStd = userProfile.role === 'student';
-                    
-                    // Verifica se o termo parece um Código (Alfa-numérico)
                     const isCodeLike = /[a-zA-Z]/.test(term) && /\d/.test(term);
 
-                    // BUSCA 1: Se for parecido com Código, busca exato pelo CODE
+                    // BUSCA 1: Se for parecido com Código
                     if (isCodeLike || term.length <= 8) {
                          const c = [where('code', '>=', term), where('code', '<=', term + '\uf8ff'), orderBy('code'), limit(20)];
                          if (isStd) c.unshift(where('studentId', '==', userProfile.uid));
                          queries.push(query(itemsRef, ...c));
                     } 
-                    
-                    // BUSCA 2: Nome ou Tipo (Se não for apenas números)
+                    // BUSCA 2: Nome ou Tipo
                     if (!isCodeLike) {
                         if (isStd) {
                             queries.push(query(itemsRef, where('studentId', '==', userProfile.uid), orderBy('type'), startAt(term), endAt(term + '\uf8ff'), limit(20)));
@@ -302,8 +290,9 @@ export default function HistoryView({ userProfile }) {
                     setHistory(Array.from(unique.values()));
                     setHasMore(false);
                 } else {
-                    // Sem busca: lista últimos
-                    const c = [orderBy('createdAt', 'desc'), limit(50)];
+                    // Sem busca: lista últimos atualizados
+                    // ORDENAÇÃO POR lastUpdated
+                    const c = [orderBy('lastUpdated', 'desc'), limit(50)];
                     if (userProfile.role === 'student') c.unshift(where('studentId', '==', userProfile.uid));
                     const q = query(itemsRef, ...c);
                     const s = await getDocs(q);
@@ -311,7 +300,17 @@ export default function HistoryView({ userProfile }) {
                     setLastDoc(s.docs[s.docs.length - 1]);
                     if (s.docs.length < 50) setHasMore(false);
                 }
-            } catch (error) { console.error("Erro lista:", error); } finally { setLoading(false); }
+            } catch (error) { 
+                console.error("Erro lista:", error); 
+                if (error.code === 'failed-precondition') {
+                    console.warn("Falta índice para lastUpdated. Tentando fallback para createdAt.");
+                    const c = [orderBy('createdAt', 'desc'), limit(50)];
+                    if (userProfile.role === 'student') c.unshift(where('studentId', '==', userProfile.uid));
+                    const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'items'), ...c);
+                    const s = await getDocs(q);
+                    setHistory(s.docs.map(d => ({id: d.id, ...d.data()})));
+                }
+            } finally { setLoading(false); }
         }, 600);
         return () => clearTimeout(timer);
     }, [userProfile, search, mode]);
@@ -321,7 +320,8 @@ export default function HistoryView({ userProfile }) {
         setLoadingMore(true);
         try {
             const ref = collection(db, 'artifacts', appId, 'public', 'data', 'items');
-            const c = [orderBy('createdAt', 'desc'), startAfter(lastDoc), limit(50)];
+            // Mantém coerência na ordenação (lastUpdated)
+            const c = [orderBy('lastUpdated', 'desc'), startAfter(lastDoc), limit(50)];
             if (userProfile.role === 'student') c.unshift(where('studentId', '==', userProfile.uid));
             const q = query(ref, ...c);
             const s = await getDocs(q);
@@ -333,26 +333,59 @@ export default function HistoryView({ userProfile }) {
         } catch (e) { console.error(e); } setLoadingMore(false);
     };
 
-    const handleDeleteSelected = async () => {
-        if(selectedIds.length === 0) return;
-        if (!await confirm({ title: 'Excluir', message: `Excluir ${selectedIds.length} itens?`, isDestructive: true })) return;
-        const b = writeBatch(db);
-        selectedIds.forEach(id => b.delete(doc(db, 'artifacts', appId, 'public', 'data', 'items', id)));
-        await b.commit();
-        setHistory(p => p.filter(i => !selectedIds.includes(i.id)));
-        setSelectedIds([]);
-        addToast('Itens excluídos.', 'success');
-        logEvent('ITEM_DELETE', `Exclusão em massa`, { user: userProfile.name });
-    };
-
-    const handlePrintSelected = () => { printItems(history.filter(i => selectedIds.includes(i.id))); };
+    // --- REMOVIDA FUNÇÃO handlePrintSelected ---
     
+    // --- FUNÇÃO DE IMPRESSÃO DE DETALHES ---
     const generateTraceReport = () => { 
         if (!selectedItem) return;
         const w = window.open('', '_blank');
         if (!w) { addToast('Pop-up bloqueado.', 'error'); return; }
+        
         const timeline = selectedItem.history ? [...selectedItem.history].reverse() : [];
-        const html = `<!DOCTYPE html><html><head><title>Rastreabilidade</title><style>body{font-family:'Segoe UI',sans-serif;padding:40px;color:#333}.header{display:flex;justify-content:space-between;border-bottom:2px solid #009DE0;padding-bottom:20px;margin-bottom:30px}.logo{height:50px}.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;background:#f8fafc;padding:20px;border:1px solid #e2e8f0;border-radius:8px}.label{font-size:12px;color:#64748b;font-weight:bold;text-transform:uppercase}.value{font-size:16px;font-weight:600;color:#0f172a}table{width:100%;border-collapse:collapse;margin-top:20px}th{text-align:left;background:#021D34;color:white;padding:12px;font-size:14px}td{padding:12px;border-bottom:1px solid #e2e8f0;font-size:14px}.badge{padding:4px 8px;border-radius:4px;font-weight:bold;font-size:12px;background:#e2e8f0}</style></head><body><div class="header"><div><h2>Relatório de Rastreabilidade</h2><div style="color:#64748b">${new Date().toLocaleString()}</div></div><img src="${LOGOS.color}" class="logo"/></div><div class="info-grid"><div><span class="label">Código</span><div class="value">${selectedItem.code}</div></div><div><span class="label">Material</span><div class="value">${selectedItem.type}</div></div><div><span class="label">Aluno</span><div class="value">${selectedItem.studentName}</div></div><div><span class="label">Status</span><div class="value">${STATUS_CONFIG[selectedItem.status].label}</div></div></div><h3>Linha do Tempo</h3><table><thead><tr><th>Data/Hora</th><th>Status</th><th>Responsável</th></tr></thead><tbody>${timeline.map(t=>`<tr><td>${formatDate(t.timestamp)}</td><td><span class="badge">${STATUS_CONFIG[t.status]?.label||t.status}</span></td><td>${t.by||'Sistema'}</td></tr>`).join('')}</tbody></table><script>window.onload=function(){window.print()}</script></body></html>`;
+        
+        const html = `
+        <!DOCTYPE html><html><head><title>Rastreabilidade</title>
+        <style>
+            body{font-family:'Segoe UI',sans-serif;padding:40px;color:#333}
+            .header{display:flex;justify-content:space-between;border-bottom:2px solid #009DE0;padding-bottom:20px;margin-bottom:30px}
+            .logo{height:50px}
+            .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;background:#f8fafc;padding:20px;border:1px solid #e2e8f0;border-radius:8px}
+            .label{font-size:12px;color:#64748b;font-weight:bold;text-transform:uppercase}
+            .value{font-size:16px;font-weight:600;color:#0f172a}
+            table{width:100%;border-collapse:collapse;margin-top:20px}
+            th{text-align:left;background:#021D34;color:white;padding:12px;font-size:14px}
+            td{padding:12px;border-bottom:1px solid #e2e8f0;font-size:14px}
+            .badge{padding:4px 8px;border-radius:4px;font-weight:bold;font-size:12px;background:#e2e8f0}
+            .reason{font-style:italic;color:#64748b;font-size:13px}
+        </style>
+        </head><body>
+        <div class="header">
+            <div><h2>Relatório de Rastreabilidade</h2><div style="color:#64748b">${new Date().toLocaleString()}</div></div>
+            <img src="${LOGOS.color}" class="logo"/>
+        </div>
+        <div class="info-grid">
+            <div><span class="label">Código</span><div class="value">${selectedItem.code}</div></div>
+            <div><span class="label">Material</span><div class="value">${selectedItem.type}</div></div>
+            <div><span class="label">Aluno</span><div class="value">${selectedItem.studentName}</div></div>
+            <div><span class="label">Status Atual</span><div class="value">${STATUS_CONFIG[selectedItem.status].label}</div></div>
+        </div>
+        <h3>Linha do Tempo Completa</h3>
+        <table>
+            <thead><tr><th>Data/Hora</th><th>Status</th><th>Responsável</th><th>Observações</th></tr></thead>
+            <tbody>
+                ${timeline.map(t => `
+                    <tr>
+                        <td>${formatDate(t.timestamp)}</td>
+                        <td><span class="badge">${STATUS_CONFIG[t.status]?.label || t.status}</span></td>
+                        <td>${t.by || 'Sistema'}</td>
+                        <td class="reason">${t.reason || '-'}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+        <script>window.onload=function(){window.print()}</script>
+        </body></html>`;
+        
         w.document.write(html);
         w.document.close();
     };
@@ -390,8 +423,7 @@ export default function HistoryView({ userProfile }) {
                 </div>
             </div>
 
-            {/* ABA: RELATÓRIOS (Mantidos, apenas simplificados aqui no código para focar na mudança principal) */}
-            {/* O conteúdo das abas 'tech_report' e 'student_report' deve ser mantido igual ao arquivo original */}
+            {/* ABAS DE RELATÓRIO (MANTIDAS) */}
             {(mode === 'tech_report' || mode === 'student_report') && (
                 <div className="max-w-2xl mx-auto space-y-6 py-4 animate-in zoom-in-95 duration-300">
                     <div className="bg-white p-4 md:p-8 rounded-2xl border border-slate-200 shadow-lg relative">
@@ -399,6 +431,7 @@ export default function HistoryView({ userProfile }) {
                             {mode === 'tech_report' ? <UserCog className="text-[#009DE0]"/> : <GraduationCap className="text-[#009DE0]"/>}
                             {mode === 'tech_report' ? 'Relatório do Técnico' : 'Relatório do Aluno'}
                         </h3>
+                        
                         {/* Conteúdo específico de cada relatório */}
                         {mode === 'tech_report' && (
                             <div className="space-y-4">
@@ -480,7 +513,7 @@ export default function HistoryView({ userProfile }) {
                 </div>
             )}
 
-            {/* ABA 3: LISTA GERAL (COM HISTÓRICO VISUAL) */}
+            {/* ABA 3: LISTA GERAL (ATUALIZADA) */}
             {mode === 'list' && (
                 <div className="space-y-4 animate-in fade-in duration-300 w-full max-w-full">
                     <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between">
@@ -490,32 +523,24 @@ export default function HistoryView({ userProfile }) {
                                 <input className="w-full pl-10 p-2 border rounded-lg text-sm outline-none focus:border-[#009DE0]" placeholder={isStudent ? "Buscar Material..." : "Nome, Material ou Código..."} value={search} onChange={e => setSearch(e.target.value)}/>
                                 {loading && <div className="absolute right-3 top-2.5 w-4 h-4 border-2 border-[#009DE0] border-t-transparent rounded-full animate-spin"/>}
                             </div>
-                            {isAdminOrTech && selectedIds.length > 0 && (
-                                <div className="flex gap-2 w-full md:w-auto justify-center md:justify-start">
-                                    <button onClick={handlePrintSelected} className="bg-[#021D34] text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2"><ArrowDown size={14}/> Imprimir</button>
-                                    <button onClick={handleDeleteSelected} className="bg-red-600 text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2"><Trash2 size={14}/> Excluir</button>
-                                </div>
-                            )}
+                            {/* BOTÃO DE IMPRIMIR E SELEÇÃO REMOVIDOS DAQUI */}
                         </div>
                     </div>
                     
                     <DataTable 
                         columns={[
-                            ...(isAdminOrTech ? [{ key: 'select', label: '', render: (i) => <input type="checkbox" checked={selectedIds.includes(i.id)} onChange={() => setSelectedIds(p => p.includes(i.id) ? p.filter(x => x !== i.id) : [...p, i.id])} className="rounded text-[#009DE0] focus:ring-[#009DE0]"/> }] : []),
+                            // COLUNA DE CHECKBOX REMOVIDA
                             { key: 'code', label: 'Código', sortable: true, render: (i) => <span className="font-mono font-bold text-[#009DE0]">{i.code}</span> },
                             { key: 'studentName', label: 'Aluno', sortable: true },
                             { key: 'type', label: 'Material', sortable: true },
+                            { key: 'lastUpdated', label: 'Última Movimentação', sortable: true, render: (i) => formatDate(i.lastUpdated) },
                             { key: 'status', label: 'Status Atual', sortable: true, render: (i) => <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded border ${STATUS_CONFIG[i.status].color}`}>{STATUS_CONFIG[i.status].label}</span> },
                         ]}
                         data={history} 
                         emptyMsg={loading ? "Carregando..." : "Nenhum registro encontrado."}
                         mobileRender={(i) => (
                             <div className="flex items-center gap-3">
-                                {isAdminOrTech && (
-                                    <div className="flex items-center h-full shrink-0">
-                                        <input type="checkbox" checked={selectedIds.includes(i.id)} onChange={() => setSelectedIds(p => p.includes(i.id) ? p.filter(x => x !== i.id) : [...p, i.id])} className="w-5 h-5 rounded text-[#009DE0] focus:ring-[#009DE0]"/>
-                                    </div>
-                                )}
+                                {/* CHECKBOX MOBILE REMOVIDO */}
                                 <div className="flex-1 min-w-0" onClick={() => { setSelectedItem(i); setMode('details'); }}>
                                     <div className="flex justify-between items-start">
                                         <span className="font-mono font-bold text-[#009DE0] text-lg break-all">{i.code}</span>
@@ -523,6 +548,7 @@ export default function HistoryView({ userProfile }) {
                                     </div>
                                     <p className="font-bold text-slate-800 truncate">{i.studentName}</p>
                                     <p className="text-sm text-slate-500 truncate">{i.type}</p>
+                                    <p className="text-xs text-slate-400 mt-1">Atualizado: {formatDate(i.lastUpdated)}</p>
                                 </div>
                             </div>
                         )}
@@ -565,12 +591,29 @@ export default function HistoryView({ userProfile }) {
                                     return (
                                         <div key={index} className="relative pl-6 md:pl-10">
                                             <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white shadow-sm ${index === 0 ? 'bg-[#009DE0] ring-4 ring-blue-50' : 'bg-slate-300'}`}/>
-                                            <div className="bg-slate-50 rounded-xl p-3 md:p-4 border border-slate-100 shadow-sm flex flex-col md:flex-row gap-2 md:gap-4 items-start md:items-center justify-between hover:border-blue-100 transition-colors">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`p-2 rounded-lg ${Config.color} bg-opacity-20`}><Config.icon size={20}/></div>
-                                                    <div><p className="font-bold text-[#021D34] text-sm md:text-base">{Config.label}</p><p className="text-xs text-slate-500 flex items-center gap-1"><User size={10}/> Por: {event.by || 'Sistema'}</p></div>
+                                            <div className="bg-slate-50 rounded-xl p-3 md:p-4 border border-slate-100 shadow-sm flex flex-col gap-2 hover:border-blue-100 transition-colors">
+                                                
+                                                <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-start md:items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`p-2 rounded-lg ${Config.color} bg-opacity-20`}><Config.icon size={20}/></div>
+                                                        <div>
+                                                            <p className="font-bold text-[#021D34] text-sm md:text-base">{Config.label}</p>
+                                                            <p className="text-xs text-slate-500 flex items-center gap-1"><User size={10}/> Por: {event.by || 'Sistema'}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400 bg-white px-3 py-1 rounded border border-slate-200">
+                                                        <CalendarClock size={14}/>{formatDate(event.timestamp)}
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-2 text-xs font-bold text-slate-400 bg-white px-3 py-1 rounded border border-slate-200"><CalendarClock size={14}/>{formatDate(event.timestamp)}</div>
+
+                                                {/* --- EXIBIR MOTIVO/OBSERVAÇÃO --- */}
+                                                {event.reason && (
+                                                    <div className="mt-2 p-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 italic border-l-4 border-l-slate-400 flex items-start gap-2">
+                                                        <MessageSquare size={16} className="shrink-0 mt-0.5 text-slate-400"/>
+                                                        <span>{event.reason}</span>
+                                                    </div>
+                                                )}
+
                                             </div>
                                         </div>
                                     );

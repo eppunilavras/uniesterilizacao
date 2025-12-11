@@ -1,7 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Scanner } from '@yudiel/react-qr-scanner';
 import { collection, query, orderBy, limit, where, onSnapshot, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
-import { ScanBarcode, Printer, Search, Trash2, ArrowDown, Camera, XCircle, Loader2, AlertTriangle, X } from 'lucide-react';
+import { 
+  ScanBarcode, 
+  Printer, 
+  Search, 
+  // Trash2 REMOVIDO
+  ArrowDown, 
+  Camera, 
+  XCircle, 
+  Loader2, 
+  AlertTriangle, 
+  X,
+  CheckCircle2 
+} from 'lucide-react';
 
 import { db, appId } from '../config/firebase';
 import { useToast } from '../contexts/ToastContext';
@@ -28,7 +40,13 @@ export default function Movement({ userProfile }) {
     const [filterStatus, setFilterStatus] = useState('all');
     const [loadingScan, setLoadingScan] = useState(false);
     const [visibleLimit, setVisibleLimit] = useState(50);
-    const [incidentModal, setIncidentModal] = useState({ isOpen: false, item: null, reason: '' });
+    
+    const [incidentModal, setIncidentModal] = useState({ 
+        isOpen: false, 
+        item: null, 
+        reason: '', 
+        type: 'report' 
+    });
     
     const { addToast } = useToast();
     const { confirm } = useDialog();
@@ -36,13 +54,11 @@ export default function Movement({ userProfile }) {
     
     const searchTimeout = useRef(null);
     const lastSearchedCode = useRef('');
-    const inputRef = useRef(null); // Ref para controlar o foco do input
+    const inputRef = useRef(null);
 
-    // --- BUSCA AUTOMÁTICA COM PROTEÇÃO DE LOOP ---
+    // --- BUSCA AUTOMÁTICA ---
     useEffect(() => {
         if (searchTimeout.current) clearTimeout(searchTimeout.current);
-        
-        // Se limpar o código, para o loading mas MANTÉM o item na tela
         if (code === '') { 
             setLoadingScan(false); 
             lastSearchedCode.current = ''; 
@@ -65,7 +81,6 @@ export default function Movement({ userProfile }) {
                     } else {
                         playSound('success'); 
                         setSingleItem({ id: snap.docs[0].id, ...snap.docs[0].data() });
-                        // Limpa o campo automaticamente após sucesso para leitura sequencial
                         setCode(''); 
                     }
                 } catch (error) { 
@@ -91,11 +106,18 @@ export default function Movement({ userProfile }) {
         }
     }, [mode, visibleLimit]);
 
+    // --- FUNÇÃO DE ATUALIZAÇÃO ---
     const updateStatus = async (item, newStatus, reason = null) => {
         const batch = writeBatch(db);
         const ref = doc(db, 'artifacts', appId, 'public', 'data', 'items', item.id);
-        const historyEntry = { status: newStatus, timestamp: new Date().toISOString(), by: userProfile.name };
+        
+        const historyEntry = { 
+            status: newStatus, 
+            timestamp: new Date().toISOString(), 
+            by: userProfile.name 
+        };
         if (reason) historyEntry.reason = reason;
+
         const history = [...(item.history || []), historyEntry];
         batch.update(ref, { status: newStatus, history, lastUpdated: serverTimestamp() });
         
@@ -103,12 +125,18 @@ export default function Movement({ userProfile }) {
             const nRef = doc(collection(db, 'artifacts', appId, 'users', item.studentId, 'notifications'));
             let title = 'Atualização de Material';
             let message = `Seu item ${item.code} - ${item.type} mudou para: ${STATUS_CONFIG[newStatus].label}`;
+            
             if (newStatus === 'problema' && reason) {
                 title = '⚠️ Atenção: Ocorrência com Material';
                 message = `Houve uma ocorrência com seu item ${item.code} (${item.type}): "${reason}". Por favor, procure a central.`;
+            } else if (reason && reason.startsWith('Resolução:')) {
+                title = '✅ Ocorrência Resolvida';
+                message = `O problema com seu item ${item.code} foi resolvido e ele retornou para: ${STATUS_CONFIG[newStatus].label}.`;
             }
+
             batch.set(nRef, { title, message, read: false, createdAt: serverTimestamp() });
         }
+        
         await batch.commit();
         await logEvent('ITEM_MOVE', `Item ${item.code} movido para ${newStatus}`, { itemId: item.id, code: item.code, newStatus, reason });
         
@@ -116,19 +144,41 @@ export default function Movement({ userProfile }) {
             setSingleItem(prev => ({...prev, status: newStatus})); 
         }
 
-        // DEVOLVE O FOCO PARA O INPUT APÓS A AÇÃO
         if (mode === 'single' && inputRef.current) {
             setTimeout(() => inputRef.current.focus(), 50);
         }
     };
 
-    const handleIncidentClick = (item) => { setIncidentModal({ isOpen: true, item: item, reason: '' }); };
+    const handleIncidentClick = (item) => { 
+        setIncidentModal({ isOpen: true, item: item, reason: '', type: 'report' }); 
+    };
+
+    const handleResolveClick = (item) => { 
+        setIncidentModal({ isOpen: true, item: item, reason: '', type: 'resolve' }); 
+    };
     
     const confirmIncident = async () => {
-        if (!incidentModal.reason.trim()) { addToast('Por favor, descreva o problema.', 'error'); return; }
-        await updateStatus(incidentModal.item, 'problema', incidentModal.reason);
-        addToast('Ocorrência registrada.', 'success');
-        setIncidentModal({ isOpen: false, item: null, reason: '' });
+        if (!incidentModal.reason.trim()) { 
+            addToast('Por favor, digite uma descrição.', 'error'); 
+            return; 
+        }
+
+        const isResolution = incidentModal.type === 'resolve';
+        let newStatus = 'problema';
+
+        if (isResolution) {
+            const historyReversed = [...(incidentModal.item.history || [])].reverse();
+            const lastValidStatus = historyReversed.find(h => h.status !== 'problema');
+            newStatus = lastValidStatus ? lastValidStatus.status : 'recebido';
+            if (newStatus === 'retirado') newStatus = 'pronto';
+        }
+        
+        const logText = isResolution ? `Resolução: ${incidentModal.reason}` : incidentModal.reason;
+
+        await updateStatus(incidentModal.item, newStatus, logText);
+        
+        addToast(isResolution ? `Resolvido! Item retornou para: ${STATUS_CONFIG[newStatus].label}` : 'Ocorrência registrada.', 'success');
+        setIncidentModal({ isOpen: false, item: null, reason: '', type: 'report' });
     };
 
     const handleBatch = async (newStatus) => {
@@ -137,42 +187,56 @@ export default function Movement({ userProfile }) {
         addToast(`${selectedIds.length} itens atualizados!`, 'success'); setSelectedIds([]);
     };
 
-    const handleDeleteBatch = async () => {
-        if(selectedIds.length === 0) return;
-        if (!await confirm({ title: 'Excluir Itens', message: 'Deseja excluir?', isDestructive: true })) return;
-        const batch = writeBatch(db);
-        for (const id of selectedIds) {
-            const item = listItems.find(i => i.id === id);
-            if(item) { await logEvent('ITEM_DELETE', `Exclusão`, { user: userProfile.name }); batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'items', id)); }
-        }
-        await batch.commit(); addToast('Itens excluídos.', 'success'); setSelectedIds([]);
-    };
+    // --- REMOVIDA FUNÇÃO handleDeleteBatch ---
 
     const filteredList = listItems.filter(i => {
-		let matchesSearch = false;
-		if (search.startsWith('"') && search.endsWith('"') && search.length > 2) {
-			const exactTerm = search.slice(1, -1);
-			matchesSearch = i.studentName.includes(exactTerm) || i.code.includes(exactTerm) || (i.type && i.type.includes(exactTerm));
-		} else {
-			matchesSearch = i.studentName.toLowerCase().includes(search.toLowerCase()) || i.code.toUpperCase().includes(search.toUpperCase()) || (i.type && i.type.toLowerCase().includes(search.toLowerCase()));
-		}
-		return matchesSearch && (filterStatus === 'all' ? true : i.status === filterStatus);
-	});
+        let matchesSearch = false;
+        if (search.startsWith('"') && search.endsWith('"') && search.length > 2) {
+            const exactTerm = search.slice(1, -1);
+            matchesSearch = i.studentName.includes(exactTerm) || i.code.includes(exactTerm) || (i.type && i.type.includes(exactTerm));
+        } else {
+            matchesSearch = i.studentName.toLowerCase().includes(search.toLowerCase()) || i.code.toUpperCase().includes(search.toUpperCase()) || (i.type && i.type.toLowerCase().includes(search.toLowerCase()));
+        }
+        return matchesSearch && (filterStatus === 'all' ? true : i.status === filterStatus);
+    });
 
     return (
         <div className="space-y-6">
+            {/* MODAL */}
             {incidentModal.isOpen && (
                 <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-[#021D34] flex items-center gap-2"><AlertTriangle className="text-red-500" size={24} /> Registrar Ocorrência</h3>
+                            <h3 className={`text-lg font-bold flex items-center gap-2 ${incidentModal.type === 'resolve' ? 'text-green-700' : 'text-[#021D34]'}`}>
+                                {incidentModal.type === 'resolve' ? <CheckCircle2 className="text-green-600"/> : <AlertTriangle className="text-red-500"/>} 
+                                {incidentModal.type === 'resolve' ? 'Resolver Ocorrência' : 'Registrar Ocorrência'}
+                            </h3>
                             <button onClick={() => setIncidentModal({ ...incidentModal, isOpen: false })} className="text-slate-400 hover:text-slate-600 p-2 rounded-full"><X size={20} /></button>
                         </div>
-                        <p className="text-sm text-slate-500 mb-4">Descreva o problema com <strong className="text-[#021D34]">{incidentModal.item?.code}</strong>.</p>
-                        <textarea className="w-full p-4 border border-slate-200 rounded-xl outline-none text-sm min-h-[120px] bg-slate-50" placeholder="Motivo..." value={incidentModal.reason} onChange={(e) => setIncidentModal({ ...incidentModal, reason: e.target.value })} autoFocus />
-                        <div className="flex gap-3 justify-end">
+                        
+                        <p className="text-sm text-slate-500 mb-4">
+                            {incidentModal.type === 'resolve' 
+                                ? `Descreva a solução. O item retornará ao status anterior.` 
+                                : `Descreva o problema com o item ${incidentModal.item?.code}.`
+                            }
+                        </p>
+                        
+                        <textarea 
+                            className="w-full p-4 border border-slate-200 rounded-xl outline-none text-sm min-h-[120px] bg-slate-50 focus:border-[#009DE0] transition-colors" 
+                            placeholder={incidentModal.type === 'resolve' ? "Ex: Material re-lavado, Item consertado..." : "Motivo do problema..."}
+                            value={incidentModal.reason} 
+                            onChange={(e) => setIncidentModal({ ...incidentModal, reason: e.target.value })} 
+                            autoFocus 
+                        />
+                        
+                        <div className="flex gap-3 justify-end mt-4">
                             <button onClick={() => setIncidentModal({ ...incidentModal, isOpen: false })} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg text-sm">Cancelar</button>
-                            <button onClick={confirmIncident} className="px-6 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 text-sm">Confirmar</button>
+                            <button 
+                                onClick={confirmIncident} 
+                                className={`px-6 py-2 text-white font-bold rounded-lg hover:brightness-90 text-sm ${incidentModal.type === 'resolve' ? 'bg-green-600' : 'bg-red-600'}`}
+                            >
+                                {incidentModal.type === 'resolve' ? 'Resolver & Retornar' : 'Confirmar Problema'}
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -213,11 +277,11 @@ export default function Movement({ userProfile }) {
                         )}
                         {loadingScan && <div className="mt-4 flex justify-center text-[#009DE0] gap-2 items-center text-sm font-bold"><Loader2 className="animate-spin" size={16}/> Buscando...</div>}
                     </div>
+                    
                     {singleItem && (
                         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md animate-in slide-in-from-bottom-4">
                             <div className="flex justify-between items-start mb-6">
                                 <div>
-                                    {/* Mostrando o CÓDIGO junto com o nome */}
                                     <h3 className="text-xl font-bold text-[#021D34]">{singleItem.studentName}</h3>
                                     <p className="text-lg font-mono font-bold text-[#009DE0] mt-1 tracking-wider">{singleItem.code}</p>
                                     <p className="text-sm text-slate-500">{singleItem.type}</p>
@@ -237,11 +301,35 @@ export default function Movement({ userProfile }) {
                                     <span className={`px-3 py-1 rounded-full text-xs font-bold border uppercase ${STATUS_CONFIG[singleItem.status]?.color}`}>{STATUS_CONFIG[singleItem.status]?.label}</span>
                                 </div>
                             </div>
+                            
                             <div className="grid gap-3">
-                                {singleItem.status === 'recebido' && <button onClick={() => updateStatus(singleItem, 'em_esterilizacao')} className="p-4 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600">Iniciar Esterilização</button>}
-                                {singleItem.status === 'em_esterilizacao' && <button onClick={() => updateStatus(singleItem, 'pronto')} className="p-4 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600">Marcar como Pronto</button>}
-                                {singleItem.status === 'pronto' && <button onClick={() => updateStatus(singleItem, 'retirado')} className="p-4 bg-[#009DE0] text-white rounded-xl font-bold hover:bg-[#008bc5]">Confirmar Retirada</button>}
-                                {singleItem.status !== 'retirado' && <button onClick={() => handleIncidentClick(singleItem)} className="mt-2 p-3 text-red-600 border border-red-200 bg-red-50 rounded-xl font-bold hover:bg-red-100 flex items-center justify-center gap-2"><AlertTriangle size={18}/> {singleItem.status === 'problema' ? 'Editar Ocorrência' : 'Registrar Ocorrência'}</button>}
+                                {singleItem.status !== 'problema' && (
+                                    <>
+                                        {singleItem.status === 'recebido' && <button onClick={() => updateStatus(singleItem, 'em_esterilizacao')} className="p-4 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition-colors">Iniciar Esterilização</button>}
+                                        {singleItem.status === 'em_esterilizacao' && <button onClick={() => updateStatus(singleItem, 'pronto')} className="p-4 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-colors">Marcar como Pronto</button>}
+                                        {singleItem.status === 'pronto' && <button onClick={() => updateStatus(singleItem, 'retirado')} className="p-4 bg-[#009DE0] text-white rounded-xl font-bold hover:bg-[#008bc5] transition-colors">Confirmar Retirada</button>}
+                                    </>
+                                )}
+
+                                {singleItem.status !== 'retirado' && (
+                                    <>
+                                        {singleItem.status === 'problema' ? (
+                                            <button 
+                                                onClick={() => handleResolveClick(singleItem)} 
+                                                className="mt-2 p-3 text-white bg-green-600 border border-green-700 rounded-xl font-bold hover:bg-green-700 flex items-center justify-center gap-2 shadow-sm animate-pulse"
+                                            >
+                                                <CheckCircle2 size={18}/> Resolver Ocorrência & Liberar
+                                            </button>
+                                        ) : (
+                                            <button 
+                                                onClick={() => handleIncidentClick(singleItem)} 
+                                                className="mt-2 p-3 text-red-600 border border-red-200 bg-red-50 rounded-xl font-bold hover:bg-red-100 flex items-center justify-center gap-2 transition-colors"
+                                            >
+                                                <AlertTriangle size={18}/> Registrar Ocorrência
+                                            </button>
+                                        )}
+                                    </>
+                                )}
                             </div>
                         </div>
                     )}
@@ -276,7 +364,15 @@ export default function Movement({ userProfile }) {
                         actions={(item) => (
                             <div className="flex gap-1 justify-center">
                                 <button onClick={() => printItems(item)} className="p-2 text-slate-400 hover:text-[#009DE0] bg-slate-50 border rounded"><Printer size={20}/></button>
-                                {item.status !== 'retirado' && <button onClick={() => handleIncidentClick(item)} className="p-2 text-red-400 hover:text-red-600 bg-slate-50 border rounded"><AlertTriangle size={20}/></button>}
+                                {item.status !== 'retirado' && (
+                                    <>
+                                        {item.status === 'problema' ? (
+                                            <button onClick={() => handleResolveClick(item)} className="p-2 text-green-600 hover:text-green-800 bg-green-50 border border-green-200 rounded" title="Resolver"><CheckCircle2 size={20}/></button>
+                                        ) : (
+                                            <button onClick={() => handleIncidentClick(item)} className="p-2 text-red-400 hover:text-red-600 bg-slate-50 border rounded" title="Registrar Ocorrência"><AlertTriangle size={20}/></button>
+                                        )}
+                                    </>
+                                )}
                             </div>
                         )}
                     />

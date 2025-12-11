@@ -11,11 +11,11 @@ import {
   Search 
 } from 'lucide-react';
 
-// Imports internos (Voltando 2 níveis)
 import { db, appId } from '../../config/firebase';
 import { useToast } from '../../contexts/ToastContext';
 import { useDialog } from '../../contexts/DialogContext';
 import DataTable from '../../components/DataTable';
+import { logEvent } from '../../utils/logger'; // IMPORTADO
 
 export default function AdminMaterials() {
     const [mats, setMats] = useState([]);
@@ -37,6 +37,7 @@ export default function AdminMaterials() {
         if (!name) return;
         try {
             await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'materialTypes'), { name });
+            await logEvent('ADMIN_OPT', 'Material Criado', { name }); // LOG ADICIONADO
             setName('');
             addToast('Tipo adicionado!', 'success');
         } catch (error) {
@@ -49,6 +50,7 @@ export default function AdminMaterials() {
         if(await confirm({ title: 'Remover Tipo', message: 'Deseja remover este tipo de material?', isDestructive: true })) {
             try {
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'materialTypes', id));
+                await logEvent('ADMIN_OPT', 'Material Removido', { id }); // LOG ADICIONADO
                 addToast('Tipo removido.', 'success');
             } catch (error) {
                 console.error(error);
@@ -57,7 +59,6 @@ export default function AdminMaterials() {
         }
     };
 
-    // Filtragem e ordenação local
     const filteredAndSortedMats = useMemo(() => {
         return mats
             .filter(m => m.name.toLowerCase().includes(search.toLowerCase()))

@@ -5,7 +5,7 @@ import {
   AlignLeft, AlignCenter, AlignRight, 
   FlipHorizontal, ArrowLeftRight, ArrowUpDown, Smartphone,
   Image as ImageIcon, Heading, RotateCcw, Save,
-  Monitor // Ícone adicionado
+  Monitor 
 } from 'lucide-react';
 import { db, appId } from '../../config/firebase';
 import { useToast } from '../../contexts/ToastContext';
@@ -13,8 +13,8 @@ import { useDialog } from '../../contexts/DialogContext';
 import { LOGOS } from '../../constants';
 import Barcode from '../../components/Barcode';
 import QRCodeComponent from '../../components/QRCodeComponent';
+import { logEvent } from '../../utils/logger'; // IMPORTADO
 
-// --- CONFIGURAÇÃO PADRÃO (CONSTANTE) ---
 const DEFAULT_SETTINGS = {
     // Físico
     width: 50, height: 30, margin: 1, orientation: 'portrait',
@@ -70,6 +70,7 @@ export default function AdminLabels() {
     const save = async () => {
         try { 
             await setDoc(docRef, settings, { merge: true }); 
+            await logEvent('ADMIN_OPT', 'Configuração de Etiquetas Salva', {}); // LOG ADICIONADO
             addToast('Configurações salvas!', 'success'); 
         } catch(e) { 
             console.error(e); 
@@ -85,6 +86,7 @@ export default function AdminLabels() {
             isDestructive: true 
         })) {
             setSettings(DEFAULT_SETTINGS);
+            await logEvent('ADMIN_OPT', 'Configuração de Etiquetas Resetada', {}); // LOG ADICIONADO
             addToast('Layout restaurado para o padrão. Clique em Salvar para persistir.', 'info');
         }
     };
@@ -119,7 +121,7 @@ export default function AdminLabels() {
     const subtitleStyle = { fontSize: fontSizeTitleSub, fontWeight: 'bold', display: 'block', transform: `translate(${settings.subtitleX}mm, ${settings.subtitleY}mm)` };
     const dateStyle = { fontSize: fontSizeDate, fontWeight: 'bold', display: 'inline-block', transform: `translate(${settings.dateX}mm, ${settings.dateY}mm)`, marginLeft: settings.headerAlign === 'flex-start' ? 'auto' : 0, marginRight: settings.headerAlign === 'flex-end' ? 'auto' : 0 };
 
-    // --- BLOQUEIO MOBILE [MODIFICAÇÃO] ---
+    // --- BLOQUEIO MOBILE ---
     if (screenWidth < 768) { 
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center bg-white rounded-xl border border-slate-200 shadow-sm animate-in zoom-in-95">
@@ -295,7 +297,6 @@ export default function AdminLabels() {
                     )}
                 </div>
                 
-                {/* --- CORREÇÃO: Botões empilhados no mobile, lado a lado no desktop --- */}
                 <div className="flex flex-col md:flex-row gap-3 pt-4">
                     <button onClick={resetDefaults} className="w-full md:flex-1 bg-white border border-slate-300 text-slate-600 py-4 rounded-xl font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
                         <RotateCcw size={18}/> Restaurar Padrões

@@ -21,10 +21,10 @@ import {
   Trash2 
 } from 'lucide-react';
 
-// Imports internos (Voltando 2 níveis)
 import { db, appId } from '../../config/firebase';
 import { useToast } from '../../contexts/ToastContext';
 import { useDialog } from '../../contexts/DialogContext';
+import { logEvent } from '../../utils/logger'; // IMPORTADO
 
 export default function AdminAnnouncements() {
     const [anns, setAnns] = useState([]);
@@ -53,6 +53,7 @@ export default function AdminAnnouncements() {
                     ...form, 
                     updatedAt: serverTimestamp() 
                 });
+                await logEvent('ADMIN_OPT', 'Aviso Atualizado', { id: editingId, title: form.title }); // LOG ADICIONADO
                 addToast('Recado atualizado!', 'success');
                 setEditingId(null);
             } else {
@@ -60,6 +61,7 @@ export default function AdminAnnouncements() {
                     ...form, 
                     createdAt: serverTimestamp() 
                 });
+                await logEvent('ADMIN_OPT', 'Aviso Criado', { title: form.title }); // LOG ADICIONADO
                 addToast('Recado publicado!', 'success');
             }
             setForm({ title: '', content: '', imageUrl: '', validFrom: '', validUntil: '' });
@@ -84,6 +86,7 @@ export default function AdminAnnouncements() {
     const remove = async (id) => {
         if(await confirm({ title: 'Excluir Recado', message: 'Tem certeza que deseja apagar este recado?', isDestructive: true })) {
             await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'announcements', id));
+            await logEvent('ADMIN_OPT', 'Aviso Removido', { id }); // LOG ADICIONADO
         }
     };
 
