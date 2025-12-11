@@ -481,7 +481,7 @@ export default function HistoryView({ userProfile }) {
                                     <div><label className="text-xs font-bold text-slate-500 mb-1 block uppercase">3. Data Final</label><input type="date" className="w-full p-3 border rounded-lg" value={reportEnd} onChange={e => setReportEnd(e.target.value)} /></div>
                                 </div>
                                 <button onClick={generateStudentPDF} disabled={!reportStudent || !reportStart || !reportEnd || generatingReport} className="w-full bg-[#021D34] text-white py-4 rounded-xl font-bold hover:bg-[#009DE0] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2 mt-4">
-                                    {generatingReport ? <Loader2 className="animate-spin"/> : <FileText size={20}/>} {generatingReport ? 'Gerando PDF...' : 'Gerar Relatório Completo'}
+                                    {generatingReport ? <Loader2 className="animate-spin"/> : <FileText size={20}/>} {generatingReport ? 'Gerando PDF...' : 'Gerar Relatório'}
                                 </button>
                             </div>
                         )}

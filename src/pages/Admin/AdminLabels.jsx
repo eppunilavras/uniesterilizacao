@@ -13,7 +13,7 @@ import { useDialog } from '../../contexts/DialogContext';
 import { LOGOS } from '../../constants';
 import Barcode from '../../components/Barcode';
 import QRCodeComponent from '../../components/QRCodeComponent';
-import { logEvent } from '../../utils/logger'; // IMPORTADO
+import { logEvent } from '../../utils/logger'; 
 
 const DEFAULT_SETTINGS = {
     // Físico
@@ -70,7 +70,7 @@ export default function AdminLabels() {
     const save = async () => {
         try { 
             await setDoc(docRef, settings, { merge: true }); 
-            await logEvent('ADMIN_OPT', 'Configuração de Etiquetas Salva', {}); // LOG ADICIONADO
+            await logEvent('ADMIN_OPT', 'Configuração de Etiquetas Salva', {}); 
             addToast('Configurações salvas!', 'success'); 
         } catch(e) { 
             console.error(e); 
@@ -86,13 +86,17 @@ export default function AdminLabels() {
             isDestructive: true 
         })) {
             setSettings(DEFAULT_SETTINGS);
-            await logEvent('ADMIN_OPT', 'Configuração de Etiquetas Resetada', {}); // LOG ADICIONADO
+            await logEvent('ADMIN_OPT', 'Configuração de Etiquetas Resetada', {}); 
             addToast('Layout restaurado para o padrão. Clique em Salvar para persistir.', 'info');
         }
     };
 
     // --- CÁLCULOS VISUAIS ---
     const isMobile = screenWidth < 1024;
+    
+    // Lógica padronizada de bloqueio mobile (< 768px)
+    const isMobileBlock = screenWidth < 768;
+
     const isRotated90 = settings.rotation === 90 || settings.rotation === 270;
     const realWidth = settings.autoSize ? 50 : (settings.orientation === 'portrait' ? settings.height : settings.width);
     const realHeight = settings.autoSize ? (settings.codeType === 'qrcode' ? 55 : 35) : (settings.orientation === 'portrait' ? settings.width : settings.height);
@@ -121,17 +125,13 @@ export default function AdminLabels() {
     const subtitleStyle = { fontSize: fontSizeTitleSub, fontWeight: 'bold', display: 'block', transform: `translate(${settings.subtitleX}mm, ${settings.subtitleY}mm)` };
     const dateStyle = { fontSize: fontSizeDate, fontWeight: 'bold', display: 'inline-block', transform: `translate(${settings.dateX}mm, ${settings.dateY}mm)`, marginLeft: settings.headerAlign === 'flex-start' ? 'auto' : 0, marginRight: settings.headerAlign === 'flex-end' ? 'auto' : 0 };
 
-    // --- BLOQUEIO MOBILE ---
-    if (screenWidth < 768) { 
+    // --- BLOQUEIO MOBILE (Padronizado) ---
+    if (isMobileBlock) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center bg-white rounded-xl border border-slate-200 shadow-sm animate-in zoom-in-95">
-                <div className="bg-slate-50 p-4 rounded-full mb-4">
-                    <Monitor className="w-12 h-12 text-[#009DE0]" />
-                </div>
-                <h3 className="text-xl font-bold text-[#021D34] mb-2">Editor Indisponível no Mobile</h3>
-                <p className="text-slate-500 text-sm max-w-xs mx-auto">
-                    A configuração e calibração de etiquetas exige precisão visual. Por favor, utilize um computador para acessar esta ferramenta.
-                </p>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center animate-in zoom-in-95">
+                <div className="bg-blue-50 p-6 rounded-full mb-6"><Monitor className="w-16 h-16 text-[#009DE0]" /></div>
+                <h2 className="text-2xl font-bold text-[#021D34] mb-3">Acesso Restrito</h2>
+                <p className="text-slate-500 max-w-md mx-auto">Acesse o Editor de Etiquetas via computador.</p>
             </div>
         );
     }
