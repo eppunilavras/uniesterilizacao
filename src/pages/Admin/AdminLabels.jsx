@@ -4,7 +4,7 @@ import {
   Settings2, ScanBarcode, ScanLine, Eye, Type, Layout, 
   AlignLeft, AlignCenter, AlignRight, 
   FlipHorizontal, ArrowLeftRight, ArrowUpDown, Smartphone,
-  Image as ImageIcon, Heading, RotateCcw
+  Image as ImageIcon, Heading, RotateCcw, Save
 } from 'lucide-react';
 import { db, appId } from '../../config/firebase';
 import { useToast } from '../../contexts/ToastContext';
@@ -96,7 +96,9 @@ export default function AdminLabels() {
     const displayWidthMM = isRotated90 ? realHeight : realWidth;
     const displayHeightMM = isRotated90 ? realWidth : realHeight;
     const contentWidthPx = displayWidthMM * 3.8;
-    const mobileScale = Math.min(1, (screenWidth - 64) / contentWidthPx); 
+    
+    // --- CORREÇÃO DE ESCALA MOBILE ---
+    const mobileScale = Math.min(1, (screenWidth - 90) / contentWidthPx); 
     const ZOOM = isMobile ? mobileScale : 1.5;
 
     // --- ESTILOS PREVIEW ---
@@ -123,7 +125,7 @@ export default function AdminLabels() {
             <div className="w-full lg:flex-1 space-y-6 order-2 lg:order-1 min-w-0">
                 
                 {/* Abas de Navegação */}
-                <div className="flex bg-slate-200 p-1 rounded-lg w-full overflow-x-auto no-scrollbar touch-pan-x">
+                <div className="flex bg-slate-200 p-1 rounded-lg w-full overflow-x-auto no-scrollbar touch-pan-x max-w-[85vw] lg:max-w-full">
                     <button onClick={() => setActiveTab('layout')} className={`flex-1 min-w-[80px] px-2 py-2 text-xs font-bold rounded-md transition-all whitespace-nowrap flex items-center justify-center gap-2 ${activeTab === 'layout' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500'}`}><Layout size={14}/> Layout</button>
                     <button onClick={() => setActiveTab('header')} className={`flex-1 min-w-[80px] px-2 py-2 text-xs font-bold rounded-md transition-all whitespace-nowrap flex items-center justify-center gap-2 ${activeTab === 'header' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500'}`}><Type size={14}/> Cabeçalho</button>
                     <button onClick={() => setActiveTab('content')} className={`flex-1 min-w-[80px] px-2 py-2 text-xs font-bold rounded-md transition-all whitespace-nowrap flex items-center justify-center gap-2 ${activeTab === 'content' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500'}`}><ScanBarcode size={14}/> Código</button>
@@ -131,8 +133,8 @@ export default function AdminLabels() {
                 </div>
 
                 <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 md:p-6">
+                    {/* ... (CONTEÚDO DAS ABAS MANTIDO IGUAL - OMITIDO PARA BREVIDADE POIS NÃO HOUVE MUDANÇA INTERNA) ... */}
                     
-                    {/* --- ABA LAYOUT --- */}
                     {activeTab === 'layout' && (
                         <div className="space-y-5 animate-in fade-in">
                             <div className="grid grid-cols-2 gap-4">
@@ -161,20 +163,16 @@ export default function AdminLabels() {
                             </div>
                         </div>
                     )}
-
-                    {/* --- ABA CABEÇALHO --- */}
                     {activeTab === 'header' && (
                         <div className="space-y-6 animate-in fade-in">
+                            {/* Conteúdo Header mantido... */}
                             <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200">
                                 <span className="text-sm font-bold text-[#021D34]">Exibir Cabeçalho</span>
                                 <button onClick={() => setSettings({...settings, showHeader: !settings.showHeader})} className={`w-12 h-6 rounded-full p-1 transition-colors ${settings.showHeader ? 'bg-green-500' : 'bg-slate-300'}`}>
                                     <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${settings.showHeader ? 'translate-x-6' : 'translate-x-0'}`} />
                                 </button>
                             </div>
-
                             <div className={`space-y-6 transition-opacity duration-300 ${settings.showHeader ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-                                
-                                {/* 1. GERAL */}
                                 <div className="p-3 border rounded-lg bg-slate-50/50">
                                     <div className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1"><Layout size={12}/> Posição Geral do Bloco</div>
                                     <div className="grid grid-cols-2 gap-4 mb-3">
@@ -187,8 +185,6 @@ export default function AdminLabels() {
                                         <button onClick={()=>setSettings({...settings, headerAlign: 'flex-end'})} className={`flex-1 py-1.5 flex justify-center ${settings.headerAlign === 'flex-end' ? 'bg-[#009DE0] text-white' : 'text-slate-400'}`}><AlignRight size={14}/></button>
                                     </div>
                                 </div>
-
-                                {/* 2. LOGO */}
                                 {settings.showLogo && (
                                     <div className="p-3 border rounded-lg bg-slate-50/50">
                                         <div className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1"><ImageIcon size={12}/> Logo</div>
@@ -201,8 +197,6 @@ export default function AdminLabels() {
                                         </div>
                                     </div>
                                 )}
-
-                                {/* 3. TÍTULO */}
                                 {settings.showTitle && (
                                     <div className="p-3 border rounded-lg bg-slate-50/50">
                                         <div className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1"><Heading size={12}/> Título Principal</div>
@@ -216,8 +210,6 @@ export default function AdminLabels() {
                                         </div>
                                     </div>
                                 )}
-
-                                {/* 4. SUBTÍTULO */}
                                 {settings.showTitle && (
                                     <div className="p-3 border rounded-lg bg-slate-50/50">
                                         <div className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1"><Type size={12}/> Subtítulo</div>
@@ -231,8 +223,6 @@ export default function AdminLabels() {
                                         </div>
                                     </div>
                                 )}
-
-                                {/* 5. DATA */}
                                 {settings.showDate && (
                                     <div className="p-3 border rounded-lg bg-slate-50/50">
                                         <div className="text-xs font-bold text-slate-400 uppercase mb-2">Data</div>
@@ -245,7 +235,6 @@ export default function AdminLabels() {
                                         </div>
                                     </div>
                                 )}
-
                                 <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100">
                                     <label className={`flex flex-col items-center justify-center gap-1 p-2 rounded border cursor-pointer text-xs font-bold transition-all ${settings.showLogo ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-400'}`}><input type="checkbox" checked={settings.showLogo} onChange={() => setSettings({...settings, showLogo: !settings.showLogo})} className="hidden"/> Logo</label>
                                     <label className={`flex flex-col items-center justify-center gap-1 p-2 rounded border cursor-pointer text-xs font-bold transition-all ${settings.showTitle ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-400'}`}><input type="checkbox" checked={settings.showTitle} onChange={() => setSettings({...settings, showTitle: !settings.showTitle})} className="hidden"/> Títulos</label>
@@ -254,15 +243,12 @@ export default function AdminLabels() {
                             </div>
                         </div>
                     )}
-
-                    {/* --- ABA CÓDIGO --- */}
                     {activeTab === 'content' && (
                         <div className="space-y-5 animate-in fade-in">
                             <div className="flex gap-2">
                                 <button onClick={()=>setSettings({...settings, codeType: 'barcode'})} className={`flex-1 py-3 rounded-lg font-bold text-sm border flex items-center justify-center gap-2 ${settings.codeType === 'barcode' ? 'bg-[#009DE0] text-white border-[#009DE0]' : 'bg-white text-slate-600'}`}><ScanBarcode size={18}/> Barcode</button>
                                 <button onClick={()=>setSettings({...settings, codeType: 'qrcode'})} className={`flex-1 py-3 rounded-lg font-bold text-sm border flex items-center justify-center gap-2 ${settings.codeType === 'qrcode' ? 'bg-[#009DE0] text-white border-[#009DE0]' : 'bg-white text-slate-600'}`}><ScanLine size={18}/> QR Code</button>
                             </div>
-
                             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
                                 <div>
                                     <div className="flex justify-between mb-1"><label className="text-xs font-bold text-slate-500">Zoom</label><span className="text-xs text-slate-400">{settings.codeSize || 100}%</span></div>
@@ -275,8 +261,6 @@ export default function AdminLabels() {
                             </div>
                         </div>
                     )}
-
-                    {/* --- ABA RODAPÉ --- */}
                     {activeTab === 'footer' && (
                         <div className="space-y-5 animate-in fade-in">
                             <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200 mb-4">
@@ -287,12 +271,10 @@ export default function AdminLabels() {
                             </div>
                             <div className={`space-y-4 transition-opacity ${settings.showFooter ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
                                 <div><div className="flex justify-between mb-1"><label className="text-xs font-bold text-slate-500">Tamanho Texto</label></div><input type="range" min="6" max="16" className="w-full accent-[#009DE0]" value={settings.footerFontSize} onChange={e => setSettings({...settings, footerFontSize: Number(e.target.value)})} /></div>
-                                
                                 <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg">
                                     <div><div className="flex justify-between mb-1"><label className="text-xs font-bold text-slate-500 flex items-center gap-1"><ArrowLeftRight size={10}/> Pos. X</label><span className="text-[10px] text-slate-400">{settings.footerX}mm</span></div><input type="range" min="-10" max="10" className="w-full accent-[#009DE0]" value={settings.footerX || 0} onChange={e => setSettings({...settings, footerX: Number(e.target.value)})}/></div>
                                     <div><div className="flex justify-between mb-1"><label className="text-xs font-bold text-slate-500 flex items-center gap-1"><ArrowUpDown size={10}/> Pos. Y</label><span className="text-[10px] text-slate-400">{settings.footerY}mm</span></div><input type="range" min="-10" max="10" className="w-full accent-[#009DE0]" value={settings.footerY || 0} onChange={e => setSettings({...settings, footerY: Number(e.target.value)})}/></div>
                                 </div>
-
                                 <div className="pt-2"><label className="text-xs font-bold text-slate-500 mb-2 block">Alinhamento Texto</label><div className="flex border rounded-lg overflow-hidden bg-slate-50"><button onClick={()=>setSettings({...settings, footerAlign: 'left'})} className={`flex-1 py-2 flex justify-center ${settings.footerAlign === 'left' ? 'bg-[#009DE0] text-white' : 'text-slate-500'}`}><AlignLeft size={16}/></button><button onClick={()=>setSettings({...settings, footerAlign: 'center'})} className={`flex-1 py-2 flex justify-center ${settings.footerAlign === 'center' ? 'bg-[#009DE0] text-white' : 'text-slate-500'}`}><AlignCenter size={16}/></button><button onClick={()=>setSettings({...settings, footerAlign: 'right'})} className={`flex-1 py-2 flex justify-center ${settings.footerAlign === 'right' ? 'bg-[#009DE0] text-white' : 'text-slate-500'}`}><AlignRight size={16}/></button></div></div>
                                 <div className="grid grid-cols-2 gap-2"><label className={`flex items-center gap-2 text-xs font-bold p-2 rounded border cursor-pointer ${settings.showStudent ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-400'}`}><input type="checkbox" checked={settings.showStudent} onChange={() => setSettings({...settings, showStudent: !settings.showStudent})} className="accent-[#009DE0]"/> Nome Aluno</label><label className={`flex items-center gap-2 text-xs font-bold p-2 rounded border cursor-pointer ${settings.showType ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-400'}`}><input type="checkbox" checked={settings.showType} onChange={() => setSettings({...settings, showType: !settings.showType})} className="accent-[#009DE0]"/> Tipo Material</label></div>
                             </div>
@@ -300,13 +282,13 @@ export default function AdminLabels() {
                     )}
                 </div>
                 
-                {/* BOTÕES DE AÇÃO: RESETAR E SALVAR */}
-                <div className="flex gap-3">
-                    <button onClick={resetDefaults} className="flex-1 bg-white border border-slate-300 text-slate-600 py-4 rounded-xl font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+                {/* --- CORREÇÃO: Botões empilhados no mobile, lado a lado no desktop --- */}
+                <div className="flex flex-col md:flex-row gap-3 pt-4">
+                    <button onClick={resetDefaults} className="w-full md:flex-1 bg-white border border-slate-300 text-slate-600 py-4 rounded-xl font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
                         <RotateCcw size={18}/> Restaurar Padrões
                     </button>
-                    <button onClick={save} className="flex-[2] bg-[#021D34] text-white py-4 rounded-xl font-bold hover:bg-[#009DE0] transition-colors shadow-lg shadow-blue-900/20">
-                        Salvar Configurações
+                    <button onClick={save} className="w-full md:flex-[2] bg-[#021D34] text-white py-4 rounded-xl font-bold hover:bg-[#009DE0] transition-colors shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2">
+                         <Save size={18}/> Salvar Configurações
                     </button>
                 </div>
             </div>

@@ -150,7 +150,6 @@ export default function HistoryView({ userProfile }) {
             const printWindow = window.open('', '_blank');
             if (!printWindow) { addToast('Pop-up bloqueado.', 'error'); return; }
 
-            // NOTA: O CPF já estava incluído aqui, mantido.
             const htmlContent = `
                 <!DOCTYPE html><html><head><title>Relatório - ${reportStudent.name}</title>
                 <style>body{font-family:'Segoe UI',sans-serif;padding:40px;color:#333}.header{border-bottom:2px solid #009DE0;padding-bottom:20px;margin-bottom:30px;display:flex;justify-content:space-between}.logo{height:50px}.title{font-size:24px;font-weight:bold;color:#021D34}.subtitle{font-size:14px;color:#64748b;margin-top:5px}.stats-container{display:flex;gap:15px;margin-bottom:30px}.stat-card{flex:1;padding:15px;border-radius:8px;border:1px solid #e2e8f0;text-align:center}.stat-val{font-size:24px;font-weight:bold;display:block;margin-bottom:5px}.student-card{background:#f8fafc;padding:20px;border-radius:8px;border:1px solid #e2e8f0;margin-bottom:30px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.label{font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;display:block}.value{font-size:16px;font-weight:600;color:#0f172a}table{width:100%;border-collapse:collapse;margin-top:10px}th{background:#021D34;color:white;padding:10px;text-align:left;font-size:12px;text-transform:uppercase}td{padding:10px;border-bottom:1px solid #e2e8f0;font-size:13px}tr:nth-child(even){background-color:#f1f5f9}.status{font-weight:bold;font-size:11px;text-transform:uppercase;padding:3px 8px;border-radius:4px;background:#e2e8f0;display:inline-block}.footer{margin-top:50px;font-size:10px;text-align:center;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px}</style></head><body><div class="header"><div><div class="title">Relatório de Movimentações</div><div class="subtitle">Período: ${start.toLocaleDateString()} a ${end.toLocaleDateString()}</div></div><img src="${LOGOS.color}" class="logo"/></div><div class="student-card"><div class="grid"><div><span class="label">Aluno</span><span class="value">${reportStudent.name}</span></div><div><span class="label">CPF</span><span class="value">${maskCPF(reportStudent.cpf)}</span></div><div><span class="label">Email</span><span class="value">${reportStudent.email}</span></div></div></div><div class="stats-container"><div class="stat-card" style="background:#f0f9ff;border-color:#bae6fd"><span class="stat-val" style="color:#0369a1">${stats.total}</span><span class="stat-label">Total</span></div><div class="stat-card" style="background:#f0fdf4;border-color:#bbf7d0"><span class="stat-val" style="color:#15803d">${stats.retirados}</span><span class="stat-label">Concluídos</span></div><div class="stat-card" style="background:#ecfccb;border-color:#d9f99d"><span class="stat-val" style="color:#4d7c0f">${stats.prontos}</span><span class="stat-label">Prontos</span></div><div class="stat-card" style="background:#fff7ed;border-color:#fed7aa"><span class="stat-val" style="color:#c2410c">${stats.processo}</span><span class="stat-label">Em Processo</span></div></div><h3>Histórico Detalhado</h3>${items.length>0?`<table><thead><tr><th>Data</th><th>Código</th><th>Material</th><th>Status</th></tr></thead><tbody>${items.map(i=>`<tr><td>${formatDate(i.createdAt)}</td><td style="font-family:monospace;font-weight:bold">${i.code}</td><td>${i.type}</td><td><span class="status">${STATUS_CONFIG[i.status]?.label||i.status}</span></td></tr>`).join('')}</tbody></table>`:`<div style="text-align:center;padding:40px;color:#94a3b8;border:2px dashed #e2e8f0;border-radius:8px">Nenhum registro encontrado.</div>`}<div class="footer">Gerado em ${new Date().toLocaleString()}</div><script>window.onload=function(){window.print()}</script></body></html>`;
@@ -224,7 +223,6 @@ export default function HistoryView({ userProfile }) {
             const countMoves = logs.filter(l => l.type === 'ITEM_MOVE').length;
             const countLogins = logs.filter(l => l.type === 'LOGIN').length;
             
-            // CORREÇÃO: Calcula o "Resto" para a conta fechar visualmente
             const countOthers = logs.length - (countEntries + countMoves + countLogins);
 
             const stats = { 
@@ -238,7 +236,6 @@ export default function HistoryView({ userProfile }) {
             const printWindow = window.open('', '_blank');
             if (!printWindow) { addToast('Pop-up bloqueado.', 'error'); return; }
 
-            // ATUALIZAÇÃO: CPF adicionado ao card de informações do técnico
             const htmlContent = `<!DOCTYPE html><html><head><title>Relatório Técnico - ${reportTech.name}</title><style>body{font-family:'Segoe UI',sans-serif;padding:40px;color:#333}.header{border-bottom:2px solid #009DE0;padding-bottom:20px;margin-bottom:30px;display:flex;justify-content:space-between}.logo{height:50px}.title{font-size:24px;font-weight:bold;color:#021D34}.subtitle{font-size:14px;color:#64748b;margin-top:5px}.tech-card{background:#f8fafc;padding:20px;border-radius:8px;border:1px solid #e2e8f0;margin-bottom:30px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.label{font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;display:block}.value{font-size:16px;font-weight:600;color:#0f172a}.stats-container{display:flex;gap:15px;margin-bottom:30px}.stat-card{flex:1;padding:15px;border-radius:8px;border:1px solid #e2e8f0;text-align:center}.stat-val{font-size:24px;font-weight:bold;display:block;margin-bottom:5px}.stat-label{font-size:11px;text-transform:uppercase;font-weight:bold;color:#64748b}table{width:100%;border-collapse:collapse;margin-top:10px}th{background:#021D34;color:white;padding:10px;text-align:left;font-size:12px;text-transform:uppercase}td{padding:10px;border-bottom:1px solid #e2e8f0;font-size:12px}tr:nth-child(even){background-color:#f1f5f9}.footer{margin-top:50px;font-size:10px;text-align:center;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px}.badge{padding:3px 6px;border-radius:4px;font-weight:bold;font-size:10px;background:#e2e8f0;text-transform:uppercase}</style></head><body><div class="header"><div><div class="title">Relatório de Atividade</div><div class="subtitle">Técnico: ${reportTech.name} | ${start.toLocaleDateString()} a ${end.toLocaleDateString()}</div></div><img src="${LOGOS.color}" class="logo"/></div><div class="tech-card"><div class="grid"><div><span class="label">Nome</span><span class="value">${reportTech.name}</span></div><div><span class="label">CPF</span><span class="value">${maskCPF(reportTech.cpf)}</span></div><div><span class="label">Email</span><span class="value">${reportTech.email}</span></div><div><span class="label">Função</span><span class="value">${reportTech.role==='admin'?'Administrador':'Técnico'}</span></div></div></div><div class="stats-container"><div class="stat-card"><span class="stat-val">${stats.total}</span><span class="stat-label">Total de Registros</span></div><div class="stat-card" style="background:#f0fdf4;border-color:#bbf7d0"><span class="stat-val" style="color:#15803d">${stats.entradas}</span><span class="stat-label">Entradas</span></div><div class="stat-card" style="background:#fff7ed;border-color:#fed7aa"><span class="stat-val" style="color:#c2410c">${stats.movimentacoes}</span><span class="stat-label">Movimentações</span></div><div class="stat-card" style="background:#eff6ff;border-color:#bfdbfe"><span class="stat-val" style="color:#1d4ed8">${stats.logins}</span><span class="stat-label">Logins</span></div>${stats.outros > 0 ? `<div class="stat-card" style="background:#f1f5f9;border-color:#e2e8f0"><span class="stat-val" style="color:#64748b">${stats.outros}</span><span class="stat-label">Outros</span></div>` : ''}</div><h3>Registro de Atividades</h3>${logs.length>0?`<table><thead><tr><th>Data/Hora</th><th>Ação</th><th>Descrição</th></tr></thead><tbody>${logs.map(l=>`<tr><td style="white-space:nowrap">${formatDate(l.timestamp)}</td><td><span class="badge">${LOG_TYPES[l.type]||l.type}</span></td><td>${l.message}</td></tr>`).join('')}</tbody></table>`:`<div style="text-align:center;padding:40px;color:#94a3b8;border:2px dashed #e2e8f0;border-radius:8px">Nenhuma atividade registrada.</div>`}<div class="footer">Gerado em ${new Date().toLocaleString()}</div><script>window.onload=function(){window.print()}</script></body></html>`;
             printWindow.document.write(htmlContent);
             printWindow.document.close();
@@ -362,6 +359,17 @@ export default function HistoryView({ userProfile }) {
         w.document.close();
     };
 
+    // --- CORREÇÃO: Função para controlar a mudança no Select Mobile ---
+    const handleMobileModeChange = (e) => {
+        const val = e.target.value;
+        setMode(val);
+        // Reseta estados auxiliares ao trocar de modo
+        if (val === 'list') { setScanCode(''); }
+        if (val === 'scan') { setSearch(''); setShowCamera(false); }
+        if (val === 'student_report') { setSearch(''); }
+        if (val === 'tech_report') { setTechSearch(''); setReportTech(null); }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
@@ -369,24 +377,39 @@ export default function HistoryView({ userProfile }) {
                     <History className="text-[#009DE0]"/> Histórico
                 </h2>
                 
-                {/* MENU DE ABAS RESPONSIVO (HORIZONTAL SCROLL NO MOBILE) */}
-                <div className="flex bg-slate-200 p-1 rounded-lg w-full md:w-fit overflow-x-auto gap-1">
-                    <button onClick={() => { setMode('list'); setScanCode(''); }} className={`flex-1 md:flex-none px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${mode === 'list' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500'}`}>
+                {/* --- MODO DESKTOP: Botões (Flex) --- */}
+                <div className="hidden md:flex bg-slate-200 p-1 rounded-lg w-fit gap-1">
+                    <button onClick={() => { setMode('list'); setScanCode(''); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${mode === 'list' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                         Lista Geral
                     </button>
-                    <button onClick={() => { setMode('scan'); setSearch(''); setShowCamera(false); }} className={`flex-1 md:flex-none px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${mode === 'scan' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500'}`}>
+                    <button onClick={() => { setMode('scan'); setSearch(''); setShowCamera(false); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${mode === 'scan' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                         Rastrear Item
                     </button>
                     {isAdminOrTech && (
-                        <button onClick={() => { setMode('student_report'); setSearch(''); }} className={`flex-1 md:flex-none px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap flex items-center gap-2 ${mode === 'student_report' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500'}`}>
+                        <button onClick={() => { setMode('student_report'); setSearch(''); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap flex items-center gap-2 ${mode === 'student_report' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                             <GraduationCap size={16}/> Relatório Aluno
                         </button>
                     )}
                     {isAdmin && (
-                        <button onClick={() => { setMode('tech_report'); setTechSearch(''); setReportTech(null); }} className={`flex-1 md:flex-none px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap flex items-center gap-2 ${mode === 'tech_report' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500'}`}>
+                        <button onClick={() => { setMode('tech_report'); setTechSearch(''); setReportTech(null); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap flex items-center gap-2 ${mode === 'tech_report' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                             <UserCog size={16}/> Relatório Técnico
                         </button>
                     )}
+                </div>
+
+                {/* --- MODO MOBILE: Select Nativo (Sem Scroll) --- */}
+                <div className="block md:hidden w-full">
+                    <select 
+                        value={mode} 
+                        onChange={handleMobileModeChange}
+                        className="w-full p-3 bg-white border border-slate-300 rounded-lg text-slate-700 font-bold shadow-sm focus:border-[#009DE0] focus:ring-1 focus:ring-[#009DE0] outline-none appearance-none"
+                        style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: `right 0.5rem center`, backgroundRepeat: `no-repeat`, backgroundSize: `1.5em 1.5em`, paddingRight: `2.5rem` }}
+                    >
+                        <option value="list">Lista Geral</option>
+                        <option value="scan">Rastrear Item</option>
+                        {isAdminOrTech && <option value="student_report">Relatório do Aluno</option>}
+                        {isAdmin && <option value="tech_report">Relatório do Técnico</option>}
+                    </select>
                 </div>
             </div>
 
@@ -552,8 +575,9 @@ export default function HistoryView({ userProfile }) {
                         <div className="bg-[#021D34] p-6 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                             <div>
                                 <div className="flex items-center gap-3 mb-1">
-                                    <h2 className="text-2xl font-bold font-mono tracking-wider">{selectedItem.code}</h2>
-                                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-white text-slate-900 border border-slate-300 shadow-sm">{STATUS_CONFIG[selectedItem.status].label}</span>
+                                    {/* --- CORREÇÃO DE OVERFLOW: break-all --- */}
+                                    <h2 className="text-2xl font-bold font-mono tracking-wider break-all">{selectedItem.code}</h2>
+                                    <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-white text-slate-900 border border-slate-300 shadow-sm shrink-0">{STATUS_CONFIG[selectedItem.status].label}</span>
                                 </div>
                                 <p className="opacity-80">{selectedItem.type}</p>
                             </div>
