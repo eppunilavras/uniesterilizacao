@@ -188,9 +188,9 @@ export default function MainLayout({ user, userProfile }) {
                 </div>
                 <h2 className="text-2xl font-bold text-[#021D34] mb-3">Sem Conexão</h2>
                 <p className="text-slate-500 max-w-xs mx-auto text-sm leading-relaxed">
-                    O modo offline não está disponível na versão mobile, pois a Recepção requer um computador. 
+                    O modo offline não está disponível na versão mobile. 
                     <br/><br/>
-                    Por favor, reconecte-se à internet para visualizar seus dados ou utilize um Desktop.
+                    Por favor, reconecte-se à internet para visualizar seus dados.
                 </p>
             </div>
         );
