@@ -131,7 +131,7 @@ export default function AdminLabels() {
             <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center animate-in zoom-in-95">
                 <div className="bg-blue-50 p-6 rounded-full mb-6"><Monitor className="w-16 h-16 text-[#009DE0]" /></div>
                 <h2 className="text-2xl font-bold text-[#021D34] mb-3">Acesso Restrito</h2>
-                <p className="text-slate-500 max-w-md mx-auto">Acesse o Editor de Etiquetas via computador.</p>
+                <p className="text-slate-500 max-w-md mx-auto">Acesse esta página em um computador.</p>
             </div>
         );
     }
