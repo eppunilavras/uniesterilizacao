@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate', // Atualiza o app automaticamente
+      registerType: 'prompt',
       
       // Arquivos estáticos importantes que estão na public (ajuste se necessário)
       includeAssets: ['favicon.ico', 'icons/apple-touch-icon.png'], 

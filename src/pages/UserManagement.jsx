@@ -296,11 +296,18 @@ export default function UserManagement({ userProfile }) {
     const handleInactivate = async (u) => {
         if (u.uid === userProfile.uid) { addToast('Não pode inativar a si mesmo.', 'error'); return; }
         
-        // Verifica pendências antes de inativar
-        const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'items'), where('studentId', '==', u.uid), limit(1));
+        // Verifica pendências antes de inativar (status != 'retirado')
+        const q = query(
+            collection(db, 'artifacts', appId, 'public', 'data', 'items'), 
+            where('studentId', '==', u.uid), 
+            where('status', '!=', 'retirado'), // <-- Query melhorada
+            limit(1)
+        );
         const snap = await getDocs(q);
-        if (!snap.empty && snap.docs[0].data().status !== 'retirado') { 
-            addToast(`Não é possível inativar. Utilizador possui itens pendentes.`, 'error'); 
+        
+        if (!snap.empty) { 
+            // Mensagem padronizada com a edição
+            addToast(`Não é possível inativar. Utilizador tem itens pendentes.`, 'error'); 
             return; 
         }
 

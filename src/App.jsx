@@ -12,6 +12,9 @@ import { ToastProvider } from './contexts/ToastContext';
 import { DialogProvider } from './contexts/DialogContext';
 import { PrintProvider } from './contexts/PrintContext';
 
+// --- NOVO IMPORT: Aviso de Atualização PWA ---
+import ReloadPrompt from './components/ReloadPrompt';
+
 // --- IMPORTANTE: Carregamento Estático para Páginas Críticas Offline ---
 // Importamos a Reception diretamente para garantir que o código já esteja 
 // baixado antes da internet cair.
@@ -97,6 +100,9 @@ export default function App() {
     <ToastProvider>
         <DialogProvider>
             <PrintProvider user={user}>
+                {/* --- AVISO DE ATUALIZAÇÃO --- */}
+                <ReloadPrompt />
+
                 <style>{`
                     @media print {
                         @page { size: 50mm 30mm; margin: 0; }
