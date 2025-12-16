@@ -19,7 +19,7 @@ function ReloadPrompt() {
     <div style={styles.container}>
       <div style={styles.content}>
         <span style={styles.message}>
-          🚀 Nova atualização disponível!
+          🚀 Nova atualização de software disponível!
         </span>
         <div style={styles.actions}>
           <button 
