@@ -27,24 +27,50 @@ export default function LoginScreen({ globalError }) {
         e.preventDefault();
         setIsSubmitting(true);
         try {
+            // 1. Tenta autenticar no Firebase Auth
             const cred = await signInWithEmailAndPassword(auth, email, pass);
             
-            // Verificação extra de segurança: Status da conta
+            // 2. Verificação extra de segurança: Status da conta no Firestore
             // Buscamos o perfil manualmente aqui para garantir que não logamos sucesso se estiver inativo
             const userDoc = await getDoc(doc(db, 'artifacts', appId, 'users', cred.user.uid, 'profile', 'data'));
             
             if (userDoc.exists()) {
                 const userData = userDoc.data();
+                
+                // Se a conta estiver inativa (active === false)
                 if (userData.active === false) {
-                    // Log de falha removido daqui para evitar inconsistência/permissão
-                    await signOut(auth); // Desloga imediatamente
-                    throw { code: 'auth/account-inactive' }; // Joga erro customizado para o catch
+                    // REGISTRA O LOG DE FALHA DE SEGURANÇA
+                    // (Possível agora pois temos um UID autenticado temporariamente)
+                    await logEvent(
+                        'LOGIN_FAIL', 
+                        'Tentativa de acesso de conta inativa', 
+                        { email: email, reason: 'Account Inactive' },
+                        cred.user
+                    );
+
+                    // Desloga imediatamente para bloquear o acesso
+                    await signOut(auth); 
+                    
+                    // Lança o erro para cair no catch abaixo
+                    throw { code: 'auth/account-inactive' }; 
                 }
             }
             
-            // Se chegou aqui, está ativo e logado.
-            await logEvent('LOGIN', 'Usuário fez login com sucesso', { email }, cred.user);
+            // 3. Se passou pela verificação, registra o sucesso
+			const userAgent = navigator.userAgent; // Captura info do navegador
+
+			await logEvent(
+				'LOGIN', 
+				'Usuário fez login com sucesso', 
+				{ 
+					email, 
+					device: /Mobile/i.test(userAgent) ? 'Mobile' : 'Desktop', // Detecção simples
+					browser: userAgent 
+				}, 
+				cred.user
+			);
             
+            // Lógica de "Manter conectado"
             if (keepSigned) {
                 localStorage.setItem('unilavras_keep_signed_in', 'true');
             } else {
@@ -52,7 +78,7 @@ export default function LoginScreen({ globalError }) {
             }
 
         } catch (error) {
-            // Log de falha removido daqui (causava erro de permissão pois o usuário não está logado)
+            // Se o erro foi lançado manualmente acima, ele será tratado aqui
             addToast(translateFirebaseError(error), 'error');
             setIsSubmitting(false);
         }

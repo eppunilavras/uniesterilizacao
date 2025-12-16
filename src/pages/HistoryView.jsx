@@ -26,7 +26,8 @@ import {
   XCircle,
   UserCog,       
   GraduationCap,
-  MessageSquare 
+  MessageSquare,
+  Trash2
 } from 'lucide-react';
 
 // Imports internos
@@ -47,7 +48,6 @@ export default function HistoryView({ userProfile }) {
     // --- ESTADOS DA LISTA GERAL ---
     const [history, setHistory] = useState([]);
     const [search, setSearch] = useState('');
-    // const [selectedIds, setSelectedIds] = useState([]); // REMOVIDO: Não é mais necessário
     const [loading, setLoading] = useState(false);
     const [lastDoc, setLastDoc] = useState(null); 
     const [hasMore, setHasMore] = useState(true); 
@@ -95,7 +95,7 @@ export default function HistoryView({ userProfile }) {
     };
 
     // =================================================================================
-    // 1. LÓGICA DE RELATÓRIO POR ALUNO
+    // 1. LÓGICA DE RELATÓRIO POR ALUNO (COM CORREÇÃO DE DATA)
     // =================================================================================
     useEffect(() => {
         if (mode !== 'student_report') return;
@@ -125,8 +125,12 @@ export default function HistoryView({ userProfile }) {
         }
         setGeneratingReport(true);
         try {
-            const start = new Date(reportStart); start.setHours(0,0,0,0);
-            const end = new Date(reportEnd); end.setHours(23,59,59,999);
+            // CORREÇÃO DE FUSO HORÁRIO
+            const [sY, sM, sD] = reportStart.split('-').map(Number);
+            const start = new Date(sY, sM - 1, sD, 0, 0, 0, 0);
+
+            const [eY, eM, eD] = reportEnd.split('-').map(Number);
+            const end = new Date(eY, eM - 1, eD, 23, 59, 59, 999);
             
             const q = query(
                 collection(db, 'artifacts', appId, 'public', 'data', 'items'), 
@@ -158,7 +162,7 @@ export default function HistoryView({ userProfile }) {
     };
 
     // =================================================================================
-    // 2. LÓGICA DE RELATÓRIO TÉCNICO
+    // 2. LÓGICA DE RELATÓRIO TÉCNICO (COM CORREÇÃO DE DATA)
     // =================================================================================
     useEffect(() => {
         if (mode !== 'tech_report') return;
@@ -189,8 +193,12 @@ export default function HistoryView({ userProfile }) {
         }
         setGeneratingReport(true);
         try {
-            const start = new Date(reportStart); start.setHours(0,0,0,0);
-            const end = new Date(reportEnd); end.setHours(23,59,59,999);
+            // CORREÇÃO DE FUSO HORÁRIO
+            const [sY, sM, sD] = reportStart.split('-').map(Number);
+            const start = new Date(sY, sM - 1, sD, 0, 0, 0, 0);
+
+            const [eY, eM, eD] = reportEnd.split('-').map(Number);
+            const end = new Date(eY, eM - 1, eD, 23, 59, 59, 999);
             
             const q = query(
                 collection(db, 'artifacts', appId, 'public', 'data', 'system_logs'), 
@@ -333,8 +341,6 @@ export default function HistoryView({ userProfile }) {
         } catch (e) { console.error(e); } setLoadingMore(false);
     };
 
-    // --- REMOVIDA FUNÇÃO handlePrintSelected ---
-    
     // --- FUNÇÃO DE IMPRESSÃO DE DETALHES ---
     const generateTraceReport = () => { 
         if (!selectedItem) return;

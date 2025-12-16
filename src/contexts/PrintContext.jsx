@@ -7,6 +7,8 @@ import { LOGOS } from '../constants';
 import Barcode from '../components/Barcode';
 import QRCodeComponent from '../components/QRCodeComponent';
 
+import { logEvent } from '../utils/logger'; // <--- ADICIONAR
+
 const PrintContext = createContext();
 
 export const usePrint = () => useContext(PrintContext);
@@ -46,10 +48,27 @@ export const PrintProvider = ({ children, user }) => {
         return () => unsub();
     }, [user]);
 
-    const printItems = (items) => {
-        setPrintQueue(Array.isArray(items) ? items : [items]);
-        setTimeout(() => { window.print(); }, 500); 
-    };
+	const printItems = (items) => {
+		const itemsArray = Array.isArray(items) ? items : [items]; // Garantir array para contagem
+		setPrintQueue(itemsArray);
+		
+		// --- NOVO LOG ---
+		// Verifica se temos usuário (pode ser null no login, mas printcontext geralmente exige auth)
+		if (user) {
+			logEvent(
+				'DATA_OP', 
+				`Impressão de ${itemsArray.length} etiquetas`, 
+				{ 
+					codes: itemsArray.map(i => i.code || 'S/N'),
+					studentNames: itemsArray.map(i => i.studentName).filter((v, i, a) => a.indexOf(v) === i) // Nomes únicos
+				},
+				// Passamos um objeto user simplificado se não tivermos o profile completo aqui
+				{ uid: user.uid, email: user.email } 
+			);
+		}
+
+		setTimeout(() => { window.print(); }, 500); 
+	};
 
     // =========================================================================
     // 1. CÁLCULOS DIMENSIONAIS (IGUAIS AO PREVIEW)

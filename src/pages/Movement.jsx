@@ -5,7 +5,6 @@ import {
   ScanBarcode, 
   Printer, 
   Search, 
-  // Trash2 REMOVIDO
   ArrowDown, 
   Camera, 
   XCircle, 
@@ -26,6 +25,9 @@ import { STATUS_CONFIG } from '../constants';
 import DataTable from '../components/DataTable';
 
 import { useScanner } from '../hooks/useScanner';
+
+// --- DEFINIÇÃO DA ORDEM RIGOROSA ---
+const STATUS_ORDER = ['recebido', 'em_esterilizacao', 'pronto', 'retirado'];
 
 export default function Movement({ userProfile }) {
     const [mode, setMode] = useState('list');
@@ -56,6 +58,40 @@ export default function Movement({ userProfile }) {
     const lastSearchedCode = useRef('');
     const inputRef = useRef(null);
 
+    // --- HELPER: VALIDAÇÃO DE TRANSIÇÃO (Melhorada) ---
+    const canMoveTo = (currentStatus, nextStatus) => {
+        // 1. Sempre permite mover PARA problema (ocorrência)
+        if (nextStatus === 'problema') return { allowed: true };
+        
+        // 2. Sempre permite sair DE problema (resolução)
+        if (currentStatus === 'problema') return { allowed: true };
+
+        const currIndex = STATUS_ORDER.indexOf(currentStatus);
+        const nextIndex = STATUS_ORDER.indexOf(nextStatus);
+
+        // Se algum status não estiver na lista padrão (erro de dados), bloqueia por segurança
+        if (currIndex === -1 || nextIndex === -1) {
+            return { allowed: false, error: 'O status atual do item é inválido. Contate o suporte.' };
+        }
+
+        // 3. Bloqueia mesmo status
+        if (currIndex === nextIndex) {
+            return { allowed: false, error: 'O item já está neste status.' };
+        }
+
+        // 4. Bloqueia retrocesso (Voltar status)
+        if (nextIndex < currIndex) {
+            return { allowed: false, error: 'O fluxo de esterilização é contínuo. Não é permitido retroceder etapas.' };
+        }
+
+        // 5. Bloqueia pular etapas (Obrigatório ser sequencial: Index + 1)
+        if (nextIndex > currIndex + 1) {
+             return { allowed: false, error: `Etapa incorreta. O item deve passar por ${STATUS_CONFIG[STATUS_ORDER[currIndex+1]].label} antes de chegar aqui.` };
+        }
+
+        return { allowed: true };
+    };
+
     // --- BUSCA AUTOMÁTICA ---
     useEffect(() => {
         if (searchTimeout.current) clearTimeout(searchTimeout.current);
@@ -76,7 +112,7 @@ export default function Movement({ userProfile }) {
 
                     if (snap.empty) {
                         playSound('error'); 
-                        addToast('Código não encontrado.', 'error');
+                        addToast('Código não encontrado. Verifique se o item foi cadastrado na Recepção.', 'error');
                         setSingleItem(null); 
                     } else {
                         playSound('success'); 
@@ -108,9 +144,18 @@ export default function Movement({ userProfile }) {
 
     // --- FUNÇÃO DE ATUALIZAÇÃO ---
     const updateStatus = async (item, newStatus, reason = null) => {
+        // Validação Rigorosa
+        const validation = canMoveTo(item.status, newStatus);
+        if (!validation.allowed) {
+            addToast(`Erro: ${validation.error}`, 'error');
+            return;
+        }
+
         const batch = writeBatch(db);
         const ref = doc(db, 'artifacts', appId, 'public', 'data', 'items', item.id);
         
+        const previousStatus = item.status;
+
         const historyEntry = { 
             status: newStatus, 
             timestamp: new Date().toISOString(), 
@@ -138,7 +183,19 @@ export default function Movement({ userProfile }) {
         }
         
         await batch.commit();
-        await logEvent('ITEM_MOVE', `Item ${item.code} movido para ${newStatus}`, { itemId: item.id, code: item.code, newStatus, reason });
+        
+        await logEvent(
+            'ITEM_MOVE', 
+            `Item ${item.code} movido para ${newStatus}`, 
+            { 
+                itemId: item.id, 
+                code: item.code, 
+                studentName: item.studentName,
+                previousStatus: previousStatus,
+                newStatus: newStatus, 
+                reason: reason || 'Fluxo normal' 
+            }
+        );
         
         if (mode === 'single' && singleItem && singleItem.id === item.id) { 
             setSingleItem(prev => ({...prev, status: newStatus})); 
@@ -168,9 +225,11 @@ export default function Movement({ userProfile }) {
 
         if (isResolution) {
             const historyReversed = [...(incidentModal.item.history || [])].reverse();
-            const lastValidStatus = historyReversed.find(h => h.status !== 'problema');
+            // Tenta encontrar o último status válido que não seja problema ou retirado
+            const lastValidStatus = historyReversed.find(h => h.status !== 'problema' && h.status !== 'retirado');
+            
+            // Se não achar, volta para recebido por segurança
             newStatus = lastValidStatus ? lastValidStatus.status : 'recebido';
-            if (newStatus === 'retirado') newStatus = 'pronto';
         }
         
         const logText = isResolution ? `Resolução: ${incidentModal.reason}` : incidentModal.reason;
@@ -181,13 +240,38 @@ export default function Movement({ userProfile }) {
         setIncidentModal({ isOpen: false, item: null, reason: '', type: 'report' });
     };
 
-    const handleBatch = async (newStatus) => {
-        if (!await confirm({ title: 'Movimentação em Lote', message: `Mover ${selectedIds.length} itens?` })) return;
-        for (const id of selectedIds) { const item = listItems.find(i => i.id === id); if (item) await updateStatus(item, newStatus); }
-        addToast(`${selectedIds.length} itens atualizados!`, 'success'); setSelectedIds([]);
-    };
+    // --- LOTE INTELIGENTE ---
+    const handleBatch = async (targetStatus) => {
+        // Filtra APENAS itens que podem mover para o status alvo
+        const eligibleItems = listItems.filter(i => {
+            const validation = canMoveTo(i.status, targetStatus);
+            return selectedIds.includes(i.id) && validation.allowed;
+        });
 
-    // --- REMOVIDA FUNÇÃO handleDeleteBatch ---
+        const ignoredCount = selectedIds.length - eligibleItems.length;
+
+        if (eligibleItems.length === 0) {
+            if (ignoredCount > 0) {
+                addToast('Nenhum item selecionado pode ir para este status (sequência incorreta).', 'warning');
+            } else {
+                addToast('Selecione itens válidos primeiro.', 'error');
+            }
+            return;
+        }
+
+        const message = ignoredCount > 0 
+            ? `Mover ${eligibleItems.length} itens para ${STATUS_CONFIG[targetStatus].label}? (${ignoredCount} ignorados por estarem na etapa errada)`
+            : `Mover ${eligibleItems.length} itens para ${STATUS_CONFIG[targetStatus].label}?`;
+
+        if (!await confirm({ title: 'Movimentação em Lote', message })) return;
+
+        for (const item of eligibleItems) { 
+            await updateStatus(item, targetStatus); 
+        }
+        
+        addToast(`${eligibleItems.length} itens atualizados!`, 'success'); 
+        setSelectedIds([]);
+    };
 
     const filteredList = listItems.filter(i => {
         let matchesSearch = false;
@@ -305,6 +389,7 @@ export default function Movement({ userProfile }) {
                             <div className="grid gap-3">
                                 {singleItem.status !== 'problema' && (
                                     <>
+                                        {/* BOTÕES CONDICIONAIS QUE RESPEITAM A ORDEM */}
                                         {singleItem.status === 'recebido' && <button onClick={() => updateStatus(singleItem, 'em_esterilizacao')} className="p-4 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition-colors">Iniciar Esterilização</button>}
                                         {singleItem.status === 'em_esterilizacao' && <button onClick={() => updateStatus(singleItem, 'pronto')} className="p-4 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-colors">Marcar como Pronto</button>}
                                         {singleItem.status === 'pronto' && <button onClick={() => updateStatus(singleItem, 'retirado')} className="p-4 bg-[#009DE0] text-white rounded-xl font-bold hover:bg-[#008bc5] transition-colors">Confirmar Retirada</button>}

@@ -5,6 +5,7 @@ import {
   ChevronLeft, 
   ChevronRight 
 } from 'lucide-react';
+import Skeleton from './Skeleton';
 
 /**
  * Componente de Tabela de Dados Universal
@@ -13,8 +14,9 @@ import {
  * @param {Function} actions - (Opcional) Função que retorna botões de ação (JSX) para cada linha
  * @param {string} emptyMsg - Mensagem para exibir quando não há dados
  * @param {Function} mobileRender - (Opcional) Função que retorna o layout de Card para mobile
+ * @param {boolean} loading - Estado de carregamento
  */
-const DataTable = ({ columns, data, actions, emptyMsg, mobileRender }) => {
+const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) => {
     const [page, setPage] = useState(1);
     const [sortCol, setSortCol] = useState(null);
     const [sortDir, setSortDir] = useState('asc');
@@ -48,6 +50,62 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender }) => {
 
     // Reseta para a página 1 sempre que os dados mudam (ex: ao filtrar)
     useEffect(() => { setPage(1); }, [data.length]);
+
+    // --- RENDERIZAÇÃO DE LOADING (SKELETON) ---
+    if (loading) {
+        return (
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden w-full max-w-full">
+                {/* Desktop Skeleton */}
+                <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-sm text-left table-fixed">
+                        <thead className="bg-[#021D34] text-white">
+                            <tr>
+                                {columns.map((col, idx) => (
+                                    <th key={col.key || idx} className="p-4 font-semibold">
+                                        {col.label}
+                                    </th>
+                                ))}
+                                {actions && <th className="p-4 text-center w-32">Ações</th>}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {[...Array(5)].map((_, i) => (
+                                <tr key={i}>
+                                    {columns.map((_, cIdx) => (
+                                        <td key={cIdx} className="p-4">
+                                            <Skeleton className="h-4 w-full" />
+                                        </td>
+                                    ))}
+                                    {actions && (
+                                        <td className="p-4 text-center">
+                                            <div className="flex justify-center gap-2">
+                                                <Skeleton className="h-8 w-8 rounded-lg" />
+                                                <Skeleton className="h-8 w-8 rounded-lg" />
+                                            </div>
+                                        </td>
+                                    )}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Mobile Skeleton */}
+                <div className="md:hidden divide-y divide-slate-100">
+                    {[...Array(5)].map((_, i) => (
+                        <div key={i} className="p-4 space-y-3">
+                            <div className="flex justify-between gap-4">
+                                <Skeleton className="h-4 w-1/3" />
+                                <Skeleton className="h-4 w-1/4" />
+                            </div>
+                            <Skeleton className="h-3 w-1/2" />
+                            <Skeleton className="h-3 w-2/3" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
     // --- RENDERIZAÇÃO DE ESTADO VAZIO ---
     if (currentData.length === 0) {

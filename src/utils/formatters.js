@@ -41,21 +41,29 @@ export const maskCPF = (value) => {
 export const translateFirebaseError = (error) => {
     const code = error.code || '';
     
+    // Erros de Autenticação
     if(code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
-        return 'Email ou senha incorretos.';
+        return 'E-mail ou senha incorretos. Verifique suas credenciais.';
     }
-    
+    if(code === 'auth/too-many-requests') {
+        return 'Muitas tentativas falhas. O acesso foi bloqueado temporariamente. Tente novamente mais tarde.';
+    }
+    if(code === 'auth/network-request-failed') {
+        return 'Falha na conexão. Verifique sua internet e tente novamente.';
+    }
     if(code === 'auth/weak-password') {
-        return 'A senha deve ter pelo menos 6 caracteres.';
+        return 'A senha é muito fraca. Escolha uma senha com pelo menos 6 caracteres.';
     }
-    
     if(code === 'auth/email-already-in-use') {
-        return 'Este email já está cadastrado no sistema.';
+        return 'Este e-mail já está em uso por outro usuário.';
     }
-    
     if(code === 'auth/account-inactive') {
-        return 'Sua conta está inativa. Contate o administrador.';
+        return 'Sua conta foi desativada. Entre em contato com a coordenação.';
+    }
+    if(code === 'permission-denied') {
+        return 'Você não tem permissão para realizar esta ação.';
     }
     
-    return 'Ocorreu um erro ao processar sua solicitação.';
+    // Fallback genérico
+    return `Erro inesperado. Tente novamente. (${code})`;
 };

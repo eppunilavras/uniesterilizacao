@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 import { 
   AlertCircle, 
   CheckCircle2, 
@@ -12,23 +12,28 @@ export const useToast = () => useContext(ToastContext);
 export const ToastProvider = ({ children }) => {
     const [toasts, setToasts] = useState([]);
 
-    const addToast = (msg, type = 'info') => {
+    // Função auxiliar para remover (não precisa ser exportada no value se não quiser)
+    const removeToast = useCallback((id) => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+    }, []);
+
+    // O useCallback garante que esta função mantenha a mesma referência
+    // entre renderizações, evitando que o useEffect da Recepção entre em loop.
+    const addToast = useCallback((msg, type = 'info') => {
         const id = Math.random();
         setToasts(prev => [...prev, { id, msg, type }]);
         
         // Remove automaticamente após 5 segundos
-        setTimeout(() => removeToast(id), 5000);
-    };
-
-    const removeToast = (id) => {
-        setToasts(prev => prev.filter(t => t.id !== id));
-    };
+        setTimeout(() => {
+            setToasts(prev => prev.filter(t => t.id !== id));
+        }, 5000);
+    }, []);
 
     return (
         <ToastContext.Provider value={{ addToast }}>
             {children}
             
-            {/* Container de Toasts (Fixo no canto inferior direito) */}
+            {/* Container de Toasts */}
             <div className="fixed bottom-4 right-4 z-[9999] space-y-2 pointer-events-none no-print">
                 {toasts.map(t => (
                     <div 
@@ -54,4 +59,4 @@ export const ToastProvider = ({ children }) => {
             </div>
         </ToastContext.Provider>
     );
-};	
+};

@@ -1,32 +1,48 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAnalytics } from 'firebase/analytics';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { 
+    getFirestore, 
+    initializeFirestore, 
+    persistentLocalCache, 
+    persistentMultipleTabManager 
+} from 'firebase/firestore'; // <--- NOVOS IMPORTS
 
-// Configuração oficial do Projeto
+// Configuração oficial do Projeto (usando variáveis de ambiente da Dica 1)
 const firebaseConfig = {
-  apiKey: "AIzaSyDZRzV_S2GCRWFteklzdGjaO8ZB7j5ct2U", 
-  authDomain: "uniesterilizacao.firebaseapp.com",
-  projectId: "uniesterilizacao",
-  storageBucket: "uniesterilizacao.firebasestorage.app",
-  messagingSenderId: "357777665758",
-  appId: "1:357777665758:web:fda95ec0f6188cd5ee5c4f",
-  measurementId: "G-CQ921DK3GX"
+  apiKey: import.meta.env.VITE_API_KEY,
+  authDomain: import.meta.env.VITE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_APP_ID,
+  measurementId: import.meta.env.VITE_MEASUREMENT_ID
 };
 
 // Lógica de Inicialização (Singleton)
-// Verifica se já existe uma instância para evitar erros de "App already exists"
-// Mantém a compatibilidade com a variável global __firebase_config se ela existir no ambiente
 const app = !getApps().length 
-    ? initializeApp(JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : JSON.stringify(firebaseConfig))) 
+    ? initializeApp(
+        typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : firebaseConfig
+      ) 
     : getApp();
 
 // Inicialização dos serviços
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
-const db = getFirestore(app);
 
-// ID da Aplicação (usado para separar dados no Firestore se necessário)
+// --- MUDANÇA PRINCIPAL AQUI (PERSISTÊNCIA OFFLINE) ---
+// Em vez de usar apenas getFirestore(app), usamos initializeFirestore com configurações de cache.
+const db = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+        // O gerenciador de abas permite que múltiplas abas do navegador
+        // partilhem o mesmo cache local sem conflitos.
+        tabManager: persistentMultipleTabManager()
+    })
+});
+
+// ID da Aplicação
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'unilavras-main';
 
 // Exportações
@@ -36,5 +52,5 @@ export {
     auth, 
     db, 
     appId, 
-    firebaseConfig // Necessário exportar para criar usuários secundários no UserManagement
+    firebaseConfig 
 };

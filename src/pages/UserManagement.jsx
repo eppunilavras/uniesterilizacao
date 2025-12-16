@@ -4,20 +4,19 @@ import { getAuth, createUserWithEmailAndPassword, signOut } from 'firebase/auth'
 import { 
   collection, query, where, orderBy, limit, startAt, endAt, 
   startAfter, getDocs, updateDoc, doc, setDoc, serverTimestamp,
-  writeBatch // <--- IMPORTADO
+  writeBatch 
 } from 'firebase/firestore';
 import { 
   Search, Edit2, Trash2, Loader2, ArrowDown, Upload, 
   FileUp, X, CheckSquare, Square, AlertTriangle, 
-  CheckCircle2, XCircle, Users 
+  CheckCircle2, XCircle, Users, Eye, EyeOff 
 } from 'lucide-react';
 
-// --- NOVOS IMPORTS DE VALIDAÇÃO ---
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useQueryClient } from '@tanstack/react-query'; 
 
-// Imports internos
 import { db, appId, firebaseConfig } from '../config/firebase';
 import { useToast } from '../contexts/ToastContext';
 import { useDialog } from '../contexts/DialogContext';
@@ -26,14 +25,13 @@ import { maskCPF, translateFirebaseError } from '../utils/formatters';
 import { ROLE_LABELS } from '../constants';
 import DataTable from '../components/DataTable';
 
-// --- DEFINIÇÃO DO SCHEMA ZOD ---
 const userSchema = z.object({
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
   email: z.string().email("Email inválido"),
-  cpf: z.string().min(14, "CPF incompleto"), // Espera formato 000.000.000-00
+  cpf: z.string().min(14, "CPF incompleto"), 
   role: z.enum(['student', 'tech', 'admin']),
   active: z.boolean(),
-  password: z.string().optional(), // Senha é opcional na edição, obrigatória na criação (validado no submit)
+  password: z.string().optional(),
 });
 
 export default function UserManagement({ userProfile }) {
@@ -43,7 +41,12 @@ export default function UserManagement({ userProfile }) {
     const [loading, setLoading] = useState(false);
     const [filterRole, setFilterRole] = useState('all');
     
-    // Configuração do React Hook Form
+    // Novo estado para controlar a visibilidade de inativos
+    const [showInactive, setShowInactive] = useState(false);
+    
+    // Client para gerir o Cache
+    const queryClient = useQueryClient();
+
     const { 
         register, 
         handleSubmit, 
@@ -58,13 +61,10 @@ export default function UserManagement({ userProfile }) {
     });
 
     const [editing, setEditing] = useState(null);
-    
-    // Estados para paginação
     const [lastDoc, setLastDoc] = useState(null);
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
 
-    // Estados para Importação CSV
     const [importing, setImporting] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [csvPreview, setCsvPreview] = useState([]); 
@@ -75,7 +75,6 @@ export default function UserManagement({ userProfile }) {
     const { addToast } = useToast();
     const { confirm, alert } = useDialog();
 
-    // Helpers de Busca e Firebase
     const formatSearchTerm = (text) => {
 		if (!text) return '';
 		if (text.startsWith('"') && text.endsWith('"') && text.length > 2) return text.slice(1, -1);
@@ -94,18 +93,27 @@ export default function UserManagement({ userProfile }) {
         const cleanCpf = cpf.replace(/\D/g, ''); 
         const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'users_directory'), where('cpf', '==', cleanCpf));
         const snap = await getDocs(q);
+        
         if (snap.empty) return false;
-        if (excludeUid) return snap.docs.some(d => d.id !== excludeUid);
+        
+        if (excludeUid) {
+            return snap.docs.some(d => d.id !== excludeUid);
+        }
+        
         return true;
     };
 
-    // --- CARREGAMENTO DE USUÁRIOS ---
     const fetchUsers = async (searchTerm = '') => {
         setLoading(true); setHasMore(true); setLastDoc(null);
         try {
             const usersRef = collection(db, 'artifacts', appId, 'public', 'data', 'users_directory');
             const constraints = [];
+            
             if (filterRole !== 'all') constraints.push(where('role', '==', filterRole));
+
+            if (!showInactive) {
+                constraints.push(where('active', '==', true));
+            }
 
             if (searchTerm.length > 2) {
                 const term = formatSearchTerm(searchTerm);
@@ -124,9 +132,16 @@ export default function UserManagement({ userProfile }) {
             const snapshot = await getDocs(q);
             setUsers(snapshot.docs.map(d => ({ uid: d.id, ...d.data() })));
             setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+            
             if (snapshot.docs.length < 20) setHasMore(false);
             if (searchTerm.length > 2) setHasMore(false);
-        } catch (error) { console.error("Erro usuários:", error); } finally { setLoading(false); }
+
+        } catch (error) { 
+            console.error("Erro utilizadores:", error); 
+            if (error.code === 'failed-precondition') {
+                 console.warn("Falta índice composto. Verifique a consola do Firebase.");
+            }
+        } finally { setLoading(false); }
     };
 
     const loadMore = async () => {
@@ -135,8 +150,14 @@ export default function UserManagement({ userProfile }) {
         try {
             const usersRef = collection(db, 'artifacts', appId, 'public', 'data', 'users_directory');
             const constraints = [];
+            
             if (filterRole !== 'all') constraints.push(where('role', '==', filterRole));
-            constraints.push(orderBy('createdAt', 'desc')); constraints.push(startAfter(lastDoc)); constraints.push(limit(20));
+            if (!showInactive) constraints.push(where('active', '==', true));
+            
+            constraints.push(orderBy('createdAt', 'desc')); 
+            constraints.push(startAfter(lastDoc)); 
+            constraints.push(limit(20));
+            
             const q = query(usersRef, ...constraints);
             const snapshot = await getDocs(q);
             if (!snapshot.empty) {
@@ -151,46 +172,65 @@ export default function UserManagement({ userProfile }) {
     useEffect(() => {
         const timer = setTimeout(() => { fetchUsers(search); }, 500);
         return () => clearTimeout(timer);
-    }, [search, filterRole]);
+    }, [search, filterRole, showInactive]);
 
-    // --- FUNÇÃO DE SAVE COM CORREÇÃO DE BATCH ---
     const onSubmit = async (data) => {
         if (!editing && (!data.password || data.password.length < 6)) {
-            addToast('Senha deve ter no mínimo 6 caracteres para novos usuários.', 'error');
+            addToast('A senha deve ter no mínimo 6 caracteres para novos utilizadores.', 'error');
             return;
         }
 
         try {
             const cleanCpf = data.cpf.replace(/\D/g, '');
-            const batch = writeBatch(db); // <--- INICIA BATCH
+            const batch = writeBatch(db);
+            const isStudent = data.role === 'student'; // Verifica se é aluno para invalidar cache
 
             if (editing) {
-                // Lógica de Edição
                 if (!data.active) {
                     const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'items'), where('studentId', '==', editing.uid), where('status', '!=', 'retirado'));
                     const snap = await getDocs(q);
-                    if (!snap.empty) { addToast(`Não é possível inativar. Usuário tem itens pendentes.`, 'error'); return; }
+                    if (!snap.empty) { addToast(`Não é possível inativar. Utilizador tem itens pendentes.`, 'error'); return; }
                 }
                 
                 if (await checkCpfExists(cleanCpf, editing.uid)) {
-                    addToast('Este CPF já está sendo usado por outro usuário.', 'error');
+                    addToast('Este CPF já está a ser usado.', 'error');
                     return;
                 }
 
                 const updates = { name: data.name, email: data.email, cpf: cleanCpf, role: data.role, active: data.active };
                 
-                // Adiciona operações ao Batch
+                // --- DETECÇÃO DE MUDANÇAS PARA LOG (MELHORIA) ---
+                const changesDetected = [];
+                if (editing.role !== data.role) changesDetected.push(`Perfil: ${editing.role} -> ${data.role}`);
+                if (editing.active !== data.active) changesDetected.push(`Status: ${editing.active ? 'Ativo' : 'Inativo'} -> ${data.active ? 'Ativo' : 'Inativo'}`);
+                if (editing.name !== data.name) changesDetected.push(`Nome alterado`);
+                if (editing.email !== data.email) changesDetected.push(`Email alterado`);
+                if (editing.cpf !== cleanCpf) changesDetected.push(`CPF alterado`);
+                // ------------------------------------------------
+
                 batch.update(doc(db, 'artifacts', appId, 'users', editing.uid, 'profile', 'data'), updates);
                 batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'users_directory', editing.uid), updates);
                 
-                await batch.commit(); // <--- EXECUTA TUDO JUNTO
+                await batch.commit();
 
-                await logEvent('USER_MGMT', `Usuário atualizado: ${data.name}`, { uid: editing.uid, changes: updates, executor: userProfile.email });
+                // --- CACHE UPDATE ---
+                if (isStudent || editing.role === 'student') {
+                    console.log("Aluno editado. Invalidando cache...");
+                    await queryClient.invalidateQueries({ queryKey: ['students_full_directory_v2'] });
+                }
+
+                // --- LOG MELHORADO COM DETALHES ---
+                await logEvent('USER_MGMT', `Utilizador atualizado: ${data.name}`, { 
+                    targetUid: editing.uid, 
+                    updates: updates,
+                    changesSummary: changesDetected.join(', ') || 'Atualização de dados cadastrais',
+                    executor: userProfile.email 
+                });
+                
                 addToast('Dados atualizados!', 'success');
             } else {
-                // Lógica de Criação
                 if (await checkCpfExists(cleanCpf)) {
-                    addToast('Este CPF já está cadastrado no sistema.', 'error');
+                    addToast('Este CPF já está registado.', 'error');
                     return;
                 }
 
@@ -202,15 +242,26 @@ export default function UserManagement({ userProfile }) {
                     name: data.name, email: data.email, cpf: cleanCpf, role: data.role, active: true, createdAt: serverTimestamp() 
                 };
                 
-                // Adiciona operações ao Batch
                 batch.set(doc(db, 'artifacts', appId, 'users', cred.user.uid, 'profile', 'data'), newData);
                 batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'users_directory', cred.user.uid), newData);
                 
-                await batch.commit(); // <--- EXECUTA TUDO JUNTO
+                await batch.commit();
+
+                // --- CACHE UPDATE ---
+                if (isStudent) {
+                    console.log("Novo aluno criado. Invalidando cache...");
+                    await queryClient.invalidateQueries({ queryKey: ['students_full_directory_v2'] });
+                }
                 
-                await logEvent('USER_MGMT', `Novo usuário cadastrado: ${data.name}`, { email: data.email, role: data.role, executor: userProfile.email });
+                await logEvent('USER_MGMT', `Novo utilizador registado: ${data.name}`, { 
+                    targetUid: cred.user.uid,
+                    email: data.email, 
+                    role: data.role, 
+                    executor: userProfile.email 
+                });
+
                 await signOut(secondaryAuth);
-                addToast('Usuário criado!', 'success');
+                addToast('Utilizador criado!', 'success');
             }
             
             reset();
@@ -223,7 +274,6 @@ export default function UserManagement({ userProfile }) {
         }
     };
 
-    // Handler para abrir o formulário de edição
     const handleEditClick = (u) => {
         setEditing(u);
         reset({
@@ -243,31 +293,36 @@ export default function UserManagement({ userProfile }) {
         setView('form');
     };
 
-    // Handler de exclusão COM BATCH
     const handleDelete = async (u) => {
         if (u.uid === userProfile.uid) { addToast('Não pode excluir a si mesmo.', 'error'); return; }
         const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'items'), where('studentId', '==', u.uid), limit(1));
         const snap = await getDocs(q);
-        if (!snap.empty && snap.docs[0].data().status !== 'retirado') { addToast(`Não é possível excluir. Usuário possui itens pendentes.`, 'error'); return; }
+        if (!snap.empty && snap.docs[0].data().status !== 'retirado') { addToast(`Não é possível excluir. Utilizador possui itens pendentes.`, 'error'); return; }
 
-        if(!await confirm({ title: 'Desativar Usuário', message: `Deseja realmente excluir/desativar ${u.name}?`, isDestructive: true })) return;
+        if(!await confirm({ title: 'Desativar Utilizador', message: `Deseja realmente desativar ${u.name}?`, isDestructive: true })) return;
         
         try {
-            const batch = writeBatch(db); // <--- INICIA BATCH
+            const batch = writeBatch(db);
             batch.update(doc(db, 'artifacts', appId, 'users', u.uid, 'profile', 'data'), { active: false });
             batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'users_directory', u.uid), { active: false });
-            await batch.commit(); // <--- EXECUTA
+            await batch.commit();
 
-            await logEvent('USER_MGMT', `Usuário desativado: ${u.name}`, { targetUid: u.uid, executor: userProfile.email });
-            addToast('Usuário desativado.', 'success');
+            // --- CACHE UPDATE ---
+            if (u.role === 'student') {
+                console.log("Aluno desativado. Invalidando cache...");
+                await queryClient.invalidateQueries({ queryKey: ['students_full_directory_v2'] });
+            }
+
+            await logEvent('USER_MGMT', `Utilizador desativado: ${u.name}`, { targetUid: u.uid, executor: userProfile.email });
+            addToast('Utilizador desativado.', 'success');
+            
             fetchUsers(search);
         } catch(e) {
-            addToast('Erro ao desativar usuário.', 'error');
+            addToast('Erro ao desativar utilizador.', 'error');
             console.error(e);
         }
     };
 
-    // --- FUNÇÕES DE IMPORTAÇÃO CSV ---
     const handleFileSelect = (e) => {
          const file = e.target.files[0];
          if (!file) return;
@@ -307,7 +362,7 @@ export default function UserManagement({ userProfile }) {
              });
  
              if (parsedData.length === 0) {
-                 addToast(ignoredCount > 0 ? 'Nenhum usuário válido para seu nível de permissão.' : 'Arquivo inválido.', 'error');
+                 addToast(ignoredCount > 0 ? 'Nenhum utilizador válido.' : 'Arquivo inválido.', 'error');
                  e.target.value = '';
                  return;
              }
@@ -330,31 +385,46 @@ export default function UserManagement({ userProfile }) {
          const secondaryApp = getSecondaryApp();
          const secondaryAuth = getAuth(secondaryApp);
          const toImport = csvPreview.filter(item => selectedImportIndices.has(item.id));
+         let importedStudents = 0;
  
          for (const user of toImport) {
              if (await checkCpfExists(user.cpf)) {
-                 errors++; errorDetails.push(`${user.name}: CPF ${user.cpf} já cadastrado.`); continue;
+                 errors++; errorDetails.push(`${user.name}: CPF ${user.cpf} já registado.`); continue;
              }
              try {
                  const cred = await createUserWithEmailAndPassword(secondaryAuth, user.email, user.password);
                  const data = { name: user.name, email: user.email, cpf: user.cpf, role: user.role, active: true, createdAt: serverTimestamp() };
                  
-                 // CORREÇÃO: BATCH POR USUÁRIO NA IMPORTAÇÃO
                  const batch = writeBatch(db);
                  batch.set(doc(db, 'artifacts', appId, 'users', cred.user.uid, 'profile', 'data'), data);
                  batch.set(doc(db, 'artifacts', appId, 'public', 'data', 'users_directory', cred.user.uid), data);
                  await batch.commit();
 
-                 await logEvent('USER_MGMT', `Importação CSV: Criado ${user.name}`, { email: user.email, role: user.role, executor: userProfile.email });
+                 await logEvent('USER_MGMT', `Importação CSV: Criado ${user.name}`, { 
+                     targetUid: cred.user.uid,
+                     email: user.email, 
+                     role: user.role, 
+                     executor: userProfile.email 
+                 });
+                 
                  success++;
+                 if (user.role === 'student') importedStudents++;
+
              } catch (err) {
-                 errors++; console.error(`Erro ao importar ${user.email}:`, err);
-                 const msg = err.code === 'auth/email-already-in-use' ? 'Email já cadastrado.' : translateFirebaseError(err);
+                 errors++; 
+                 const msg = err.code === 'auth/email-already-in-use' ? 'Email já registado.' : translateFirebaseError(err);
                  errorDetails.push(`${user.email}: ${msg}`);
              }
          }
  
          await signOut(secondaryAuth);
+         
+         // --- CACHE UPDATE ---
+         if (importedStudents > 0) {
+             console.log(`${importedStudents} alunos importados. Invalidando cache...`);
+             await queryClient.invalidateQueries({ queryKey: ['students_full_directory_v2'] });
+         }
+
          setImporting(false);
          setShowImportModal(false);
          setCsvPreview([]);
@@ -375,19 +445,18 @@ export default function UserManagement({ userProfile }) {
                      </div>
                  ) 
              });
-         } else { addToast(`${success} usuários importados com sucesso!`, 'success'); }
+         } else { addToast(`${success} utilizadores importados com sucesso!`, 'success'); }
          fetchUsers(search);
      };
 
      const toggleSelect = (id) => { const newSet = new Set(selectedImportIndices); if (newSet.has(id)) newSet.delete(id); else newSet.add(id); setSelectedImportIndices(newSet); };
      const toggleAll = () => { if (selectedImportIndices.size === csvPreview.length) setSelectedImportIndices(new Set()); else setSelectedImportIndices(new Set(csvPreview.map(i => i.id))); };
 
-
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                 <h2 className="font-bold text-[#021D34] text-2xl flex items-center gap-2 w-full md:w-auto">
-                    <Users className="text-[#009DE0]"/> Gestão de Usuários
+                    <Users className="text-[#009DE0]"/> Gestão de Utilizadores
                 </h2>
                 
                 <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
@@ -414,7 +483,7 @@ export default function UserManagement({ userProfile }) {
                  <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col animate-in zoom-in-95">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                            <div><h3 className="text-xl font-bold text-[#021D34]">Confirmar Importação</h3><p className="text-sm text-slate-500">Selecione os usuários que deseja cadastrar.</p></div>
+                            <div><h3 className="text-xl font-bold text-[#021D34]">Confirmar Importação</h3><p className="text-sm text-slate-500">Selecione os utilizadores que deseja registar.</p></div>
                             <button onClick={() => setShowImportModal(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
                         </div>
                         <div className="flex-1 overflow-auto p-0 bg-slate-50">
@@ -456,14 +525,24 @@ export default function UserManagement({ userProfile }) {
                             <input className="w-full pl-10 p-2 border rounded-lg outline-none focus:border-[#009DE0]" placeholder="Buscar por nome ou CPF..." value={search} onChange={e => setSearch(e.target.value)}/>
                             {loading && <div className="absolute right-3 top-2.5 w-4 h-4 border-2 border-[#009DE0] border-t-transparent rounded-full animate-spin"/>}
                          </div>
-                         <select className="p-2 border rounded-lg bg-white w-full md:w-auto" value={filterRole} onChange={e => setFilterRole(e.target.value)}>
-                            <option value="all">Todos os Perfis</option>
-                            <option value="student">Alunos</option>
-                            <option value="tech">Técnicos</option>
-                            <option value="admin">Administradores</option>
-                         </select>
+                         <div className="flex gap-2">
+                             <select className="p-2 border rounded-lg bg-white w-full md:w-auto" value={filterRole} onChange={e => setFilterRole(e.target.value)}>
+                                <option value="all">Todos os Perfis</option>
+                                <option value="student">Alunos</option>
+                                <option value="tech">Técnicos</option>
+                                <option value="admin">Administradores</option>
+                             </select>
+                             <button 
+                                onClick={() => setShowInactive(!showInactive)}
+                                className={`p-2 border rounded-lg transition-colors flex items-center gap-2 ${showInactive ? 'bg-red-50 text-red-600 border-red-200' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                                title={showInactive ? "Ocultar Inativos" : "Mostrar Inativos"}
+                             >
+                                {showInactive ? <EyeOff size={20}/> : <Eye size={20}/>}
+                                <span className="text-xs font-bold hidden sm:inline">Inativos</span>
+                             </button>
+                         </div>
                     </div>
-                    {search.length > 2 && <div className="text-xs text-slate-400 px-2 mb-2">Buscando por: <span className="font-bold">"{formatSearchTerm(search)}"</span></div>}
+                    {search.length > 2 && <div className="text-xs text-slate-400 px-2 mb-2">A pesquisar por: <span className="font-bold">"{formatSearchTerm(search)}"</span></div>}
                     <DataTable 
                         columns={[
                             { key: 'name', label: 'Nome', sortable: true, render: (u) => <div><p className="font-medium text-[#021D34]">{u.name}</p><p className="text-xs text-slate-400">{u.email}</p></div> },
@@ -472,7 +551,7 @@ export default function UserManagement({ userProfile }) {
                             { key: 'active', label: 'Status', render: (u) => <span className={`text-xs font-bold px-2 py-1 rounded ${u.active !== false ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{u.active !== false ? 'Ativo' : 'Inativo'}</span> }
                         ]}
                         data={users} 
-                        emptyMsg={loading ? 'Buscando...' : 'Nenhum usuário encontrado.'}
+                        emptyMsg={loading ? 'A pesquisar...' : 'Nenhum utilizador encontrado.'}
                         mobileRender={(u) => (
                             <div className="flex justify-between items-center">
                                 <div>
@@ -501,14 +580,14 @@ export default function UserManagement({ userProfile }) {
                         <div className="flex justify-center pt-4">
                             <button onClick={loadMore} disabled={loadingMore} className="bg-white border border-slate-300 text-slate-600 px-6 py-2 rounded-full text-sm font-bold hover:bg-slate-50 hover:text-[#009DE0] hover:border-[#009DE0] transition-all flex items-center gap-2 disabled:opacity-50">
                                 {loadingMore ? <Loader2 className="animate-spin w-4 h-4"/> : <ArrowDown size={16}/>}
-                                {loadingMore ? 'Buscando...' : 'Ver Mais Usuários'}
+                                {loadingMore ? 'A pesquisar...' : 'Ver Mais Utilizadores'}
                             </button>
                         </div>
                     )}
                 </div>
             ) : (
                 <div className="bg-white p-8 rounded-xl border border-slate-200 max-w-2xl mx-auto shadow-sm">
-                    <h3 className="font-bold text-lg mb-6 border-b pb-2">{editing ? 'Editar Usuário' : 'Cadastrar Novo'}</h3>
+                    <h3 className="font-bold text-lg mb-6 border-b pb-2">{editing ? 'Editar Utilizador' : 'Registar Novo'}</h3>
                     
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                         <div className="grid md:grid-cols-2 gap-4">

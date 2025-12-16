@@ -1,64 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  collection, 
-  query, 
-  orderBy, 
-  limit, 
-  where, 
-  onSnapshot,
-  getDocs,
-  getCountFromServer // Agregação
+  collection, query, orderBy, limit, onSnapshot 
 } from 'firebase/firestore';
 import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  BarChart, 
-  Bar, 
-  Cell 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, 
+  Tooltip, ResponsiveContainer, BarChart, Bar, Cell 
 } from 'recharts';
 import { 
-  Activity, 
-  Clock, 
-  AlertCircle, 
-  CheckCircle2, 
-  CheckSquare, 
-  TrendingUp, 
-  Lightbulb, 
-  BarChart3, 
-  UserCog,
-  RotateCw, 
-  Loader2
+  Activity, Clock, AlertCircle, CheckCircle2, 
+  CheckSquare, TrendingUp, Lightbulb, BarChart3, 
+  UserCog, RotateCw, Loader2
 } from 'lucide-react';
 
 // Imports internos
 import { db, appId } from '../config/firebase';
 import StatCard from '../components/StatCard'; 
+import Skeleton from '../components/Skeleton';
+import { useDashboardStats } from '../hooks/useDashboardStats'; 
 
 const COLORS = ['#009DE0', '#021D34', '#F97316', '#22C55E', '#64748B'];
 
 export default function Dashboard({ userProfile }) {
-    const [stats, setStats] = useState({ 
-        current: { rec:0, em:0, pront:0, ret:0 }, 
-        previous: { rec:0, em:0, pront:0, ret:0 },
-        types: [],
-        timeline: [],
-        topStudents: [] 
-    });
-    const [anns, setAnns] = useState([]);
     const [period, setPeriod] = useState('7d');
     const [customStart, setCustomStart] = useState('');
     const [customEnd, setCustomEnd] = useState('');
-    const [insights, setInsights] = useState([]);
-    
-    const [loading, setLoading] = useState(false);
-    const [lastUpdated, setLastUpdated] = useState(new Date());
+    const [anns, setAnns] = useState([]);
 
-    // --- Recados (Mantido em Tempo Real pois são poucos - Limit 10) ---
+    // --- HOOK COM CACHE AGRESSIVO (4 HORAS) ---
+    const { 
+        data: stats, 
+        isLoading, 
+        refetch, 
+        isRefetching 
+    } = useDashboardStats({ userProfile, period, customStart, customEnd });
+
+    // --- Recados (Mantido em Tempo Real) ---
     useEffect(() => {
         const now = new Date();
         const q = query(
@@ -69,11 +45,9 @@ export default function Dashboard({ userProfile }) {
 
         const unsubAnn = onSnapshot(q, (s) => {
             const all = s.docs.map(d => ({id: d.id, ...d.data()}));
-            
             const active = all.filter(a => {
                 const start = a.validFrom ? new Date(a.validFrom) : null;
                 const end = a.validUntil ? new Date(a.validUntil) : null;
-                
                 if (start && now < start) return false;
                 if (end && now > end) return false;
                 return true;
@@ -83,139 +57,12 @@ export default function Dashboard({ userProfile }) {
         return () => unsubAnn();
     }, []);
 
-    // --- CARREGAMENTO OTIMIZADO DE DADOS ---
-    const loadDashboardData = async () => {
-        setLoading(true);
-        try {
-            // 1. Definir datas
-            let startDate = new Date();
-            let endDate = new Date(2100, 11, 31); 
-            const now = new Date();
-
-            if (period === '7d') startDate.setDate(now.getDate() - 7);
-            if (period === '30d') startDate.setDate(now.getDate() - 30);
-            if (period === 'year') startDate = new Date(now.getFullYear(), 0, 1);
-            if (period === 'custom') {
-                if (!customStart) { setLoading(false); return; }
-                startDate = new Date(customStart);
-                if (customEnd) endDate = new Date(customEnd + 'T23:59:59');
-            }
-
-            if (period !== 'custom') startDate.setHours(0,0,0,0);
-
-            // 2. Construir Constraints Básicas
-            const baseConstraints = [
-                where('createdAt', '>=', startDate),
-                where('createdAt', '<=', endDate)
-            ];
-
-            if (userProfile.role === 'student') {
-                baseConstraints.push(where('studentId', '==', userProfile.uid));
-            }
-
-            const itemsRef = collection(db, 'artifacts', appId, 'public', 'data', 'items');
-
-            // --- PARTE A: AGREGAÇÃO (CONTADORES TOTAIS) ---
-            const statusTypes = ['recebido', 'em_esterilizacao', 'pronto', 'retirado'];
-            
-            const countPromises = statusTypes.map(async (statusKey) => {
-                const q = query(itemsRef, ...baseConstraints, where('status', '==', statusKey));
-                const snapshot = await getCountFromServer(q);
-                // --- CORREÇÃO AQUI: .count (propriedade) e não .count() (função) ---
-                return { status: statusKey, count: snapshot.data().count };
-            });
-
-            // --- PARTE B: DADOS PARA GRÁFICOS (AMOSTRA RECENTE) ---
-            const chartQuery = query(
-                itemsRef, 
-                ...baseConstraints, 
-                orderBy('createdAt', 'desc'), 
-                limit(100) 
-            );
-            
-            // Executa tudo em paralelo
-            const [countsResult, chartSnapshot] = await Promise.all([
-                Promise.all(countPromises),
-                getDocs(chartQuery)
-            ]);
-
-            // Processa Contadores (Cards)
-            const newCounts = { rec:0, em:0, pront:0, ret:0 };
-            countsResult.forEach(res => {
-                if(res.status === 'recebido') newCounts.rec = res.count;
-                if(res.status === 'em_esterilizacao') newCounts.em = res.count;
-                if(res.status === 'pronto') newCounts.pront = res.count;
-                if(res.status === 'retirado') newCounts.ret = res.count;
-            });
-
-            // Processa Gráficos (Baseado na amostra de 100)
-            const typeCount = {};
-            const dailyCount = {};
-            const studentCount = {};
-            const chartDocs = chartSnapshot.docs.map(d => d.data());
-
-            chartDocs.forEach(data => {
-                const date = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
-                
-                // Por Tipo
-                typeCount[data.type] = (typeCount[data.type] || 0) + 1;
-
-                // Por Dia
-                const dayKey = date.toLocaleDateString('pt-BR');
-                dailyCount[dayKey] = (dailyCount[dayKey] || 0) + 1;
-
-                // Por Aluno
-                if (userProfile.role !== 'student') {
-                    studentCount[data.studentName] = (studentCount[data.studentName] || 0) + 1;
-                }
-            });
-
-            // Formatação para Recharts
-            const typesData = Object.entries(typeCount)
-                .map(([name, value]) => ({ name, value }))
-                .sort((a,b) => b.value - a.value);
-            
-            const timelineData = Object.entries(dailyCount)
-                .map(([name, value]) => ({ name, value }))
-                .sort((a,b) => {
-                    const [da, ma, ya] = a.name.split('/');
-                    const [db, mb, yb] = b.name.split('/');
-                    return new Date(ya, ma-1, da) - new Date(yb, mb-1, db);
-                });
-            
-            const topStudentsData = Object.entries(studentCount)
-                .map(([name, value]) => ({ name, value }))
-                .sort((a,b) => b.value - a.value)
-                .slice(0, 5);
-
-            // Insights simples
-            const newInsights = [];
-            if (typesData.length > 0) newInsights.push(`Material recente mais comum: "${typesData[0].name}".`);
-            if (timelineData.length > 0) newInsights.push(`Atividade recente concentrada em: ${timelineData[timelineData.length-1].name}.`);
-            if (chartSnapshot.size === 100) newInsights.push(`Exibindo dados baseados nos últimos 100 registros do período.`);
-
-            setStats({
-                current: newCounts, // Totais EXATOS (via agregação)
-                previous: { rec:0, em:0, pront:0, ret:0 }, 
-                types: typesData,   // Baseado nos últimos 100
-                timeline: timelineData, // Baseado nos últimos 100
-                topStudents: topStudentsData // Baseado nos últimos 100
-            });
-            setInsights(newInsights);
-            setLastUpdated(new Date());
-
-        } catch (error) {
-            console.error("Erro no Dashboard:", error);
-        } finally {
-            setLoading(false);
-        }
+    // Helper para evitar erro de undefined enquanto carrega
+    const safeStats = stats || { 
+        current: { rec:0, em:0, pront:0, ret:0 }, 
+        types: [], timeline: [], topStudents: [], insights: [],
+        lastUpdated: new Date()
     };
-
-    // Dispara o carregamento quando mudar os filtros
-    useEffect(() => {
-        loadDashboardData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userProfile, period, customStart, customEnd]);
 
     return (
         <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500 w-full max-w-full overflow-x-hidden">
@@ -225,9 +72,17 @@ export default function Dashboard({ userProfile }) {
                     <h2 className="text-2xl md:text-3xl font-bold text-[#021D34]">Olá, {userProfile.name.split(' ')[0]}</h2>
                     <p className="text-slate-500 flex items-center gap-2 text-sm md:text-base">
                         <Activity size={16}/> Visão geral da central.
-                        <span className="text-xs text-slate-400 ml-2 border-l pl-2">
-                            Atualizado às {lastUpdated.toLocaleTimeString()}
-                        </span>
+                        
+                        {!isLoading && stats && (
+                            <span className="text-xs text-slate-400 ml-2 border-l pl-2 flex items-center gap-1">
+                                Última verificação: 
+                                <span className="font-bold text-slate-600">
+                                    {stats.lastUpdated.toLocaleString('pt-BR', { 
+                                        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
+                                    })}
+                                </span>
+                            </span>
+                        )}
                     </p>
                 </div>
                 
@@ -247,17 +102,17 @@ export default function Dashboard({ userProfile }) {
                     )}
 
                     <button 
-                        onClick={loadDashboardData} 
-                        disabled={loading}
-                        className="p-2 bg-[#021D34] text-white rounded hover:bg-[#009DE0] disabled:opacity-50 transition-colors"
-                        title="Atualizar Dados"
+                        onClick={() => refetch()} 
+                        disabled={isLoading || isRefetching}
+                        className={`p-2 rounded text-white transition-all disabled:opacity-50 ${isRefetching ? 'bg-[#009DE0] ring-2 ring-blue-200' : 'bg-[#021D34] hover:bg-[#009DE0]'}`}
+                        title="Atualizar Dados Agora"
                     >
-                        {loading ? <Loader2 className="animate-spin" size={18}/> : <RotateCw size={18}/>}
+                        {(isLoading || isRefetching) ? <Loader2 className="animate-spin" size={18}/> : <RotateCw size={18}/>}
                     </button>
                 </div>
             </div>
 
-            {/* Announcements (Mantido igual) */}
+            {/* Announcements (Recados) */}
             {anns.length > 0 && (
                 <div className="grid gap-4 md:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                     {anns.map(a => (
@@ -289,62 +144,83 @@ export default function Dashboard({ userProfile }) {
                 </div>
             )}
 
-            {/* StatCards - Usam os dados da AGREGACÃO (Exatos) */}
+            {/* StatCards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-                <StatCard title="Recebidos" count={stats.current.rec} icon={Clock} color="text-slate-600" bg="bg-slate-100" />
-                <StatCard title="Em Processo" count={stats.current.em} icon={AlertCircle} color="text-orange-600" bg="bg-orange-50" />
-                <StatCard title="Prontos" count={stats.current.pront} icon={CheckCircle2} color="text-green-600" bg="bg-green-50" />
-                <StatCard title="Retirados" count={stats.current.ret} icon={CheckSquare} color="text-[#009DE0]" bg="bg-blue-50" />
+                {isLoading ? (
+                    [...Array(4)].map((_, i) => (
+                        <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm animate-pulse">
+                            <div className="flex justify-between items-start mb-4">
+                                <Skeleton className="w-12 h-12 rounded-xl" />
+                            </div>
+                            <Skeleton className="h-8 w-16 mb-2" />
+                            <Skeleton className="h-3 w-24" />
+                        </div>
+                    ))
+                ) : (
+                    <>
+                        <StatCard title="Recebidos" count={safeStats.current.rec} icon={Clock} color="text-slate-600" bg="bg-slate-100" />
+                        <StatCard title="Em Processo" count={safeStats.current.em} icon={AlertCircle} color="text-orange-600" bg="bg-orange-50" />
+                        <StatCard title="Prontos" count={safeStats.current.pront} icon={CheckCircle2} color="text-green-600" bg="bg-green-50" />
+                        <StatCard title="Retirados" count={safeStats.current.ret} icon={CheckSquare} color="text-[#009DE0]" bg="bg-blue-50" />
+                    </>
+                )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* AreaChart Container */}
                 <div className="lg:col-span-2 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm w-full min-w-0 flex flex-col">
                     <h3 className="font-bold text-[#021D34] mb-6 flex items-center gap-2 text-sm md:text-base">
-                        <TrendingUp className="text-[#009DE0]"/> Fluxo Recente ({stats.timeline.length} dias)
+                        <TrendingUp className="text-[#009DE0]"/> Fluxo Recente ({safeStats.timeline.length} dias)
                     </h3>
                     <div className="h-64 md:h-72 w-full min-w-0 flex-1 relative" style={{ minHeight: '250px' }}>
-                         {/* CORREÇÃO DO RECHARTS: Adicionado style absolute wrapper para evitar erro de resize */}
-                         <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <AreaChart data={stats.timeline}>
-                                    <defs>
-                                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="5%" stopColor="#009DE0" stopOpacity={0.3}/>
-                                            <stop offset="95%" stopColor="#009DE0" stopOpacity={0}/>
-                                        </linearGradient>
-                                    </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0"/>
-                                    <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 10}} dy={10} minTickGap={30}/>
-                                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 10}}/>
-                                    <Tooltip 
-                                        contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                                        formatter={(value) => [value, "Quantidade"]}
-                                    />
-                                    <Area type="monotone" dataKey="value" stroke="#009DE0" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
-                                </AreaChart>
-                            </ResponsiveContainer>
-                        </div>
+                        {isLoading ? (
+                            <Skeleton className="w-full h-full rounded-lg" />
+                        ) : (
+                            <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <AreaChart data={safeStats.timeline}>
+                                        <defs>
+                                            <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#009DE0" stopOpacity={0.3}/>
+                                                <stop offset="95%" stopColor="#009DE0" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0"/>
+                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 10}} dy={10} minTickGap={30}/>
+                                        <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748B', fontSize: 10}}/>
+                                        <Tooltip 
+                                            contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                                            formatter={(value) => [value, "Quantidade"]}
+                                        />
+                                        <Area type="monotone" dataKey="value" stroke="#009DE0" strokeWidth={3} fillOpacity={1} fill="url(#colorValue)" />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 <div className="space-y-6 w-full min-w-0">
                     {/* Insights */}
-                    <div className="bg-gradient-to-br from-[#021D34] to-[#009DE0] p-4 md:p-6 rounded-2xl shadow-lg text-white">
-                        <h3 className="font-bold flex items-center gap-2 mb-4 text-white/90 text-sm md:text-base">
-                            <Lightbulb className="text-yellow-400"/> Insights
-                        </h3>
-                        <ul className="space-y-3 text-xs md:text-sm text-white/80">
-                            {insights.length > 0 ? insights.map((ins, i) => (
-                                <li key={i} className="flex gap-2">
-                                    <span className="mt-1.5 w-1.5 h-1.5 bg-yellow-400 rounded-full flex-shrink-0"/>
-                                    {ins}
-                                </li>
-                            )) : (
-                                <li>Sem dados suficientes no período.</li>
-                            )}
-                        </ul>
-                    </div>
+                    {isLoading ? (
+                        <Skeleton className="h-40 w-full rounded-2xl" />
+                    ) : (
+                        <div className="bg-gradient-to-br from-[#021D34] to-[#009DE0] p-4 md:p-6 rounded-2xl shadow-lg text-white">
+                            <h3 className="font-bold flex items-center gap-2 mb-4 text-white/90 text-sm md:text-base">
+                                <Lightbulb className="text-yellow-400"/> Insights
+                            </h3>
+                            <ul className="space-y-3 text-xs md:text-sm text-white/80">
+                                {safeStats.insights.length > 0 ? safeStats.insights.map((ins, i) => (
+                                    <li key={i} className="flex gap-2">
+                                        <span className="mt-1.5 w-1.5 h-1.5 bg-yellow-400 rounded-full flex-shrink-0"/>
+                                        {ins}
+                                    </li>
+                                )) : (
+                                    <li>Sem dados suficientes no período.</li>
+                                )}
+                            </ul>
+                        </div>
+                    )}
 
                     {/* BarChart Container */}
                     <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm h-[300px] flex flex-col w-full min-w-0 relative">
@@ -352,63 +228,86 @@ export default function Dashboard({ userProfile }) {
                             <BarChart3 className="text-[#009DE0]"/> Tipos (Amostra Recente)
                         </h3>
                         <div className="flex-1 w-full min-h-0 relative" style={{ minHeight: '200px' }}>
-                             <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart
-                                        layout="vertical"
-                                        data={stats.types.slice(0, 10)}
-                                        margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
-                                    >
-                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0"/>
-                                        <XAxis type="number" hide />
-                                        <YAxis 
-                                            dataKey="name" 
-                                            type="category" 
-                                            width={80} 
-                                            tick={{fill: '#64748B', fontSize: 10}}
-                                            interval={0}
-                                        />
-                                        <Tooltip 
-                                            cursor={{fill: '#F1F5F9'}}
-                                            contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                                            formatter={(value) => [value, "Quantidade"]}
-                                        />
-                                        <Bar dataKey="value" fill="#009DE0" radius={[0, 4, 4, 0]} barSize={16}>
-                                            {stats.types.map((entry, index) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Bar>
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
+                             {isLoading ? (
+                                <div className="space-y-3 pt-4">
+                                    {[...Array(5)].map((_, i) => (
+                                        <div key={i} className="flex items-center gap-2">
+                                            <Skeleton className="h-3 w-16" />
+                                            <Skeleton className="h-4 flex-1" />
+                                        </div>
+                                    ))}
+                                </div>
+                             ) : (
+                                <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <BarChart
+                                            layout="vertical"
+                                            data={safeStats.types.slice(0, 10)}
+                                            margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+                                        >
+                                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0"/>
+                                            <XAxis type="number" hide />
+                                            <YAxis 
+                                                dataKey="name" 
+                                                type="category" 
+                                                width={80} 
+                                                tick={{fill: '#64748B', fontSize: 10}}
+                                                interval={0}
+                                            />
+                                            <Tooltip 
+                                                cursor={{fill: '#F1F5F9'}}
+                                                contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                                                formatter={(value) => [value, "Quantidade"]}
+                                            />
+                                            <Bar dataKey="value" fill="#009DE0" radius={[0, 4, 4, 0]} barSize={16}>
+                                                {safeStats.types.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                ))}
+                                            </Bar>
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </div>
+                             )}
                         </div>
                     </div>
                 </div>
             </div>
 
-            {userProfile.role !== 'student' && stats.topStudents.length > 0 && (
+            {/* Top Students - Apenas para Admins/Techs */}
+            {userProfile.role !== 'student' && safeStats.topStudents.length > 0 && (
                 <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm w-full min-w-0">
                     <h3 className="font-bold text-[#021D34] mb-6 flex items-center gap-2 text-sm md:text-base">
                         <UserCog className="text-[#009DE0]"/> Top Alunos (Atividade Recente)
                     </h3>
                     <div className="h-64 w-full min-w-0 relative">
-                        <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
-                            <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={stats.topStudents} layout="vertical" margin={{left: 0}}>
-                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0"/>
-                                    <XAxis type="number" hide/>
-                                    <YAxis dataKey="name" type="category" width={100} tick={{fill: '#64748B', fontSize: 10}}/>
-                                    <Tooltip 
-                                        cursor={{fill: '#F1F5F9'}} 
-                                        contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                                        formatter={(value) => [value, "Materiais"]}
-                                    />
-                                    <Bar dataKey="value" fill="#009DE0" radius={[0, 4, 4, 0]} barSize={20}>
-                                        { stats.topStudents.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % 5]} />) }
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
+                        {isLoading ? (
+                             <div className="space-y-4 pt-4">
+                                {[...Array(5)].map((_, i) => (
+                                    <div key={i} className="flex items-center gap-2">
+                                        <Skeleton className="h-4 w-24" />
+                                        <Skeleton className="h-6 flex-1" />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div style={{ width: '100%', height: '100%', position: 'absolute', top: 0, left: 0 }}>
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={safeStats.topStudents} layout="vertical" margin={{left: 0}}>
+                                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E2E8F0"/>
+                                        <XAxis type="number" hide/>
+                                        <YAxis dataKey="name" type="category" width={100} tick={{fill: '#64748B', fontSize: 10}}/>
+                                        <Tooltip 
+                                            cursor={{fill: '#F1F5F9'}} 
+                                            contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
+                                            formatter={(value) => [value, "Materiais"]}
+                                        />
+                                        <Bar dataKey="value" fill="#009DE0" radius={[0, 4, 4, 0]} barSize={20}>
+                                            { safeStats.topStudents.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % 5]} />) }
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
