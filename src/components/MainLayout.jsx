@@ -26,6 +26,9 @@ export default function MainLayout({ user, userProfile }) {
     const [menuOpen, setMenuOpen] = useState(false);
     const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
     
+    // --- NOVO: Estado para detecção de Mobile ---
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    
     const { confirm } = useDialog();
     const { addToast } = useToast();
     const isOnline = useOnlineStatus();
@@ -34,6 +37,13 @@ export default function MainLayout({ user, userProfile }) {
     const warningTimer = useRef(null);
     
     useStudentsDirectory({ enabled: !!userProfile });
+
+    // --- EFEITO PARA DETECTAR MUDANÇA DE TELA ---
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // --- CHECKUP DE BACKUP (SYNC MANAGER) ---
     useEffect(() => {
@@ -167,8 +177,26 @@ export default function MainLayout({ user, userProfile }) {
         setMenuOpen(false);
     };
 
+    // =====================================================================
+    // --- NOVO: TELA DE BLOQUEIO (MOBILE + OFFLINE) ---
+    // =====================================================================
+    if (!isOnline && isMobile) {
+        return (
+            <div className="flex flex-col h-screen items-center justify-center bg-[#F8FAFC] p-8 text-center animate-in fade-in duration-500">
+                <div className="bg-red-50 p-6 rounded-full mb-6 border border-red-100 shadow-sm animate-pulse">
+                    <WifiOff className="w-16 h-16 text-red-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-[#021D34] mb-3">Sem Conexão</h2>
+                <p className="text-slate-500 max-w-xs mx-auto text-sm leading-relaxed">
+                    O modo offline não está disponível na versão mobile, pois a Recepção requer um computador. 
+                    <br/><br/>
+                    Por favor, reconecte-se à internet para visualizar seus dados ou utilize um Desktop.
+                </p>
+            </div>
+        );
+    }
+
     return (
-        // CORREÇÃO 1: Removido 'pt-8' daqui. Isso elimina o padding do topo no container geral.
         <div className="flex h-screen bg-[#F8FAFC] overflow-hidden font-sans text-slate-800"> 
             
             <OfflineNotice />
@@ -231,7 +259,6 @@ export default function MainLayout({ user, userProfile }) {
 
             {/* ÁREA PRINCIPAL */}
             <main className="flex-1 flex flex-col h-screen relative">
-                {/* CORREÇÃO 2: Removido 'mt-8'. Isso elimina o margin extra que empurrava o cabeçalho. */}
                 <header className="md:hidden flex items-center justify-between p-4 bg-white border-b z-10 shadow-sm">
                     <button onClick={() => setMenuOpen(true)} className="p-2 -ml-2 text-[#021D34]"><Menu/></button>
                     <img src={LOGOS.color} className="h-8 w-auto" alt="Logo Color" />
