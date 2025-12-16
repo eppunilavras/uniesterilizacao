@@ -7,7 +7,7 @@ import {
   writeBatch 
 } from 'firebase/firestore';
 import { 
-  Search, Edit2, Trash2, Loader2, ArrowDown, Upload, 
+  Search, Edit2, Ban, Loader2, ArrowDown, Upload, 
   FileUp, X, CheckSquare, Square, AlertTriangle, 
   CheckCircle2, XCircle, Users, Eye, EyeOff 
 } from 'lucide-react';
@@ -293,32 +293,42 @@ export default function UserManagement({ userProfile }) {
         setView('form');
     };
 
-    const handleDelete = async (u) => {
-        if (u.uid === userProfile.uid) { addToast('Não pode excluir a si mesmo.', 'error'); return; }
+    const handleInactivate = async (u) => {
+        if (u.uid === userProfile.uid) { addToast('Não pode inativar a si mesmo.', 'error'); return; }
+        
+        // Verifica pendências antes de inativar
         const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'items'), where('studentId', '==', u.uid), limit(1));
         const snap = await getDocs(q);
-        if (!snap.empty && snap.docs[0].data().status !== 'retirado') { addToast(`Não é possível excluir. Utilizador possui itens pendentes.`, 'error'); return; }
+        if (!snap.empty && snap.docs[0].data().status !== 'retirado') { 
+            addToast(`Não é possível inativar. Utilizador possui itens pendentes.`, 'error'); 
+            return; 
+        }
 
-        if(!await confirm({ title: 'Desativar Utilizador', message: `Deseja realmente desativar ${u.name}?`, isDestructive: true })) return;
+        if(!await confirm({ 
+            title: 'Inativar Acesso', 
+            message: `Deseja suspender o acesso de ${u.name}? O histórico será mantido, mas o login será bloqueado.`, 
+            isDestructive: true, 
+            confirmText: 'Inativar'
+        })) return;
         
         try {
             const batch = writeBatch(db);
+            // Atualiza perfil privado e diretório público
             batch.update(doc(db, 'artifacts', appId, 'users', u.uid, 'profile', 'data'), { active: false });
             batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'users_directory', u.uid), { active: false });
             await batch.commit();
 
-            // --- CACHE UPDATE ---
+            // Invalida cache se for aluno
             if (u.role === 'student') {
-                console.log("Aluno desativado. Invalidando cache...");
                 await queryClient.invalidateQueries({ queryKey: ['students_full_directory_v2'] });
             }
 
-            await logEvent('USER_MGMT', `Utilizador desativado: ${u.name}`, { targetUid: u.uid, executor: userProfile.email });
-            addToast('Utilizador desativado.', 'success');
+            await logEvent('USER_MGMT', `Utilizador inativado: ${u.name}`, { targetUid: u.uid, executor: userProfile.email });
+            addToast('Acesso suspenso com sucesso.', 'success');
             
             fetchUsers(search);
         } catch(e) {
-            addToast('Erro ao desativar utilizador.', 'error');
+            addToast('Erro ao inativar utilizador.', 'error');
             console.error(e);
         }
     };
@@ -566,12 +576,18 @@ export default function UserManagement({ userProfile }) {
                         )}
                         actions={(u) => {
                             const canEdit = userProfile.role === 'admin' || (userProfile.role === 'tech' && u.role === 'student');
-                            const canDelete = userProfile.role === 'admin';
-                            if (!canEdit && !canDelete) return null;
+                            
+                            if (!canEdit) return null;
                             return (
                                 <div className="flex gap-2 justify-center">
-                                    {canEdit && <button onClick={() => handleEditClick(u)} className="p-2 text-blue-600 hover:bg-blue-50 rounded bg-slate-50 border border-blue-100"><Edit2 size={16}/></button>}
-                                    {canDelete && <button onClick={() => handleDelete(u)} className="p-2 text-red-600 hover:bg-red-50 rounded bg-slate-50 border border-red-100"><Trash2 size={16}/></button>}
+                                    <button onClick={() => handleEditClick(u)} className="p-2 text-blue-600 hover:bg-blue-50 rounded bg-slate-50 border border-blue-100" title="Editar"><Edit2 size={16}/></button>
+                                    
+                                    {/* Botão de Inativar (Ban) - Só aparece se estiver ATIVO */}
+                                    {u.active !== false && (
+                                        <button onClick={() => handleInactivate(u)} className="p-2 text-orange-600 hover:bg-orange-50 rounded bg-slate-50 border border-orange-100" title="Inativar/Bloquear Acesso">
+                                            <Ban size={16}/>
+                                        </button>
+                                    )}
                                 </div>
                             );
                         }}
