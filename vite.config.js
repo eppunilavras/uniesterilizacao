@@ -6,24 +6,32 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'prompt', // Isso segura a atualização e gera o estado "aguardando"
+      // Mantém 'prompt' para usar seu componente de aviso de atualização
+      registerType: 'prompt', 
       
-      // --- ADICIONE ESTE BLOCO ---
+      // Mantém as opções de desenvolvimento
       devOptions: {
-        enabled: true, // Habilita o PWA no npm run dev
-        type: 'module', // Necessário para versões recentes do Vite
+        enabled: true, 
+        type: 'module', 
       },
-      // ---------------------------
 
+      // Seus assets originais
       includeAssets: ['favicon.ico', 'icons/apple-touch-icon.png'],
+
       manifest: {
-        name: 'Controle de Esterilização Unilavras',
-        short_name: 'UniEsterilização',
-        description: 'Sistema de controle de fluxo de esterilização.',
+        // --- AQUI ESTÃO AS MUDANÇAS DE NOME ---
+        // O nome global agora é o Portal
+        name: 'Portal Odontologia Unilavras',
+        short_name: 'Odonto Portal', 
+        description: 'Acesso centralizado aos sistemas da clínica odontológica.',
+        
+        // --- MANTENDO SUAS CONFIGURAÇÕES VISUAIS ---
         theme_color: '#021D34',
         background_color: '#F8FAFC',
         display: 'standalone',
         orientation: 'portrait',
+        
+        // --- MANTENDO SEUS ÍCONES ORIGINAIS ---
         icons: [
           {
             src: 'icons/pwa-192x192.png',

@@ -4,7 +4,8 @@ import { doc, getDoc } from 'firebase/firestore';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, PackagePlus, ScanBarcode, History, Users, 
-  Settings, LogOut, Menu, X, Bell, UserCircle, Timer, WifiOff 
+  Settings, LogOut, Menu, X, Bell, UserCircle, Timer, WifiOff,
+  Link as LinkIcon // <--- NOVO IMPORT PARA O ÍCONE DO PORTAL
 } from 'lucide-react';
 
 // Imports de Configuração e Utils
@@ -18,7 +19,7 @@ import OfflineNotice from './OfflineNotice';
 
 // --- CACHE INTELIGENTE: Hooks ---
 import { useStudentsDirectory } from '../hooks/useStudentsDirectory';
-import { useMaterialTypes } from '../hooks/useMaterialTypes'; // <--- IMPORTADO
+import { useMaterialTypes } from '../hooks/useMaterialTypes';
 
 export default function MainLayout({ user, userProfile }) {
     const navigate = useNavigate();
@@ -37,10 +38,8 @@ export default function MainLayout({ user, userProfile }) {
     const warningTimer = useRef(null);
     
     // --- PRÉ-CARREGAMENTO (PREFETCH) ---
-    // Ao chamar os hooks aqui, o React Query baixa os dados e guarda no cache.
-    // Assim, se a internet cair, os dados já estarão disponíveis.
     useStudentsDirectory({ enabled: !!userProfile });
-    useMaterialTypes(); // <--- CHAMADA NOVA: Carrega materiais no login
+    useMaterialTypes();
 
     // --- EFEITO: REDIRECIONAMENTO AUTOMÁTICO OFFLINE ---
     useEffect(() => {
@@ -169,6 +168,10 @@ export default function MainLayout({ user, userProfile }) {
         { id: 'history', label: 'Histórico', icon: History, roles: ['admin', 'tech', 'student'] },
         { id: 'notifications', label: 'Avisos', icon: Bell, roles: ['student'] },
         { id: 'users', label: 'Usuários', icon: Users, roles: ['admin', 'tech'] },
+        
+        // --- NOVO ITEM: GESTÃO DO PORTAL ---
+        { id: 'portal-config', label: 'Portal', icon: LinkIcon, roles: ['admin'] },
+        
         { id: 'admin', label: 'Administração', icon: Settings, roles: ['admin'] },
     ];
 
@@ -178,10 +181,11 @@ export default function MainLayout({ user, userProfile }) {
         const currentPath = location.pathname.replace('/', '');
         if (currentPath === '' || currentPath === 'profile') return;
         
+        // Se a rota atual não estiver nos itens permitidos para o papel do usuário, redireciona
         if (!allowedItems.find(i => i.id === currentPath)) {
             navigate('/dashboard', { replace: true });
         }
-    }, [location.pathname, userProfile.role, isOnline]);
+    }, [location.pathname, userProfile.role, isOnline, allowedItems, navigate]);
 
     const isActive = (id) => location.pathname.includes(id);
 
@@ -226,12 +230,13 @@ export default function MainLayout({ user, userProfile }) {
                 </div>
             )}
 
+            {/* SIDEBAR DESKTOP */}
             <aside className="hidden md:flex flex-col w-72 bg-[#021D34] shadow-xl z-20">
                 <div className="p-6 border-b border-white/10 flex flex-col items-center">
                     <img src={LOGOS.white} className="h-12 w-auto mb-3 opacity-90" alt="Logo White" />
                     <span className="text-[10px] text-[#009DE0] uppercase tracking-[0.2em] font-bold">Controle de Esterilização</span>
                 </div>
-                <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+                <nav className="flex-1 p-4 space-y-1 overflow-y-auto custom-scrollbar">
                     {allowedItems.map(item => {
                         const isBlocked = !isOnline && item.id !== 'reception';
                         return (
@@ -269,6 +274,7 @@ export default function MainLayout({ user, userProfile }) {
                 </div>
             </aside>
 
+            {/* CONTEÚDO PRINCIPAL E HEADER MOBILE */}
             <main className="flex-1 flex flex-col h-screen relative">
                 <header className="md:hidden flex items-center justify-between p-4 bg-white border-b z-10 shadow-sm">
                     <button onClick={() => setMenuOpen(true)} className="p-2 -ml-2 text-[#021D34]"><Menu/></button>
@@ -277,12 +283,14 @@ export default function MainLayout({ user, userProfile }) {
                         {userProfile.name.substring(0,2).toUpperCase()}
                     </button>
                 </header>
+                
+                {/* MENU MOBILE (DRAWER) */}
                 {menuOpen && (
                     <div className="fixed inset-0 z-50 flex">
                         <div className="fixed inset-0 bg-[#021D34]/90 backdrop-blur-sm" onClick={() => setMenuOpen(false)}/>
                         <div className="relative w-64 bg-[#021D34] h-full shadow-2xl flex flex-col p-4 animate-in slide-in-from-left">
                             <button onClick={() => setMenuOpen(false)} className="self-end text-white/50 p-2"><X/></button>
-                            <nav className="space-y-2 mt-4">
+                            <nav className="space-y-2 mt-4 overflow-y-auto">
                                 <button 
                                     onClick={() => handleNavigation('profile')} 
                                     className={`w-full flex items-center gap-3 p-3 rounded-lg text-sm font-medium ${isActive('profile') ? 'bg-[#009DE0] text-white' : 'text-slate-400'} ${!isOnline ? 'opacity-50' : ''}`}
@@ -312,6 +320,7 @@ export default function MainLayout({ user, userProfile }) {
                         </div>
                     </div>
                 )}
+                
                 <div className="flex-1 overflow-auto p-4 md:p-8 custom-scrollbar bg-[#F8FAFC]">
                     <div className="max-w-7xl mx-auto space-y-6 pb-20 md:pb-0">
                         <Outlet />
