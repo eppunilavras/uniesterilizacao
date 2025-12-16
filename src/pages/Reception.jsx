@@ -16,11 +16,10 @@ import { maskCPF } from '../utils/formatters';
 import { useStudentsDirectory } from '../hooks/useStudentsDirectory';
 import { useMaterialTypes } from '../hooks/useMaterialTypes';
 import { useOnlineStatus } from '../hooks/useOnlineStatus'; 
-import { useQueryClient } from '@tanstack/react-query'; // <--- IMPORTANTE
+import { useQueryClient } from '@tanstack/react-query'; 
 
-import { logEvent } from '../utils/logger'; // <--- ADICIONAR
+import { logEvent } from '../utils/logger'; 
 
-// --- FUNÇÃO AUXILIAR: GERADOR DE ID ROBUSTO ---
 const generateSafeId = (length = 6) => {
     const base = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; 
     const specials = '!#$*+-=?&'; 
@@ -39,17 +38,14 @@ const generateSafeId = (length = 6) => {
 export default function Reception({ userProfile }) {
     const [step, setStep] = useState(1);
     const isOnline = useOnlineStatus(); 
-    const queryClient = useQueryClient(); // Client para comandar o Cache
+    const queryClient = useQueryClient(); 
 
-    // Busca alunos com cache persistente (Offline First)
-    // Se já foi baixado no login, usa o cache imediatamente.
     const { 
         data: rawStudents = [], 
         isLoading: loadingStudents, 
-        isRefetching // Indica se está atualizando manualmente
+        isRefetching: isRefetchingStudents 
     } = useStudentsDirectory({ enabled: !!userProfile });
 
-    // Garante que inativos não apareçam na busca da recepção
     const allStudents = useMemo(() => {
         return rawStudents.filter(s => s.active !== false);
     }, [rawStudents]);
@@ -57,18 +53,21 @@ export default function Reception({ userProfile }) {
     const [search, setSearch] = useState('');
     const [selectedStudent, setSelectedStudent] = useState(null);
     
-    // Filtro local extremamente rápido (Memória)
     const studentResults = useMemo(() => {
         if (!search || search.length < 2) return [];
         const term = search.toLowerCase();
-        
         return allStudents.filter(s => 
             s.name.toLowerCase().includes(term) || 
             (s.cpf && s.cpf.includes(term))
         ).slice(0, 10);
     }, [search, allStudents]);
 
-    const { data: types = [] } = useMaterialTypes();
+    // --- MUDANÇA: Destruturando refetch e isRefetching dos materiais ---
+    const { 
+        data: types = [],
+        refetch: refetchTypes,
+        isRefetching: isRefetchingTypes
+    } = useMaterialTypes();
     
     const [cart, setCart] = useState([]);
     const [createdItems, setCreatedItems] = useState([]);
@@ -94,20 +93,19 @@ export default function Reception({ userProfile }) {
 
     useEffect(() => { setItemPage(0); }, [itemSearch, itemsPerPage]);
 
-    // --- MUDANÇA: Função de Refresh Manual ---
-    const handleManualRefresh = async () => {
-        if (!isOnline) {
-            addToast('Sem conexão para atualizar.', 'error');
-            return;
-        }
-        
+    const handleManualRefreshStudents = async () => {
+        if (!isOnline) { addToast('Sem conexão para atualizar.', 'error'); return; }
         addToast('Atualizando lista de alunos...', 'info');
-
-        // Invalida o cache. Como o hook usa essa chave e está montado,
-        // o React Query fará o refetch automático imediatamente.
         await queryClient.invalidateQueries({ queryKey: ['students_full_directory_v2'] });
-        
         addToast('Solicitação de atualização enviada.', 'success');
+    };
+
+    // --- NOVA FUNÇÃO: Atualizar Materiais Manualmente ---
+    const handleManualRefreshTypes = async () => {
+        if (!isOnline) { addToast('Sem conexão para atualizar.', 'error'); return; }
+        addToast('Atualizando tipos de materiais...', 'info');
+        await refetchTypes();
+        addToast('Materiais atualizados.', 'success');
     };
 
     const filteredTypes = types.filter(t => t.name.toLowerCase().includes(itemSearch.toLowerCase()));
@@ -142,7 +140,6 @@ export default function Reception({ userProfile }) {
         setCart([...cart, { ...t, uid: Math.random() }]);
     };
 
-    // --- FUNÇÃO FINALIZAR ---
     const finish = async () => {
         if (cart.length === 0) return;
 
@@ -166,10 +163,7 @@ export default function Reception({ userProfile }) {
                         try {
                             const checkPromise = new Promise(async (resolve, reject) => {
                                 const timeout = setTimeout(() => reject('timeout'), 1500);
-                                const q = query(
-                                    collection(db, 'artifacts', appId, 'public', 'data', 'items'), 
-                                    where('code', '==', code)
-                                );
+                                const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'items'), where('code', '==', code));
                                 const snapshot = await getDocs(q);
                                 clearTimeout(timeout);
                                 resolve(snapshot.empty);
@@ -218,35 +212,23 @@ export default function Reception({ userProfile }) {
                 });
             }
 
-            // 1. Prepara o Payload de Backup (Segurança extra)
-            // Salva os dados completos, não apenas o contador
             const backupPayload = newItems.map(item => ({
                 ...item,
-                tempId: item.id, // ID gerado localmente
+                tempId: item.id, 
                 savedAt: new Date().toISOString()
             }));
 
-            // Recupera backups anteriores se houver
             const existingBackup = JSON.parse(localStorage.getItem('unilavras_offline_backup') || '[]');
             const updatedBackup = [...existingBackup, ...backupPayload];
-            
-            // Salva no LocalStorage (Texto Puro) - Sobrevive ao fechar browser
             localStorage.setItem('unilavras_offline_backup', JSON.stringify(updatedBackup));
-            
-            // Atualiza o contador visual (mantendo sua lógica atual)
             localStorage.setItem('unilavras_offline_count', updatedBackup.length);
 
-            // 2. Tenta salvar no Firebase (Isso vai para o IndexedDB via persistentLocalCache)
             batch.commit()
 				.then(async () => {
 					console.log("Sincronização concluída (IndexedDB/Server).");
-					
-					// --- NOVO LOG DE AUDITORIA ---
 					if (isOnline) {
-                        // Se estiver online, removemos o backup manual imediatamente pois o servidor já confirmou
                         localStorage.removeItem('unilavras_offline_backup');
                         localStorage.removeItem('unilavras_offline_count');
-
 						await logEvent(
 							'ITEM_ENTRY', 
 							`Entrada de ${cart.length} itens para ${selectedStudent.name}`, 
@@ -339,9 +321,9 @@ export default function Reception({ userProfile }) {
                                      )}
                                  </div>
                                  <button 
-                                    onClick={handleManualRefresh} 
+                                    onClick={handleManualRefreshStudents} 
                                     disabled={!isOnline}
-                                    className={`p-1.5 rounded-full hover:bg-slate-100 transition-colors ${isRefetching ? 'animate-spin text-[#009DE0]' : 'text-slate-400'} ${!isOnline ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    className={`p-1.5 rounded-full hover:bg-slate-100 transition-colors ${isRefetchingStudents ? 'animate-spin text-[#009DE0]' : 'text-slate-400'} ${!isOnline ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     title="Recarregar alunos"
                                  >
                                      <RotateCw size={16}/>
@@ -393,7 +375,25 @@ export default function Reception({ userProfile }) {
                     <div className={`bg-white p-6 rounded-2xl border border-slate-200 transition-opacity ${!selectedStudent ? 'opacity-50' : 'opacity-100'}`}>
                         <div className="flex justify-between items-center mb-4 gap-4">
                             <h3 className="font-bold text-lg flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-[#021D34] text-white flex items-center justify-center text-xs">2</span> Materiais</h3>
-                            {types.length > itemsPerPage && <div className="relative w-64"><Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400"/><input className="w-full pl-9 p-2 border rounded-lg text-sm outline-none focus:border-[#009DE0]" placeholder="Filtrar..." value={itemSearch} onChange={e => setItemSearch(e.target.value)}/></div>}
+                            
+                            {/* --- MUDANÇA: ÁREA DE PESQUISA + BOTÃO REFRESH --- */}
+                            <div className="flex items-center gap-2 flex-1 justify-end">
+                                {types.length > itemsPerPage && (
+                                    <div className="relative w-full max-w-[200px]">
+                                        <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400"/>
+                                        <input className="w-full pl-9 p-2 border rounded-lg text-sm outline-none focus:border-[#009DE0]" placeholder="Filtrar..." value={itemSearch} onChange={e => setItemSearch(e.target.value)}/>
+                                    </div>
+                                )}
+                                <button 
+                                    onClick={handleManualRefreshTypes} 
+                                    disabled={!isOnline}
+                                    className={`p-1.5 rounded-full hover:bg-slate-100 transition-colors ${isRefetchingTypes ? 'animate-spin text-[#009DE0]' : 'text-slate-400'} ${!isOnline ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    title="Recarregar materiais"
+                                >
+                                    <RotateCw size={16}/>
+                                </button>
+                            </div>
+
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 min-h-[300px]">
                             {visibleTypes.map(t => (

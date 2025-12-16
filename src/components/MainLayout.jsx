@@ -16,8 +16,9 @@ import { useToast } from '../contexts/ToastContext';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import OfflineNotice from './OfflineNotice';
 
-// --- CACHE INTELIGENTE: Hook de Alunos ---
+// --- CACHE INTELIGENTE: Hooks ---
 import { useStudentsDirectory } from '../hooks/useStudentsDirectory';
+import { useMaterialTypes } from '../hooks/useMaterialTypes'; // <--- IMPORTADO
 
 export default function MainLayout({ user, userProfile }) {
     const navigate = useNavigate();
@@ -26,7 +27,6 @@ export default function MainLayout({ user, userProfile }) {
     const [menuOpen, setMenuOpen] = useState(false);
     const [showTimeoutWarning, setShowTimeoutWarning] = useState(false);
     
-    // --- NOVO: Estado para detecção de Mobile ---
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     
     const { confirm } = useDialog();
@@ -36,9 +36,26 @@ export default function MainLayout({ user, userProfile }) {
     const inactivityTimer = useRef(null);
     const warningTimer = useRef(null);
     
+    // --- PRÉ-CARREGAMENTO (PREFETCH) ---
+    // Ao chamar os hooks aqui, o React Query baixa os dados e guarda no cache.
+    // Assim, se a internet cair, os dados já estarão disponíveis.
     useStudentsDirectory({ enabled: !!userProfile });
+    useMaterialTypes(); // <--- CHAMADA NOVA: Carrega materiais no login
 
-    // --- EFEITO PARA DETECTAR MUDANÇA DE TELA ---
+    // --- EFEITO: REDIRECIONAMENTO AUTOMÁTICO OFFLINE ---
+    useEffect(() => {
+        // Se cair a internet E não estiver na Recepção E tiver permissão para Recepção
+        if (!isOnline && location.pathname !== '/reception') {
+            const canAccessReception = ['admin', 'tech'].includes(userProfile.role);
+            
+            if (canAccessReception) {
+                addToast('Conexão perdida! Redirecionando para modo offline...', 'warning');
+                navigate('/reception');
+            }
+        }
+    }, [isOnline, location.pathname, navigate, userProfile.role, addToast]);
+
+    // --- EFEITO PARA DETECTAR MUDANÇA DE TELA (MOBILE) ---
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 768);
         window.addEventListener('resize', handleResize);
@@ -177,9 +194,6 @@ export default function MainLayout({ user, userProfile }) {
         setMenuOpen(false);
     };
 
-    // =====================================================================
-    // --- NOVO: TELA DE BLOQUEIO (MOBILE + OFFLINE) ---
-    // =====================================================================
     if (!isOnline && isMobile) {
         return (
             <div className="flex flex-col h-screen items-center justify-center bg-[#F8FAFC] p-8 text-center animate-in fade-in duration-500">
@@ -201,7 +215,6 @@ export default function MainLayout({ user, userProfile }) {
             
             <OfflineNotice />
 
-            {/* Modal de Aviso de Inatividade */}
             {showTimeoutWarning && (
                 <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
                     <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center animate-in zoom-in-95">
@@ -213,7 +226,6 @@ export default function MainLayout({ user, userProfile }) {
                 </div>
             )}
 
-            {/* SIDEBAR DESKTOP */}
             <aside className="hidden md:flex flex-col w-72 bg-[#021D34] shadow-xl z-20">
                 <div className="p-6 border-b border-white/10 flex flex-col items-center">
                     <img src={LOGOS.white} className="h-12 w-auto mb-3 opacity-90" alt="Logo White" />
@@ -257,7 +269,6 @@ export default function MainLayout({ user, userProfile }) {
                 </div>
             </aside>
 
-            {/* ÁREA PRINCIPAL */}
             <main className="flex-1 flex flex-col h-screen relative">
                 <header className="md:hidden flex items-center justify-between p-4 bg-white border-b z-10 shadow-sm">
                     <button onClick={() => setMenuOpen(true)} className="p-2 -ml-2 text-[#021D34]"><Menu/></button>
