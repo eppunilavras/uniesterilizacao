@@ -406,21 +406,23 @@ export default function HistoryView({ userProfile }) {
     };
 
     return (
-        <div className="space-y-6 w-full max-w-full overflow-hidden">
+        <div className="space-y-6 w-full max-w-full overflow-hidden transition-colors">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <h2 className="font-bold text-[#021D34] text-2xl flex items-center gap-2 w-full md:w-auto">
+                <h2 className="font-bold text-[#021D34] dark:text-white text-2xl flex items-center gap-2 w-full md:w-auto transition-colors">
                     <History className="text-[#009DE0]"/> Histórico
                 </h2>
                 
-                <div className="hidden md:flex bg-slate-200 p-1 rounded-lg w-fit gap-1">
-                    <button onClick={() => { setMode('list'); setScanCode(''); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${mode === 'list' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Lista Geral</button>
-                    <button onClick={() => { setMode('scan'); setSearch(''); setShowCamera(false); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${mode === 'scan' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Rastrear Item</button>
-                    {isAdminOrTech && <button onClick={() => { setMode('student_report'); setSearch(''); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap flex items-center gap-2 ${mode === 'student_report' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><GraduationCap size={16}/> Relatório Aluno</button>}
-                    {isAdmin && <button onClick={() => { setMode('tech_report'); setTechSearch(''); setReportTech(null); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap flex items-center gap-2 ${mode === 'tech_report' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}><UserCog size={16}/> Relatório Técnico</button>}
+                {/* Botões de Navegação Desktop */}
+                <div className="hidden md:flex bg-slate-200 dark:bg-slate-700 p-1 rounded-lg w-fit gap-1 transition-colors">
+                    <button onClick={() => { setMode('list'); setScanCode(''); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${mode === 'list' ? 'bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm' : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white'}`}>Lista Geral</button>
+                    <button onClick={() => { setMode('scan'); setSearch(''); setShowCamera(false); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${mode === 'scan' ? 'bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm' : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white'}`}>Rastrear Item</button>
+                    {isAdminOrTech && <button onClick={() => { setMode('student_report'); setSearch(''); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap flex items-center gap-2 ${mode === 'student_report' ? 'bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm' : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white'}`}><GraduationCap size={16}/> Relatório Aluno</button>}
+                    {isAdmin && <button onClick={() => { setMode('tech_report'); setTechSearch(''); setReportTech(null); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap flex items-center gap-2 ${mode === 'tech_report' ? 'bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm' : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white'}`}><UserCog size={16}/> Relatório Técnico</button>}
                 </div>
 
+                {/* Select Mobile */}
                 <div className="block md:hidden w-full max-w-full">
-                    <select value={mode} onChange={handleMobileModeChange} className="w-full p-3 bg-white border border-slate-300 rounded-lg text-slate-700 font-bold shadow-sm focus:border-[#009DE0] outline-none">
+                    <select value={mode} onChange={handleMobileModeChange} className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold shadow-sm focus:border-[#009DE0] outline-none transition-colors">
                         <option value="list">Lista Geral</option>
                         <option value="scan">Rastrear Item</option>
                         {isAdminOrTech && <option value="student_report">Relatório do Aluno</option>}
@@ -432,8 +434,8 @@ export default function HistoryView({ userProfile }) {
             {/* ABAS DE RELATÓRIO (MANTIDAS) */}
             {(mode === 'tech_report' || mode === 'student_report') && (
                 <div className="max-w-2xl mx-auto space-y-6 py-4 animate-in zoom-in-95 duration-300">
-                    <div className="bg-white p-4 md:p-8 rounded-2xl border border-slate-200 shadow-lg relative">
-                        <h3 className="text-xl font-bold text-[#021D34] mb-6 flex items-center gap-2">
+                    <div className="bg-white dark:bg-slate-800 p-4 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-lg relative transition-colors">
+                        <h3 className="text-xl font-bold text-[#021D34] dark:text-white mb-6 flex items-center gap-2">
                             {mode === 'tech_report' ? <UserCog className="text-[#009DE0]"/> : <GraduationCap className="text-[#009DE0]"/>}
                             {mode === 'tech_report' ? 'Relatório do Técnico' : 'Relatório do Aluno'}
                         </h3>
@@ -442,23 +444,23 @@ export default function HistoryView({ userProfile }) {
                         {mode === 'tech_report' && (
                             <div className="space-y-4">
                                 <div className="relative">
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">1. Selecione o Técnico</label>
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block uppercase">1. Selecione o Técnico</label>
                                     {reportTech ? (
-                                        <div className="flex items-center justify-between bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                            <div><p className="font-bold text-[#021D34]">{reportTech.name}</p><p className="text-xs text-slate-600">{reportTech.email}</p></div>
-                                            <button onClick={() => { setReportTech(null); setTechSearch(''); }} className="text-red-500 hover:bg-white p-2 rounded-full transition-colors"><Trash2 size={16}/></button>
+                                        <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
+                                            <div><p className="font-bold text-[#021D34] dark:text-blue-100">{reportTech.name}</p><p className="text-xs text-slate-600 dark:text-slate-400">{reportTech.email}</p></div>
+                                            <button onClick={() => { setReportTech(null); setTechSearch(''); }} className="text-red-500 hover:bg-white dark:hover:bg-slate-700 p-2 rounded-full transition-colors"><Trash2 size={16}/></button>
                                         </div>
                                     ) : (
                                         <div className="relative">
                                             <Search className="absolute left-3 top-3 w-5 h-5 text-slate-400"/>
-                                            <input className="w-full pl-10 p-3 border rounded-lg outline-none focus:border-[#009DE0] text-sm" placeholder="Buscar por nome ou CPF..." value={techSearch} onChange={e => setTechSearch(e.target.value)}/>
-                                            {techResults.length > 0 && <div className="absolute top-full left-0 right-0 bg-white border mt-1 rounded-lg shadow-xl z-20 overflow-hidden max-h-48 overflow-y-auto">{techResults.map(t => <button key={t.uid} onClick={() => { setReportTech(t); setTechResults([]); }} className="w-full text-left p-3 hover:bg-slate-50 border-b last:border-0"><p className="font-bold text-sm text-[#021D34]">{t.name}</p><p className="text-xs text-slate-500 uppercase font-bold">{t.role === 'admin' ? 'Administrador' : 'Técnico'}</p></button>)}</div>}
+                                            <input className="w-full pl-10 p-3 border dark:border-slate-600 rounded-lg outline-none focus:border-[#009DE0] text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition-colors" placeholder="Buscar por nome ou CPF..." value={techSearch} onChange={e => setTechSearch(e.target.value)}/>
+                                            {techResults.length > 0 && <div className="absolute top-full left-0 right-0 bg-white dark:bg-slate-800 border dark:border-slate-600 mt-1 rounded-lg shadow-xl z-20 overflow-hidden max-h-48 overflow-y-auto">{techResults.map(t => <button key={t.uid} onClick={() => { setReportTech(t); setTechResults([]); }} className="w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-slate-700 border-b dark:border-slate-700 last:border-0"><p className="font-bold text-sm text-[#021D34] dark:text-white">{t.name}</p><p className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold">{t.role === 'admin' ? 'Administrador' : 'Técnico'}</p></button>)}</div>}
                                         </div>
                                     )}
                                 </div>
                                 <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity ${!reportTech ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-                                    <div><label className="text-xs font-bold text-slate-500 mb-1 block uppercase">2. Data Inicial</label><input type="date" className="w-full p-3 border rounded-lg" value={reportStart} onChange={e => setReportStart(e.target.value)} /></div>
-                                    <div><label className="text-xs font-bold text-slate-500 mb-1 block uppercase">3. Data Final</label><input type="date" className="w-full p-3 border rounded-lg" value={reportEnd} onChange={e => setReportEnd(e.target.value)} /></div>
+                                    <div><label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block uppercase">2. Data Inicial</label><input type="date" className="w-full p-3 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white" value={reportStart} onChange={e => setReportStart(e.target.value)} /></div>
+                                    <div><label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block uppercase">3. Data Final</label><input type="date" className="w-full p-3 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white" value={reportEnd} onChange={e => setReportEnd(e.target.value)} /></div>
                                 </div>
                                 <button onClick={generateTechPDF} disabled={!reportTech || !reportStart || !reportEnd || generatingReport} className="w-full bg-[#021D34] text-white py-4 rounded-xl font-bold hover:bg-[#009DE0] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2 mt-4">
                                     {generatingReport ? <Loader2 className="animate-spin"/> : <FileText size={20}/>} {generatingReport ? 'Gerando PDF...' : 'Gerar Relatório'}
@@ -468,23 +470,23 @@ export default function HistoryView({ userProfile }) {
                         {mode === 'student_report' && (
                             <div className="space-y-4">
                                 <div className="relative">
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">1. Selecione o Aluno</label>
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block uppercase">1. Selecione o Aluno</label>
                                     {reportStudent ? (
-                                        <div className="flex items-center justify-between bg-blue-50 p-3 rounded-lg border border-blue-100">
-                                            <div><p className="font-bold text-[#021D34]">{reportStudent.name}</p><p className="text-xs text-slate-600">{reportStudent.email}</p></div>
-                                            <button onClick={() => { setReportStudent(null); setReportSearch(''); }} className="text-red-500 hover:bg-white p-2 rounded-full transition-colors"><Trash2 size={16}/></button>
+                                        <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
+                                            <div><p className="font-bold text-[#021D34] dark:text-blue-100">{reportStudent.name}</p><p className="text-xs text-slate-600 dark:text-slate-400">{reportStudent.email}</p></div>
+                                            <button onClick={() => { setReportStudent(null); setReportSearch(''); }} className="text-red-500 hover:bg-white dark:hover:bg-slate-700 p-2 rounded-full transition-colors"><Trash2 size={16}/></button>
                                         </div>
                                     ) : (
                                         <div className="relative">
                                             <Search className="absolute left-3 top-3 w-5 h-5 text-slate-400"/>
-                                            <input className="w-full pl-10 p-3 border rounded-lg outline-none focus:border-[#009DE0] text-sm" placeholder="Buscar por nome ou CPF..." value={reportSearch} onChange={e => setReportSearch(e.target.value)}/>
-                                            {reportResults.length > 0 && <div className="absolute top-full left-0 right-0 bg-white border mt-1 rounded-lg shadow-xl z-20 overflow-hidden max-h-48 overflow-y-auto">{reportResults.map(s => <button key={s.uid} onClick={() => { setReportStudent(s); setReportResults([]); }} className="w-full text-left p-3 hover:bg-slate-50 border-b last:border-0"><p className="font-bold text-sm text-[#021D34]">{s.name}</p><p className="text-xs text-slate-500">{maskCPF(s.cpf)}</p></button>)}</div>}
+                                            <input className="w-full pl-10 p-3 border dark:border-slate-600 rounded-lg outline-none focus:border-[#009DE0] text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition-colors" placeholder="Buscar por nome ou CPF..." value={reportSearch} onChange={e => setReportSearch(e.target.value)}/>
+                                            {reportResults.length > 0 && <div className="absolute top-full left-0 right-0 bg-white dark:bg-slate-800 border dark:border-slate-600 mt-1 rounded-lg shadow-xl z-20 overflow-hidden max-h-48 overflow-y-auto">{reportResults.map(s => <button key={s.uid} onClick={() => { setReportStudent(s); setReportResults([]); }} className="w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-slate-700 border-b dark:border-slate-700 last:border-0"><p className="font-bold text-sm text-[#021D34] dark:text-white">{s.name}</p><p className="text-xs text-slate-500 dark:text-slate-400">{maskCPF(s.cpf)}</p></button>)}</div>}
                                         </div>
                                     )}
                                 </div>
                                 <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity ${!reportStudent ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-                                    <div><label className="text-xs font-bold text-slate-500 mb-1 block uppercase">2. Data Inicial</label><input type="date" className="w-full p-3 border rounded-lg" value={reportStart} onChange={e => setReportStart(e.target.value)} /></div>
-                                    <div><label className="text-xs font-bold text-slate-500 mb-1 block uppercase">3. Data Final</label><input type="date" className="w-full p-3 border rounded-lg" value={reportEnd} onChange={e => setReportEnd(e.target.value)} /></div>
+                                    <div><label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block uppercase">2. Data Inicial</label><input type="date" className="w-full p-3 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white" value={reportStart} onChange={e => setReportStart(e.target.value)} /></div>
+                                    <div><label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block uppercase">3. Data Final</label><input type="date" className="w-full p-3 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white" value={reportEnd} onChange={e => setReportEnd(e.target.value)} /></div>
                                 </div>
                                 <button onClick={generateStudentPDF} disabled={!reportStudent || !reportStart || !reportEnd || generatingReport} className="w-full bg-[#021D34] text-white py-4 rounded-xl font-bold hover:bg-[#009DE0] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2 mt-4">
                                     {generatingReport ? <Loader2 className="animate-spin"/> : <FileText size={20}/>} {generatingReport ? 'Gerando PDF...' : 'Gerar Relatório'}
@@ -498,14 +500,14 @@ export default function HistoryView({ userProfile }) {
             {/* ABA 2: RASTREAMENTO */}
             {mode === 'scan' && (
                 <div className="max-w-xl mx-auto space-y-6 py-8 animate-in zoom-in-95 duration-300">
-                    <div className="bg-white p-4 md:p-8 rounded-2xl border border-slate-200 shadow-lg text-center relative overflow-hidden">
+                    <div className="bg-white dark:bg-slate-800 p-4 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-lg text-center relative overflow-hidden transition-colors">
                         {!showCamera ? (
                             <>
                                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#009DE0] via-purple-500 to-[#009DE0] animate-pulse"/>
                                 <ScanBarcode className="w-16 h-16 text-[#009DE0] mx-auto mb-6"/>
-                                <h3 className="text-2xl font-bold text-[#021D34] mb-2">Rastreamento</h3>
-                                <p className="text-slate-500 mb-8 text-sm">Bipe o código ou digite abaixo.</p>
-                                <input className="w-full text-center font-mono text-3xl uppercase tracking-[0.2em] p-4 border-2 border-slate-200 rounded-xl focus:border-[#009DE0] focus:ring-4 focus:ring-blue-50 outline-none transition-all placeholder:tracking-normal mb-4" placeholder="CÓDIGO" value={scanCode} onChange={e => setScanCode(e.target.value)} autoFocus />
+                                <h3 className="text-2xl font-bold text-[#021D34] dark:text-white mb-2">Rastreamento</h3>
+                                <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm">Bipe o código ou digite abaixo.</p>
+                                <input className="w-full text-center font-mono text-3xl uppercase tracking-[0.2em] p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:border-[#009DE0] focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-900/30 outline-none transition-all placeholder:tracking-normal mb-4 bg-white dark:bg-slate-900 text-black dark:text-white" placeholder="CÓDIGO" value={scanCode} onChange={e => setScanCode(e.target.value)} autoFocus />
                                 <button onClick={() => setShowCamera(true)} className="w-full flex items-center justify-center gap-2 bg-[#021D34] text-white py-3 rounded-xl font-bold hover:bg-[#009DE0] transition-colors"><Camera size={20}/> Usar Câmera</button>
                             </>
                         ) : (
@@ -522,20 +524,18 @@ export default function HistoryView({ userProfile }) {
             {/* ABA 3: LISTA GERAL (ATUALIZADA) */}
             {mode === 'list' && (
                 <div className="space-y-4 animate-in fade-in duration-300 w-full max-w-full">
-                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between">
+                    <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row gap-4 justify-between transition-colors">
                         <div className="flex flex-col md:flex-row gap-4 w-full flex-1 min-w-0">
                             <div className="relative flex-1 w-full min-w-0">
                                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400"/>
-                                <input className="w-full pl-10 p-2 border rounded-lg text-sm outline-none focus:border-[#009DE0]" placeholder={isStudent ? "Buscar Material..." : "Nome, Material ou Código..."} value={search} onChange={e => setSearch(e.target.value)}/>
+                                <input className="w-full pl-10 p-2 border dark:border-slate-600 rounded-lg text-sm outline-none focus:border-[#009DE0] bg-transparent dark:bg-slate-900 text-slate-900 dark:text-white transition-colors" placeholder={isStudent ? "Buscar Material..." : "Nome, Material ou Código..."} value={search} onChange={e => setSearch(e.target.value)}/>
                                 {loading && <div className="absolute right-3 top-2.5 w-4 h-4 border-2 border-[#009DE0] border-t-transparent rounded-full animate-spin"/>}
                             </div>
-                            {/* BOTÃO DE IMPRIMIR E SELEÇÃO REMOVIDOS DAQUI */}
                         </div>
                     </div>
                     
                     <DataTable 
                         columns={[
-                            // COLUNA DE CHECKBOX REMOVIDA
                             { key: 'code', label: 'Código', sortable: true, render: (i) => <span className="font-mono font-bold text-[#009DE0]">{i.code}</span> },
                             { key: 'studentName', label: 'Aluno', sortable: true },
                             { key: 'type', label: 'Material', sortable: true },
@@ -546,26 +546,25 @@ export default function HistoryView({ userProfile }) {
                         emptyMsg={loading ? "Carregando..." : "Nenhum registro encontrado."}
                         mobileRender={(i) => (
                             <div className="flex items-center gap-3">
-                                {/* CHECKBOX MOBILE REMOVIDO */}
                                 <div className="flex-1 min-w-0" onClick={() => { setSelectedItem(i); setMode('details'); }}>
                                     <div className="flex justify-between items-start">
                                         <span className="font-mono font-bold text-[#009DE0] text-lg break-all">{i.code}</span>
                                         <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase border h-fit ${STATUS_CONFIG[i.status].color} shrink-0`}>{STATUS_CONFIG[i.status].label}</span>
                                     </div>
-                                    <p className="font-bold text-slate-800 truncate">{i.studentName}</p>
-                                    <p className="text-sm text-slate-500 truncate">{i.type}</p>
+                                    <p className="font-bold text-slate-800 dark:text-slate-200 truncate">{i.studentName}</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{i.type}</p>
                                     <p className="text-xs text-slate-400 mt-1">Atualizado: {formatDate(i.lastUpdated)}</p>
                                 </div>
                             </div>
                         )}
                         actions={(item) => (
-                            <button onClick={() => { setSelectedItem(item); setMode('details'); }} className="p-2 text-slate-500 hover:text-[#009DE0] hover:bg-blue-50 rounded bg-slate-50 border border-slate-200"><Eye size={20}/></button>
+                            <button onClick={() => { setSelectedItem(item); setMode('details'); }} className="p-2 text-slate-500 dark:text-slate-400 hover:text-[#009DE0] hover:bg-blue-50 dark:hover:bg-slate-700 rounded bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 transition-colors"><Eye size={20}/></button>
                         )}
                     />
 
                     {!loading && hasMore && search.length <= 2 && (
                         <div className="flex justify-center pt-2">
-                            <button onClick={loadMore} disabled={loadingMore} className="bg-white border border-slate-300 text-slate-600 px-6 py-2 rounded-full text-sm font-bold hover:bg-slate-50 hover:text-[#009DE0] hover:border-[#009DE0] transition-all flex items-center gap-2 disabled:opacity-50">
+                            <button onClick={loadMore} disabled={loadingMore} className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 px-6 py-2 rounded-full text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[#009DE0] hover:border-[#009DE0] transition-all flex items-center gap-2 disabled:opacity-50">
                                 {loadingMore ? <Loader2 className="animate-spin w-4 h-4"/> : <ArrowDown size={16}/>}
                                 {loadingMore ? 'Buscando...' : 'Carregar Mais Antigos'}
                             </button>
@@ -577,8 +576,8 @@ export default function HistoryView({ userProfile }) {
             {/* ABA 4: DETALHES (TIMELINE) */}
             {mode === 'details' && selectedItem && (
                 <div className="space-y-6 animate-in slide-in-from-right duration-300">
-                    <button onClick={() => { setMode('list'); setSelectedItem(null); }} className="flex items-center gap-2 text-slate-500 hover:text-[#009DE0] font-bold transition-colors"><ArrowLeft size={20}/> Voltar para Lista</button>
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <button onClick={() => { setMode('list'); setSelectedItem(null); }} className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-[#009DE0] font-bold transition-colors"><ArrowLeft size={20}/> Voltar para Lista</button>
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-colors">
                         <div className="bg-[#021D34] p-6 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                             <div>
                                 <div className="flex items-center gap-3 mb-1">
@@ -590,31 +589,31 @@ export default function HistoryView({ userProfile }) {
                             <div className="text-left md:text-right w-full md:w-auto"><p className="font-bold text-lg">{selectedItem.studentName}</p><p className="text-xs opacity-60">Criado em: {formatDate(selectedItem.createdAt)}</p></div>
                         </div>
                         <div className="p-4 md:p-8">
-                            <h3 className="font-bold text-[#021D34] mb-6 flex items-center gap-2"><History className="text-[#009DE0]"/> Rastreabilidade Detalhada</h3>
-                            <div className="relative border-l-2 border-slate-200 ml-2 md:ml-6 space-y-8 pb-4">
+                            <h3 className="font-bold text-[#021D34] dark:text-white mb-6 flex items-center gap-2"><History className="text-[#009DE0]"/> Rastreabilidade Detalhada</h3>
+                            <div className="relative border-l-2 border-slate-200 dark:border-slate-700 ml-2 md:ml-6 space-y-8 pb-4 transition-colors">
                                 {(selectedItem.history ? [...selectedItem.history].reverse() : []).map((event, index) => {
                                     const Config = STATUS_CONFIG[event.status] || STATUS_CONFIG['recebido'];
                                     return (
                                         <div key={index} className="relative pl-6 md:pl-10">
-                                            <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white shadow-sm ${index === 0 ? 'bg-[#009DE0] ring-4 ring-blue-50' : 'bg-slate-300'}`}/>
-                                            <div className="bg-slate-50 rounded-xl p-3 md:p-4 border border-slate-100 shadow-sm flex flex-col gap-2 hover:border-blue-100 transition-colors">
+                                            <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800 shadow-sm ${index === 0 ? 'bg-[#009DE0] ring-4 ring-blue-50 dark:ring-blue-900/30' : 'bg-slate-300 dark:bg-slate-600'}`}/>
+                                            <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 md:p-4 border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col gap-2 hover:border-blue-100 dark:hover:border-slate-600 transition-colors">
                                                 
                                                 <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-start md:items-center justify-between">
                                                     <div className="flex items-center gap-3">
                                                         <div className={`p-2 rounded-lg ${Config.color} bg-opacity-20`}><Config.icon size={20}/></div>
                                                         <div>
-                                                            <p className="font-bold text-[#021D34] text-sm md:text-base">{Config.label}</p>
-                                                            <p className="text-xs text-slate-500 flex items-center gap-1"><User size={10}/> Por: {event.by || 'Sistema'}</p>
+                                                            <p className="font-bold text-[#021D34] dark:text-slate-200 text-sm md:text-base">{Config.label}</p>
+                                                            <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1"><User size={10}/> Por: {event.by || 'Sistema'}</p>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400 bg-white px-3 py-1 rounded border border-slate-200">
+                                                    <div className="flex items-center gap-2 text-xs font-bold text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-3 py-1 rounded border border-slate-200 dark:border-slate-700">
                                                         <CalendarClock size={14}/>{formatDate(event.timestamp)}
                                                     </div>
                                                 </div>
 
                                                 {/* --- EXIBIR MOTIVO/OBSERVAÇÃO --- */}
                                                 {event.reason && (
-                                                    <div className="mt-2 p-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 italic border-l-4 border-l-slate-400 flex items-start gap-2">
+                                                    <div className="mt-2 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-600 dark:text-slate-300 italic border-l-4 border-l-slate-400 flex items-start gap-2">
                                                         <MessageSquare size={16} className="shrink-0 mt-0.5 text-slate-400"/>
                                                         <span>{event.reason}</span>
                                                     </div>
@@ -626,7 +625,7 @@ export default function HistoryView({ userProfile }) {
                                 })}
                             </div>
                         </div>
-                        <div className="bg-slate-50 p-4 border-t border-slate-200 flex flex-col md:flex-row justify-end gap-3">
+                        <div className="bg-slate-50 dark:bg-slate-900 p-4 border-t border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-end gap-3 transition-colors">
                             <button onClick={generateTraceReport} className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-[#021D34] text-white rounded-xl font-bold hover:bg-[#009DE0] transition-colors shadow-lg shadow-blue-900/20"><FileText size={18}/> Gerar Relatório PDF</button>
                         </div>
                     </div>

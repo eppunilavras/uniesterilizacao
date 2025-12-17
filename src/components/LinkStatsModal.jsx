@@ -1,153 +1,145 @@
-import React, { useEffect, useState } from 'react';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { X, Calendar, Activity, Loader2, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, BarChart2, Calendar, MousePointer2, RotateCcw, AlertTriangle } from 'lucide-react';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db, appId } from '../config/firebase';
+import { useDialog } from '../contexts/DialogContext';
+import { useToast } from '../contexts/ToastContext';
 
-export default function LinkStatsModal({ isOpen, onClose, linkData }) {
-    const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState([]);
-    const [totalLogs, setTotalLogs] = useState(0);
-    const [error, setError] = useState(null);
+export default function LinkStatsModal({ isOpen, onClose, link }) {
+  const { confirm } = useDialog();
+  const { addToast } = useToast();
+  const [isReseting, setIsReseting] = useState(false);
 
-    useEffect(() => {
-        if (isOpen && linkData?.id) {
-            fetchStats();
-        }
-    }, [isOpen, linkData]);
+  if (!isOpen || !link) return null;
 
-    const fetchStats = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            // Busca os logs na subcoleção 'click_logs'
-            const logsRef = collection(db, 'artifacts', appId, 'public', 'data', 'external_links', linkData.id, 'click_logs');
-            const q = query(logsRef, orderBy('createdAt', 'desc'));
-            const snapshot = await getDocs(q);
+  // Função para zerar a contagem
+  const handleResetStats = async () => {
+    // 1. Solicita confirmação ao usuário
+    const confirmed = await confirm({
+      title: 'Zerar contagem de cliques?',
+      message: (
+        <div className="space-y-2">
+          <p className="dark:text-slate-300">Você está prestes a definir o contador de cliques do link <strong>"{link.name}"</strong> para zero.</p>
+          <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-sm flex gap-2 items-start transition-colors">
+             <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+             <span>Isso afetará a ordenação e a exibição pública. O histórico detalhado de logs (se houver) será mantido no banco de dados, mas o número visual será reiniciado.</span>
+          </div>
+        </div>
+      ),
+      confirmLabel: 'Sim, zerar contagem',
+      cancelLabel: 'Cancelar',
+      variant: 'destructive'
+    });
 
-            const logs = snapshot.docs.map(doc => ({
-                ...doc.data(),
-                date: doc.data().createdAt?.toDate() || new Date()
-            }));
+    if (!confirmed) return;
 
-            setTotalLogs(logs.length);
-            processChartData(logs);
+    try {
+      setIsReseting(true);
+      
+      // 2. Atualiza o documento no Firestore
+      const linkRef = doc(db, 'artifacts', appId, 'public', 'data', 'external_links', link.id);
+      
+      await updateDoc(linkRef, {
+        clicks: 0,
+        lastResetAt: serverTimestamp() // Opcional: marca quando foi zerado
+      });
 
-        } catch (err) {
-            console.error("Erro ao buscar estatísticas:", err);
-            // Se der erro de permissão (ex: aluno tentando ver), mostramos msg amigável
-            setError("Não foi possível carregar os detalhes. Talvez você não tenha permissão de visualização.");
-        } finally {
-            setLoading(false);
-        }
-    };
+      addToast({
+        type: 'success',
+        title: 'Contagem zerada',
+        message: 'O número de cliques foi reiniciado com sucesso.'
+      });
+      
+      // Fecha o modal após o sucesso
+      onClose();
 
-    const processChartData = (logs) => {
-        // Agrupa por Mês/Ano
-        const grouped = logs.reduce((acc, log) => {
-            const key = log.date.toLocaleString('pt-BR', { month: 'short', year: '2-digit' });
-            acc[key] = (acc[key] || 0) + 1;
-            return acc;
-        }, {});
+    } catch (error) {
+      console.error("Erro ao zerar:", error);
+      addToast({
+        type: 'error',
+        title: 'Erro',
+        message: 'Não foi possível zerar a contagem.'
+      });
+    } finally {
+      setIsReseting(false);
+    }
+  };
 
-        // Formata para o Recharts (e inverte para ordem cronológica se necessário)
-        const chartData = Object.entries(grouped).map(([name, value]) => ({
-            name,
-            value
-        })).reverse(); // Logs vêm DESC, então reverse põe o mês antigo primeiro (esquerda)
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 transition-colors">
+        
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 transition-colors">
+          <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+            <BarChart2 size={20} className="text-[#009DE0] dark:text-sky-400" />
+            <h3 className="font-bold">Estatísticas do Link</h3>
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300"
+          >
+            <X size={20} />
+          </button>
+        </div>
 
-        setStats(chartData);
-    };
+        {/* Content */}
+        <div className="p-6 space-y-6">
+            {/* Info Principal */}
+            <div className="text-center space-y-2">
+                <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 text-[#009DE0] dark:text-sky-400 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-inner transition-colors">
+                    <MousePointer2 size={32} />
+                </div>
+                <h2 className="text-4xl font-black text-slate-800 dark:text-white tracking-tight transition-colors">
+                    {link.clicks || 0}
+                </h2>
+                <p className="text-slate-500 dark:text-slate-400 font-medium uppercase text-xs tracking-wider transition-colors">Total de Cliques</p>
+            </div>
 
-    if (!isOpen) return null;
-
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#021D34]/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                
-                {/* Header do Modal */}
-                <div className="bg-slate-50 p-4 border-b border-slate-100 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-blue-100 p-2 rounded-lg text-[#009DE0]">
-                            <Activity size={20} />
-                        </div>
-                        <div>
-                            <h3 className="font-bold text-slate-800 text-lg">{linkData?.name}</h3>
-                            <p className="text-xs text-slate-500">Relatório de Acessos</p>
-                        </div>
+            {/* Detalhes do Link */}
+            <div className="bg-slate-50 dark:bg-slate-900/30 rounded-xl p-4 space-y-3 border border-slate-100 dark:border-slate-700 transition-colors">
+                <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-500 dark:text-slate-400">Nome:</span>
+                    <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[200px]">{link.name}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                    <span className="text-slate-500 dark:text-slate-400">Categoria:</span>
+                    <span className="font-medium text-slate-600 dark:text-slate-300 capitalize bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-600 transition-colors">
+                        {link.category || 'Geral'}
+                    </span>
+                </div>
+                {link.lastResetAt && (
+                    <div className="flex justify-between items-center text-sm pt-2 border-t border-slate-200 dark:border-slate-700 mt-2 transition-colors">
+                         <span className="text-slate-400 dark:text-slate-500 flex items-center gap-1">
+                             <RotateCcw size={10} /> Último reset:
+                         </span>
+                         <span className="text-xs text-slate-500 dark:text-slate-400">
+                             {new Date(link.lastResetAt?.seconds * 1000).toLocaleDateString()}
+                         </span>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
-                        <X size={20} />
-                    </button>
-                </div>
-
-                {/* Conteúdo */}
-                <div className="p-6">
-                    {loading ? (
-                        <div className="h-64 flex flex-col items-center justify-center text-slate-400 gap-3">
-                            <Loader2 className="animate-spin" size={32} />
-                            <p className="text-sm">Analisando dados...</p>
-                        </div>
-                    ) : error ? (
-                        <div className="h-64 flex flex-col items-center justify-center text-red-500 gap-3 bg-red-50 rounded-xl border border-red-100">
-                            <AlertCircle size={32} />
-                            <p className="text-sm font-medium">{error}</p>
-                        </div>
-                    ) : (
-                        <>
-                            {/* Resumo Rápido */}
-                            <div className="grid grid-cols-2 gap-4 mb-6">
-                                <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                                    <span className="text-xs font-bold text-blue-600 uppercase tracking-wider flex items-center gap-2">
-                                        <Activity size={14}/> Total de Cliques
-                                    </span>
-                                    <p className="text-2xl font-black text-[#021D34] mt-1">{totalLogs}</p>
-                                </div>
-                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
-                                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                                        <Calendar size={14}/> Período
-                                    </span>
-                                    <p className="text-sm font-medium text-slate-700 mt-2">
-                                        {stats.length > 0 ? `${stats[0].name} - ${stats[stats.length-1].name}` : 'Sem dados'}
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Gráfico */}
-                            <div className="h-64 w-full">
-                                {stats.length > 0 ? (
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={stats} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                            <XAxis 
-                                                dataKey="name" 
-                                                tick={{ fill: '#64748B', fontSize: 11 }} 
-                                                axisLine={false} 
-                                                tickLine={false}
-                                                dy={10}
-                                            />
-                                            <YAxis 
-                                                tick={{ fill: '#64748B', fontSize: 11 }} 
-                                                axisLine={false} 
-                                                tickLine={false} 
-                                            />
-                                            <Tooltip 
-                                                cursor={{ fill: '#F1F5F9' }}
-                                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                            />
-                                            <Bar dataKey="value" name="Acessos" fill="#009DE0" radius={[4, 4, 0, 0]} barSize={40} />
-                                        </BarChart>
-                                    </ResponsiveContainer>
-                                ) : (
-                                    <div className="h-full flex items-center justify-center text-slate-400 text-sm">
-                                        Nenhum acesso registrado ainda.
-                                    </div>
-                                )}
-                            </div>
-                        </>
-                    )}
-                </div>
+                )}
             </div>
         </div>
-    );
+
+        {/* Footer Actions */}
+        <div className="p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700 flex gap-3 transition-colors">
+             <button
+                onClick={handleResetStats}
+                disabled={isReseting || (link.clicks === 0)}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 border border-transparent hover:border-red-200 dark:hover:border-red-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+             >
+                <RotateCcw size={16} />
+                {isReseting ? 'Zerando...' : 'Zerar Contagem'}
+             </button>
+             
+             <button
+                onClick={onClose}
+                className="px-6 py-2.5 rounded-xl text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-600 hover:shadow-sm transition-all"
+             >
+                Fechar
+             </button>
+        </div>
+      </div>
+    </div>
+  );
 }

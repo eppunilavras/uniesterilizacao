@@ -125,55 +125,88 @@ export default function AdminLabels() {
     const subtitleStyle = { fontSize: fontSizeTitleSub, fontWeight: 'bold', display: 'block', transform: `translate(${settings.subtitleX}mm, ${settings.subtitleY}mm)` };
     const dateStyle = { fontSize: fontSizeDate, fontWeight: 'bold', display: 'inline-block', transform: `translate(${settings.dateX}mm, ${settings.dateY}mm)`, marginLeft: settings.headerAlign === 'flex-start' ? 'auto' : 0, marginRight: settings.headerAlign === 'flex-end' ? 'auto' : 0 };
 
-    // --- BLOQUEIO MOBILE (Padronizado) ---
+    // --- BLOQUEIO MOBILE (Padronizado e Dark Mode) ---
     if (isMobileBlock) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center animate-in zoom-in-95">
-                <div className="bg-blue-50 p-6 rounded-full mb-6"><Monitor className="w-16 h-16 text-[#009DE0]" /></div>
-                <h2 className="text-2xl font-bold text-[#021D34] mb-3">Acesso Restrito</h2>
-                <p className="text-slate-500 max-w-md mx-auto">Acesse esta página em um computador.</p>
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-full mb-6 transition-colors"><Monitor className="w-16 h-16 text-[#009DE0] dark:text-sky-400" /></div>
+                <h2 className="text-2xl font-bold text-[#021D34] dark:text-white mb-3 transition-colors">Acesso Restrito</h2>
+                <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto transition-colors">Acesse esta página em um computador.</p>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col lg:flex-row gap-6 items-start w-full max-w-full overflow-x-hidden">
+        <div className="flex flex-col lg:flex-row gap-6 items-start w-full max-w-full overflow-x-hidden animate-in fade-in">
             
             {/* 1. COLUNA DE CONTROLES */}
             <div className="w-full lg:flex-1 space-y-6 order-2 lg:order-1 min-w-0">
                 
-                {/* Abas de Navegação */}
-                <div className="flex bg-slate-200 p-1 rounded-lg w-full overflow-x-auto no-scrollbar touch-pan-x max-w-[85vw] lg:max-w-full">
-                    <button onClick={() => setActiveTab('layout')} className={`flex-1 min-w-[80px] px-2 py-2 text-xs font-bold rounded-md transition-all whitespace-nowrap flex items-center justify-center gap-2 ${activeTab === 'layout' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500'}`}><Layout size={14}/> Layout</button>
-                    <button onClick={() => setActiveTab('header')} className={`flex-1 min-w-[80px] px-2 py-2 text-xs font-bold rounded-md transition-all whitespace-nowrap flex items-center justify-center gap-2 ${activeTab === 'header' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500'}`}><Type size={14}/> Cabeçalho</button>
-                    <button onClick={() => setActiveTab('content')} className={`flex-1 min-w-[80px] px-2 py-2 text-xs font-bold rounded-md transition-all whitespace-nowrap flex items-center justify-center gap-2 ${activeTab === 'content' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500'}`}><ScanBarcode size={14}/> Código</button>
-                    <button onClick={() => setActiveTab('footer')} className={`flex-1 min-w-[80px] px-2 py-2 text-xs font-bold rounded-md transition-all whitespace-nowrap flex items-center justify-center gap-2 ${activeTab === 'footer' ? 'bg-white text-[#009DE0] shadow-sm' : 'text-slate-500'}`}><AlignLeft size={14}/> Rodapé</button>
+                {/* Abas de Navegação (Dark Mode: bg-slate-700) */}
+                <div className="flex bg-slate-200 dark:bg-slate-700 p-1 rounded-lg w-full overflow-x-auto no-scrollbar touch-pan-x max-w-[85vw] lg:max-w-full transition-colors">
+                    {[
+                        { id: 'layout', icon: Layout, label: 'Layout' },
+                        { id: 'header', icon: Type, label: 'Cabeçalho' },
+                        { id: 'content', icon: ScanBarcode, label: 'Código' },
+                        { id: 'footer', icon: AlignLeft, label: 'Rodapé' }
+                    ].map(tab => (
+                        <button 
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)} 
+                            className={`flex-1 min-w-[80px] px-2 py-2 text-xs font-bold rounded-md transition-all whitespace-nowrap flex items-center justify-center gap-2 
+                            ${activeTab === tab.id 
+                                ? 'bg-white text-[#009DE0] shadow-sm dark:bg-slate-800 dark:text-sky-400' 
+                                : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                        >
+                            <tab.icon size={14}/> {tab.label}
+                        </button>
+                    ))}
                 </div>
 
-                <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 md:p-6">
+                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm p-4 md:p-6 transition-colors">
                     {activeTab === 'layout' && (
                         <div className="space-y-5 animate-in fade-in">
                             <div className="grid grid-cols-2 gap-4">
-                                <div><label className="text-xs font-bold text-slate-500 mb-1 block">Largura (mm)</label><input type="number" className="w-full p-2 border rounded text-sm" value={settings.width} onChange={e=>setSettings({...settings, width: Number(e.target.value)})}/></div>
-                                <div><label className="text-xs font-bold text-slate-500 mb-1 block">Altura (mm)</label><input type="number" className="w-full p-2 border rounded text-sm" value={settings.height} onChange={e=>setSettings({...settings, height: Number(e.target.value)})}/></div>
-                                <div><label className="text-xs font-bold text-slate-500 mb-1 block">Margem (mm)</label><input type="number" className="w-full p-2 border rounded text-sm" value={settings.margin} onChange={e=>setSettings({...settings, margin: Number(e.target.value)})}/></div>
                                 <div>
-                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Orientação</label>
-                                    <select className="w-full p-2 border rounded text-sm bg-white" value={settings.orientation} onChange={e=>setSettings({...settings, orientation: e.target.value})}>
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Largura (mm)</label>
+                                    <input type="number" className="w-full p-2 border rounded text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white" value={settings.width} onChange={e=>setSettings({...settings, width: Number(e.target.value)})}/>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Altura (mm)</label>
+                                    <input type="number" className="w-full p-2 border rounded text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white" value={settings.height} onChange={e=>setSettings({...settings, height: Number(e.target.value)})}/>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Margem (mm)</label>
+                                    <input type="number" className="w-full p-2 border rounded text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white" value={settings.margin} onChange={e=>setSettings({...settings, margin: Number(e.target.value)})}/>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">Orientação</label>
+                                    <select className="w-full p-2 border rounded text-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white" value={settings.orientation} onChange={e=>setSettings({...settings, orientation: e.target.value})}>
                                         <option value="landscape">Paisagem</option>
                                         <option value="portrait">Retrato</option>
                                     </select>
                                 </div>
                             </div>
-                            <div className="pt-4 border-t border-slate-100">
-                                <label className="text-xs font-bold text-slate-500 mb-2 block">Rotação da Impressão</label>
-                                <div className="flex border rounded-lg overflow-hidden bg-slate-50">
-                                    {[0, 90, 180, 270].map(deg => (<button key={deg} onClick={() => setSettings({...settings, rotation: deg})} className={`flex-1 py-2 text-xs font-bold transition-colors ${settings.rotation === deg ? 'bg-[#009DE0] text-white' : 'hover:bg-slate-100 text-slate-600'}`}>{deg}°</button>))}
+                            <div className="pt-4 border-t border-slate-100 dark:border-slate-700">
+                                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 block">Rotação da Impressão</label>
+                                <div className="flex border dark:border-slate-700 rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-900">
+                                    {[0, 90, 180, 270].map(deg => (
+                                        <button 
+                                            key={deg} 
+                                            onClick={() => setSettings({...settings, rotation: deg})} 
+                                            className={`flex-1 py-2 text-xs font-bold transition-colors 
+                                            ${settings.rotation === deg 
+                                                ? 'bg-[#009DE0] text-white dark:bg-sky-600' 
+                                                : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'}`}
+                                        >
+                                            {deg}°
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
                             <div className="flex items-center justify-between pt-2">
-                                <span className="text-sm font-bold text-slate-700 flex items-center gap-2"><FlipHorizontal size={16}/> Espelhar (Mirror)</span>
-                                <button onClick={() => setSettings({...settings, mirror: !settings.mirror})} className={`w-12 h-6 rounded-full p-1 transition-colors ${settings.mirror ? 'bg-[#009DE0]' : 'bg-slate-300'}`}>
+                                <span className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2"><FlipHorizontal size={16}/> Espelhar (Mirror)</span>
+                                <button onClick={() => setSettings({...settings, mirror: !settings.mirror})} className={`w-12 h-6 rounded-full p-1 transition-colors ${settings.mirror ? 'bg-[#009DE0] dark:bg-sky-600' : 'bg-slate-300 dark:bg-slate-600'}`}>
                                     <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${settings.mirror ? 'translate-x-6' : 'translate-x-0'}`} />
                                 </button>
                             </div>
@@ -181,79 +214,99 @@ export default function AdminLabels() {
                     )}
                     {activeTab === 'header' && (
                         <div className="space-y-6 animate-in fade-in">
-                            <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200">
-                                <span className="text-sm font-bold text-[#021D34]">Exibir Cabeçalho</span>
-                                <button onClick={() => setSettings({...settings, showHeader: !settings.showHeader})} className={`w-12 h-6 rounded-full p-1 transition-colors ${settings.showHeader ? 'bg-green-500' : 'bg-slate-300'}`}>
+                            <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                                <span className="text-sm font-bold text-[#021D34] dark:text-white">Exibir Cabeçalho</span>
+                                <button onClick={() => setSettings({...settings, showHeader: !settings.showHeader})} className={`w-12 h-6 rounded-full p-1 transition-colors ${settings.showHeader ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
                                     <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${settings.showHeader ? 'translate-x-6' : 'translate-x-0'}`} />
                                 </button>
                             </div>
                             <div className={`space-y-6 transition-opacity duration-300 ${settings.showHeader ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-                                <div className="p-3 border rounded-lg bg-slate-50/50">
+                                <div className="p-3 border rounded-lg bg-slate-50/50 dark:bg-slate-900/30 dark:border-slate-700">
                                     <div className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1"><Layout size={12}/> Posição Geral do Bloco</div>
                                     <div className="grid grid-cols-2 gap-4 mb-3">
-                                        <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500">Pos. X</label><span className="text-[10px] text-slate-400">{settings.headerX}mm</span></div><input type="range" min="-15" max="15" className="w-full accent-[#009DE0]" value={settings.headerX} onChange={e => setSettings({...settings, headerX: Number(e.target.value)})}/></div>
-                                        <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500">Pos. Y</label><span className="text-[10px] text-slate-400">{settings.headerY}mm</span></div><input type="range" min="-15" max="15" className="w-full accent-[#009DE0]" value={settings.headerY} onChange={e => setSettings({...settings, headerY: Number(e.target.value)})}/></div>
+                                        <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Pos. X</label><span className="text-[10px] text-slate-400">{settings.headerX}mm</span></div><input type="range" min="-15" max="15" className="w-full accent-[#009DE0]" value={settings.headerX} onChange={e => setSettings({...settings, headerX: Number(e.target.value)})}/></div>
+                                        <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Pos. Y</label><span className="text-[10px] text-slate-400">{settings.headerY}mm</span></div><input type="range" min="-15" max="15" className="w-full accent-[#009DE0]" value={settings.headerY} onChange={e => setSettings({...settings, headerY: Number(e.target.value)})}/></div>
                                     </div>
-                                    <div className="flex border rounded overflow-hidden bg-white">
-                                        <button onClick={()=>setSettings({...settings, headerAlign: 'flex-start'})} className={`flex-1 py-1.5 flex justify-center ${settings.headerAlign === 'flex-start' ? 'bg-[#009DE0] text-white' : 'text-slate-400'}`}><AlignLeft size={14}/></button>
-                                        <button onClick={()=>setSettings({...settings, headerAlign: 'center'})} className={`flex-1 py-1.5 flex justify-center ${settings.headerAlign === 'center' ? 'bg-[#009DE0] text-white' : 'text-slate-400'}`}><AlignCenter size={14}/></button>
-                                        <button onClick={()=>setSettings({...settings, headerAlign: 'flex-end'})} className={`flex-1 py-1.5 flex justify-center ${settings.headerAlign === 'flex-end' ? 'bg-[#009DE0] text-white' : 'text-slate-400'}`}><AlignRight size={14}/></button>
+                                    <div className="flex border dark:border-slate-700 rounded overflow-hidden bg-white dark:bg-slate-900">
+                                        {['flex-start', 'center', 'flex-end'].map((align, idx) => (
+                                            <button 
+                                                key={align}
+                                                onClick={()=>setSettings({...settings, headerAlign: align})} 
+                                                className={`flex-1 py-1.5 flex justify-center 
+                                                ${settings.headerAlign === align ? 'bg-[#009DE0] text-white dark:bg-sky-600' : 'text-slate-400 dark:text-slate-500'}`}
+                                            >
+                                                {idx === 0 ? <AlignLeft size={14}/> : idx === 1 ? <AlignCenter size={14}/> : <AlignRight size={14}/>}
+                                            </button>
+                                        ))}
                                     </div>
                                 </div>
                                 {settings.showLogo && (
-                                    <div className="p-3 border rounded-lg bg-slate-50/50">
+                                    <div className="p-3 border rounded-lg bg-slate-50/50 dark:bg-slate-900/30 dark:border-slate-700">
                                         <div className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1"><ImageIcon size={12}/> Logo</div>
                                         <div className="space-y-3">
-                                            <div><div className="flex justify-between"><label className="text-[10px] font-bold text-slate-500">Tamanho</label><span className="text-[10px] text-slate-400">{settings.logoSize}%</span></div><input type="range" min="10" max="150" className="w-full accent-[#009DE0]" value={settings.logoSize} onChange={e => setSettings({...settings, logoSize: Number(e.target.value)})}/></div>
+                                            <div><div className="flex justify-between"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Tamanho</label><span className="text-[10px] text-slate-400">{settings.logoSize}%</span></div><input type="range" min="10" max="150" className="w-full accent-[#009DE0]" value={settings.logoSize} onChange={e => setSettings({...settings, logoSize: Number(e.target.value)})}/></div>
                                             <div className="grid grid-cols-2 gap-4">
-                                                <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500">Pos. X</label><span className="text-[10px] text-slate-400">{settings.logoX}mm</span></div><input type="range" min="-20" max="20" className="w-full accent-[#009DE0]" value={settings.logoX} onChange={e => setSettings({...settings, logoX: Number(e.target.value)})}/></div>
-                                                <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500">Pos. Y</label><span className="text-[10px] text-slate-400">{settings.logoY}mm</span></div><input type="range" min="-20" max="20" className="w-full accent-[#009DE0]" value={settings.logoY} onChange={e => setSettings({...settings, logoY: Number(e.target.value)})}/></div>
+                                                <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Pos. X</label><span className="text-[10px] text-slate-400">{settings.logoX}mm</span></div><input type="range" min="-20" max="20" className="w-full accent-[#009DE0]" value={settings.logoX} onChange={e => setSettings({...settings, logoX: Number(e.target.value)})}/></div>
+                                                <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Pos. Y</label><span className="text-[10px] text-slate-400">{settings.logoY}mm</span></div><input type="range" min="-20" max="20" className="w-full accent-[#009DE0]" value={settings.logoY} onChange={e => setSettings({...settings, logoY: Number(e.target.value)})}/></div>
                                             </div>
                                         </div>
                                     </div>
                                 )}
                                 {settings.showTitle && (
-                                    <div className="p-3 border rounded-lg bg-slate-50/50">
+                                    <div className="p-3 border rounded-lg bg-slate-50/50 dark:bg-slate-900/30 dark:border-slate-700">
                                         <div className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1"><Heading size={12}/> Título Principal</div>
-                                        <input className="w-full p-2 border rounded text-xs mb-3" value={settings.customTitle} onChange={e => setSettings({...settings, customTitle: e.target.value})} placeholder="Texto do Título"/>
+                                        <input className="w-full p-2 border rounded text-xs mb-3 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white" value={settings.customTitle} onChange={e => setSettings({...settings, customTitle: e.target.value})} placeholder="Texto do Título"/>
                                         <div className="space-y-3">
-                                            <div><div className="flex justify-between"><label className="text-[10px] font-bold text-slate-500">Tamanho Fonte</label><span className="text-[10px] text-slate-400">{settings.headerFontSize}px</span></div><input type="range" min="6" max="30" className="w-full accent-[#009DE0]" value={settings.headerFontSize} onChange={e => setSettings({...settings, headerFontSize: Number(e.target.value)})}/></div>
+                                            <div><div className="flex justify-between"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Tamanho Fonte</label><span className="text-[10px] text-slate-400">{settings.headerFontSize}px</span></div><input type="range" min="6" max="30" className="w-full accent-[#009DE0]" value={settings.headerFontSize} onChange={e => setSettings({...settings, headerFontSize: Number(e.target.value)})}/></div>
                                             <div className="grid grid-cols-2 gap-4">
-                                                <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500">Pos. X</label><span className="text-[10px] text-slate-400">{settings.titleX}mm</span></div><input type="range" min="-20" max="20" className="w-full accent-[#009DE0]" value={settings.titleX} onChange={e => setSettings({...settings, titleX: Number(e.target.value)})}/></div>
-                                                <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500">Pos. Y</label><span className="text-[10px] text-slate-400">{settings.titleY}mm</span></div><input type="range" min="-20" max="20" className="w-full accent-[#009DE0]" value={settings.titleY} onChange={e => setSettings({...settings, titleY: Number(e.target.value)})}/></div>
+                                                <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Pos. X</label><span className="text-[10px] text-slate-400">{settings.titleX}mm</span></div><input type="range" min="-20" max="20" className="w-full accent-[#009DE0]" value={settings.titleX} onChange={e => setSettings({...settings, titleX: Number(e.target.value)})}/></div>
+                                                <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Pos. Y</label><span className="text-[10px] text-slate-400">{settings.titleY}mm</span></div><input type="range" min="-20" max="20" className="w-full accent-[#009DE0]" value={settings.titleY} onChange={e => setSettings({...settings, titleY: Number(e.target.value)})}/></div>
                                             </div>
                                         </div>
                                     </div>
                                 )}
                                 {settings.showTitle && (
-                                    <div className="p-3 border rounded-lg bg-slate-50/50">
+                                    <div className="p-3 border rounded-lg bg-slate-50/50 dark:bg-slate-900/30 dark:border-slate-700">
                                         <div className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1"><Type size={12}/> Subtítulo</div>
-                                        <input className="w-full p-2 border rounded text-xs mb-3" value={settings.customSubtitle} onChange={e => setSettings({...settings, customSubtitle: e.target.value})} placeholder="Texto do Subtítulo"/>
+                                        <input className="w-full p-2 border rounded text-xs mb-3 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white" value={settings.customSubtitle} onChange={e => setSettings({...settings, customSubtitle: e.target.value})} placeholder="Texto do Subtítulo"/>
                                         <div className="space-y-3">
-                                            <div><div className="flex justify-between"><label className="text-[10px] font-bold text-slate-500">Tamanho Fonte</label><span className="text-[10px] text-slate-400">{settings.subheaderFontSize}px</span></div><input type="range" min="4" max="20" className="w-full accent-[#009DE0]" value={settings.subheaderFontSize} onChange={e => setSettings({...settings, subheaderFontSize: Number(e.target.value)})}/></div>
+                                            <div><div className="flex justify-between"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Tamanho Fonte</label><span className="text-[10px] text-slate-400">{settings.subheaderFontSize}px</span></div><input type="range" min="4" max="20" className="w-full accent-[#009DE0]" value={settings.subheaderFontSize} onChange={e => setSettings({...settings, subheaderFontSize: Number(e.target.value)})}/></div>
                                             <div className="grid grid-cols-2 gap-4">
-                                                <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500">Pos. X</label><span className="text-[10px] text-slate-400">{settings.subtitleX}mm</span></div><input type="range" min="-20" max="20" className="w-full accent-[#009DE0]" value={settings.subtitleX} onChange={e => setSettings({...settings, subtitleX: Number(e.target.value)})}/></div>
-                                                <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500">Pos. Y</label><span className="text-[10px] text-slate-400">{settings.subtitleY}mm</span></div><input type="range" min="-20" max="20" className="w-full accent-[#009DE0]" value={settings.subtitleY} onChange={e => setSettings({...settings, subtitleY: Number(e.target.value)})}/></div>
+                                                <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Pos. X</label><span className="text-[10px] text-slate-400">{settings.subtitleX}mm</span></div><input type="range" min="-20" max="20" className="w-full accent-[#009DE0]" value={settings.subtitleX} onChange={e => setSettings({...settings, subtitleX: Number(e.target.value)})}/></div>
+                                                <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Pos. Y</label><span className="text-[10px] text-slate-400">{settings.subtitleY}mm</span></div><input type="range" min="-20" max="20" className="w-full accent-[#009DE0]" value={settings.subtitleY} onChange={e => setSettings({...settings, subtitleY: Number(e.target.value)})}/></div>
                                             </div>
                                         </div>
                                     </div>
                                 )}
                                 {settings.showDate && (
-                                    <div className="p-3 border rounded-lg bg-slate-50/50">
+                                    <div className="p-3 border rounded-lg bg-slate-50/50 dark:bg-slate-900/30 dark:border-slate-700">
                                         <div className="text-xs font-bold text-slate-400 uppercase mb-2">Data</div>
                                         <div className="space-y-3">
-                                            <div><div className="flex justify-between"><label className="text-[10px] font-bold text-slate-500">Tamanho Fonte</label><span className="text-[10px] text-slate-400">{settings.dateFontSize}px</span></div><input type="range" min="4" max="14" className="w-full accent-[#009DE0]" value={settings.dateFontSize} onChange={e => setSettings({...settings, dateFontSize: Number(e.target.value)})}/></div>
+                                            <div><div className="flex justify-between"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Tamanho Fonte</label><span className="text-[10px] text-slate-400">{settings.dateFontSize}px</span></div><input type="range" min="4" max="14" className="w-full accent-[#009DE0]" value={settings.dateFontSize} onChange={e => setSettings({...settings, dateFontSize: Number(e.target.value)})}/></div>
                                             <div className="grid grid-cols-2 gap-4">
-                                                <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500">Pos. X</label><span className="text-[10px] text-slate-400">{settings.dateX}mm</span></div><input type="range" min="-20" max="20" className="w-full accent-[#009DE0]" value={settings.dateX} onChange={e => setSettings({...settings, dateX: Number(e.target.value)})}/></div>
-                                                <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500">Pos. Y</label><span className="text-[10px] text-slate-400">{settings.dateY}mm</span></div><input type="range" min="-20" max="20" className="w-full accent-[#009DE0]" value={settings.dateY} onChange={e => setSettings({...settings, dateY: Number(e.target.value)})}/></div>
+                                                <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Pos. X</label><span className="text-[10px] text-slate-400">{settings.dateX}mm</span></div><input type="range" min="-20" max="20" className="w-full accent-[#009DE0]" value={settings.dateX} onChange={e => setSettings({...settings, dateX: Number(e.target.value)})}/></div>
+                                                <div><div className="flex justify-between mb-1"><label className="text-[10px] font-bold text-slate-500 dark:text-slate-400">Pos. Y</label><span className="text-[10px] text-slate-400">{settings.dateY}mm</span></div><input type="range" min="-20" max="20" className="w-full accent-[#009DE0]" value={settings.dateY} onChange={e => setSettings({...settings, dateY: Number(e.target.value)})}/></div>
                                             </div>
                                         </div>
                                     </div>
                                 )}
-                                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100">
-                                    <label className={`flex flex-col items-center justify-center gap-1 p-2 rounded border cursor-pointer text-xs font-bold transition-all ${settings.showLogo ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-400'}`}><input type="checkbox" checked={settings.showLogo} onChange={() => setSettings({...settings, showLogo: !settings.showLogo})} className="hidden"/> Logo</label>
-                                    <label className={`flex flex-col items-center justify-center gap-1 p-2 rounded border cursor-pointer text-xs font-bold transition-all ${settings.showTitle ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-400'}`}><input type="checkbox" checked={settings.showTitle} onChange={() => setSettings({...settings, showTitle: !settings.showTitle})} className="hidden"/> Títulos</label>
-                                    <label className={`flex flex-col items-center justify-center gap-1 p-2 rounded border cursor-pointer text-xs font-bold transition-all ${settings.showDate ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-400'}`}><input type="checkbox" checked={settings.showDate} onChange={() => setSettings({...settings, showDate: !settings.showDate})} className="hidden"/> Data</label>
+                                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                                    {[
+                                        { key: 'showLogo', label: 'Logo' },
+                                        { key: 'showTitle', label: 'Títulos' },
+                                        { key: 'showDate', label: 'Data' }
+                                    ].map(item => (
+                                        <label 
+                                            key={item.key}
+                                            className={`flex flex-col items-center justify-center gap-1 p-2 rounded border cursor-pointer text-xs font-bold transition-all 
+                                            ${settings[item.key] 
+                                                ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-sky-400' 
+                                                : 'bg-white border-slate-200 text-slate-400 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-500'}`}
+                                        >
+                                            <input type="checkbox" checked={settings[item.key]} onChange={() => setSettings({...settings, [item.key]: !settings[item.key]})} className="hidden"/> 
+                                            {item.label}
+                                        </label>
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -261,47 +314,66 @@ export default function AdminLabels() {
                     {activeTab === 'content' && (
                         <div className="space-y-5 animate-in fade-in">
                             <div className="flex gap-2">
-                                <button onClick={()=>setSettings({...settings, codeType: 'barcode'})} className={`flex-1 py-3 rounded-lg font-bold text-sm border flex items-center justify-center gap-2 ${settings.codeType === 'barcode' ? 'bg-[#009DE0] text-white border-[#009DE0]' : 'bg-white text-slate-600'}`}><ScanBarcode size={18}/> Barcode</button>
-                                <button onClick={()=>setSettings({...settings, codeType: 'qrcode'})} className={`flex-1 py-3 rounded-lg font-bold text-sm border flex items-center justify-center gap-2 ${settings.codeType === 'qrcode' ? 'bg-[#009DE0] text-white border-[#009DE0]' : 'bg-white text-slate-600'}`}><ScanLine size={18}/> QR Code</button>
+                                <button onClick={()=>setSettings({...settings, codeType: 'barcode'})} className={`flex-1 py-3 rounded-lg font-bold text-sm border flex items-center justify-center gap-2 ${settings.codeType === 'barcode' ? 'bg-[#009DE0] text-white border-[#009DE0] dark:bg-sky-600' : 'bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700'}`}><ScanBarcode size={18}/> Barcode</button>
+                                <button onClick={()=>setSettings({...settings, codeType: 'qrcode'})} className={`flex-1 py-3 rounded-lg font-bold text-sm border flex items-center justify-center gap-2 ${settings.codeType === 'qrcode' ? 'bg-[#009DE0] text-white border-[#009DE0] dark:bg-sky-600' : 'bg-white text-slate-600 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700'}`}><ScanLine size={18}/> QR Code</button>
                             </div>
-                            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-4">
+                            <div className="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-xl border border-slate-200 dark:border-slate-700 space-y-4">
                                 <div>
-                                    <div className="flex justify-between mb-1"><label className="text-xs font-bold text-slate-500">Zoom</label><span className="text-xs text-slate-400">{settings.codeSize || 100}%</span></div>
+                                    <div className="flex justify-between mb-1"><label className="text-xs font-bold text-slate-500 dark:text-slate-400">Zoom</label><span className="text-xs text-slate-400">{settings.codeSize || 100}%</span></div>
                                     <input type="range" min="20" max="200" className="w-full accent-[#009DE0]" value={settings.codeSize || 100} onChange={e => setSettings({...settings, codeSize: Number(e.target.value)})}/>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div><div className="flex justify-between mb-1"><label className="text-xs font-bold text-slate-500 flex items-center gap-1"><ArrowLeftRight size={12}/> X</label><span className="text-[10px] text-slate-400">{settings.codeX}mm</span></div><input type="range" min="-30" max="30" className="w-full accent-[#009DE0]" value={settings.codeX || 0} onChange={e => setSettings({...settings, codeX: Number(e.target.value)})}/></div>
-                                    <div><div className="flex justify-between mb-1"><label className="text-xs font-bold text-slate-500 flex items-center gap-1"><ArrowUpDown size={12}/> Y</label><span className="text-[10px] text-slate-400">{settings.codeY}mm</span></div><input type="range" min="-30" max="30" className="w-full accent-[#009DE0]" value={settings.codeY || 0} onChange={e => setSettings({...settings, codeY: Number(e.target.value)})}/></div>
+                                    <div><div className="flex justify-between mb-1"><label className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1"><ArrowLeftRight size={12}/> X</label><span className="text-[10px] text-slate-400">{settings.codeX}mm</span></div><input type="range" min="-30" max="30" className="w-full accent-[#009DE0]" value={settings.codeX || 0} onChange={e => setSettings({...settings, codeX: Number(e.target.value)})}/></div>
+                                    <div><div className="flex justify-between mb-1"><label className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1"><ArrowUpDown size={12}/> Y</label><span className="text-[10px] text-slate-400">{settings.codeY}mm</span></div><input type="range" min="-30" max="30" className="w-full accent-[#009DE0]" value={settings.codeY || 0} onChange={e => setSettings({...settings, codeY: Number(e.target.value)})}/></div>
                                 </div>
                             </div>
                         </div>
                     )}
                     {activeTab === 'footer' && (
                         <div className="space-y-5 animate-in fade-in">
-                            <div className="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-200 mb-4">
-                                <span className="text-sm font-bold text-[#021D34]">Exibir Rodapé</span>
-                                <button onClick={() => setSettings({...settings, showFooter: !settings.showFooter})} className={`w-12 h-6 rounded-full p-1 transition-colors ${settings.showFooter ? 'bg-green-500' : 'bg-slate-300'}`}>
+                            <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700 mb-4">
+                                <span className="text-sm font-bold text-[#021D34] dark:text-white">Exibir Rodapé</span>
+                                <button onClick={() => setSettings({...settings, showFooter: !settings.showFooter})} className={`w-12 h-6 rounded-full p-1 transition-colors ${settings.showFooter ? 'bg-green-500' : 'bg-slate-300 dark:bg-slate-600'}`}>
                                     <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${settings.showFooter ? 'translate-x-6' : 'translate-x-0'}`} />
                                 </button>
                             </div>
                             <div className={`space-y-4 transition-opacity ${settings.showFooter ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-                                <div><div className="flex justify-between mb-1"><label className="text-xs font-bold text-slate-500">Tamanho Texto</label></div><input type="range" min="6" max="16" className="w-full accent-[#009DE0]" value={settings.footerFontSize} onChange={e => setSettings({...settings, footerFontSize: Number(e.target.value)})} /></div>
-                                <div className="grid grid-cols-2 gap-4 bg-slate-50 p-3 rounded-lg">
-                                    <div><div className="flex justify-between mb-1"><label className="text-xs font-bold text-slate-500 flex items-center gap-1"><ArrowLeftRight size={10}/> Pos. X</label><span className="text-[10px] text-slate-400">{settings.footerX}mm</span></div><input type="range" min="-10" max="10" className="w-full accent-[#009DE0]" value={settings.footerX || 0} onChange={e => setSettings({...settings, footerX: Number(e.target.value)})}/></div>
-                                    <div><div className="flex justify-between mb-1"><label className="text-xs font-bold text-slate-500 flex items-center gap-1"><ArrowUpDown size={10}/> Pos. Y</label><span className="text-[10px] text-slate-400">{settings.footerY}mm</span></div><input type="range" min="-10" max="10" className="w-full accent-[#009DE0]" value={settings.footerY || 0} onChange={e => setSettings({...settings, footerY: Number(e.target.value)})}/></div>
+                                <div><div className="flex justify-between mb-1"><label className="text-xs font-bold text-slate-500 dark:text-slate-400">Tamanho Texto</label></div><input type="range" min="6" max="16" className="w-full accent-[#009DE0]" value={settings.footerFontSize} onChange={e => setSettings({...settings, footerFontSize: Number(e.target.value)})} /></div>
+                                <div className="grid grid-cols-2 gap-4 bg-slate-50 dark:bg-slate-900/30 p-3 rounded-lg border dark:border-slate-700">
+                                    <div><div className="flex justify-between mb-1"><label className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1"><ArrowLeftRight size={10}/> Pos. X</label><span className="text-[10px] text-slate-400">{settings.footerX}mm</span></div><input type="range" min="-10" max="10" className="w-full accent-[#009DE0]" value={settings.footerX || 0} onChange={e => setSettings({...settings, footerX: Number(e.target.value)})}/></div>
+                                    <div><div className="flex justify-between mb-1"><label className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1"><ArrowUpDown size={10}/> Pos. Y</label><span className="text-[10px] text-slate-400">{settings.footerY}mm</span></div><input type="range" min="-10" max="10" className="w-full accent-[#009DE0]" value={settings.footerY || 0} onChange={e => setSettings({...settings, footerY: Number(e.target.value)})}/></div>
                                 </div>
-                                <div className="pt-2"><label className="text-xs font-bold text-slate-500 mb-2 block">Alinhamento Texto</label><div className="flex border rounded-lg overflow-hidden bg-slate-50"><button onClick={()=>setSettings({...settings, footerAlign: 'left'})} className={`flex-1 py-2 flex justify-center ${settings.footerAlign === 'left' ? 'bg-[#009DE0] text-white' : 'text-slate-500'}`}><AlignLeft size={16}/></button><button onClick={()=>setSettings({...settings, footerAlign: 'center'})} className={`flex-1 py-2 flex justify-center ${settings.footerAlign === 'center' ? 'bg-[#009DE0] text-white' : 'text-slate-500'}`}><AlignCenter size={16}/></button><button onClick={()=>setSettings({...settings, footerAlign: 'right'})} className={`flex-1 py-2 flex justify-center ${settings.footerAlign === 'right' ? 'bg-[#009DE0] text-white' : 'text-slate-500'}`}><AlignRight size={16}/></button></div></div>
-                                <div className="grid grid-cols-2 gap-2"><label className={`flex items-center gap-2 text-xs font-bold p-2 rounded border cursor-pointer ${settings.showStudent ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-400'}`}><input type="checkbox" checked={settings.showStudent} onChange={() => setSettings({...settings, showStudent: !settings.showStudent})} className="accent-[#009DE0]"/> Nome Aluno</label><label className={`flex items-center gap-2 text-xs font-bold p-2 rounded border cursor-pointer ${settings.showType ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-400'}`}><input type="checkbox" checked={settings.showType} onChange={() => setSettings({...settings, showType: !settings.showType})} className="accent-[#009DE0]"/> Tipo Material</label></div>
+                                <div className="pt-2">
+                                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2 block">Alinhamento Texto</label>
+                                    <div className="flex border rounded-lg overflow-hidden bg-slate-50 dark:bg-slate-900 dark:border-slate-700">
+                                        {['left', 'center', 'right'].map((align, idx) => (
+                                            <button 
+                                                key={align}
+                                                onClick={()=>setSettings({...settings, footerAlign: align})} 
+                                                className={`flex-1 py-2 flex justify-center 
+                                                ${settings.footerAlign === align 
+                                                    ? 'bg-[#009DE0] text-white dark:bg-sky-600' 
+                                                    : 'text-slate-500 dark:text-slate-400'}`}
+                                            >
+                                                {idx === 0 ? <AlignLeft size={16}/> : idx === 1 ? <AlignCenter size={16}/> : <AlignRight size={16}/>}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <label className={`flex items-center gap-2 text-xs font-bold p-2 rounded border cursor-pointer ${settings.showStudent ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-sky-400' : 'bg-white border-slate-200 text-slate-400 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-500'}`}><input type="checkbox" checked={settings.showStudent} onChange={() => setSettings({...settings, showStudent: !settings.showStudent})} className="accent-[#009DE0]"/> Nome Aluno</label>
+                                    <label className={`flex items-center gap-2 text-xs font-bold p-2 rounded border cursor-pointer ${settings.showType ? 'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/30 dark:border-blue-800 dark:text-sky-400' : 'bg-white border-slate-200 text-slate-400 dark:bg-slate-900 dark:border-slate-700 dark:text-slate-500'}`}><input type="checkbox" checked={settings.showType} onChange={() => setSettings({...settings, showType: !settings.showType})} className="accent-[#009DE0]"/> Tipo Material</label>
+                                </div>
                             </div>
                         </div>
                     )}
                 </div>
                 
                 <div className="flex flex-col md:flex-row gap-3 pt-4">
-                    <button onClick={resetDefaults} className="w-full md:flex-1 bg-white border border-slate-300 text-slate-600 py-4 rounded-xl font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
+                    <button onClick={resetDefaults} className="w-full md:flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 py-4 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2">
                         <RotateCcw size={18}/> Restaurar Padrões
                     </button>
-                    <button onClick={save} className="w-full md:flex-[2] bg-[#021D34] text-white py-4 rounded-xl font-bold hover:bg-[#009DE0] transition-colors shadow-lg shadow-blue-900/20 flex items-center justify-center gap-2">
+                    <button onClick={save} className="w-full md:flex-[2] bg-[#021D34] text-white py-4 rounded-xl font-bold hover:bg-[#009DE0] dark:bg-sky-600 dark:hover:bg-sky-500 transition-colors shadow-lg shadow-blue-900/20 dark:shadow-sky-900/20 flex items-center justify-center gap-2">
                          <Save size={18}/> Salvar Configurações
                     </button>
                 </div>
@@ -309,13 +381,14 @@ export default function AdminLabels() {
 
             {/* 2. COLUNA DE PREVIEW */}
             <div className="w-full lg:w-[400px] xl:w-[450px] shrink-0 order-1 lg:order-2 lg:sticky lg:top-4 mx-auto">
-                <div className="bg-slate-100 p-6 rounded-xl border border-slate-300 flex flex-col items-center justify-center min-h-[300px] md:min-h-[400px] relative overflow-hidden">
+                {/* CONTAINER DO PREVIEW: Escuro no Dark Mode */}
+                <div className="bg-slate-100 dark:bg-slate-900/50 p-6 rounded-xl border border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center min-h-[300px] md:min-h-[400px] relative overflow-hidden transition-colors">
                     <div className="absolute top-4 left-4 z-20 flex flex-col">
-                        <h3 className="font-bold text-slate-400 uppercase tracking-wider text-xs flex items-center gap-2"><Eye size={14}/> Preview</h3>
-                        <span className="text-[9px] text-slate-400">{isMobile ? 'Escala Mobile' : 'Escala Desktop'}</span>
+                        <h3 className="font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-xs flex items-center gap-2"><Eye size={14}/> Preview</h3>
+                        <span className="text-[9px] text-slate-400 dark:text-slate-500">{isMobile ? 'Escala Mobile' : 'Escala Desktop'}</span>
                     </div>
                     
-                    {/* CONTAINER FANTASMA */}
+                    {/* ÁREA FANTASMA (GUIDE) */}
                     <div style={{
                         width: `${displayWidthMM}mm`,
                         height: `${displayHeightMM}mm`,
@@ -325,10 +398,11 @@ export default function AdminLabels() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        border: '1px dashed #cbd5e1' 
+                        border: '1px dashed #94a3b8' // Slate-400
                     }}>
+                        {/* A ETIQUETA EM SI: SEMPRE BRANCA (Simula Papel) */}
                         <div 
-                            className="bg-white shadow-2xl flex flex-col justify-between overflow-hidden transition-all duration-300"
+                            className="bg-white shadow-2xl flex flex-col justify-between overflow-hidden transition-all duration-300 text-black"
                             style={{
                                 width: `${realWidth}mm`,
                                 height: `${realHeight}mm`,
@@ -357,8 +431,8 @@ export default function AdminLabels() {
                                 </div>
                             )}
 
-                            {/* CÓDIGO */}
-                            <div className="flex-1 flex items-center justify-center overflow-hidden py-1 relative">
+                            {/* CÓDIGO (PRETO E BRANCO) */}
+                            <div className="flex-1 flex items-center justify-center overflow-hidden py-1 relative text-black">
                                 <div style={codeStyle}>
                                     {settings.codeType === 'qrcode' ? <QRCodeComponent value="TESTE123" /> : <Barcode value="TESTE123" />}
                                 </div>
@@ -366,7 +440,7 @@ export default function AdminLabels() {
 
                             {/* FOOTER */}
                             {settings.showFooter && (
-                                <div className="border-t border-black pt-1 flex flex-col justify-center" style={footerStyle}>
+                                <div className="border-t border-black pt-1 flex flex-col justify-center text-black" style={footerStyle}>
                                     {settings.showStudent && <div className="leading-none" style={{fontSize: fontSizeBody}}><span className="font-bold">ALUNO:</span> <span className="font-bold truncate">JOAO CESAR</span></div>}
                                     {settings.showType && <div className="leading-none mt-0.5" style={{fontSize: fontSizeBody}}><span className="font-bold">MAT:</span> <span className="font-bold truncate">KIT CLINICO</span></div>}
                                 </div>
@@ -375,7 +449,7 @@ export default function AdminLabels() {
                     </div>
                 </div>
                 <div className="flex justify-center gap-4 mt-2">
-                    <span className="text-[10px] text-slate-400 flex items-center gap-1"><Smartphone size={10}/> Visualização Adaptada</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1"><Smartphone size={10}/> Visualização Adaptada</span>
                 </div>
             </div>
         </div>

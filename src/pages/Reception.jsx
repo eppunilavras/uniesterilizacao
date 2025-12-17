@@ -62,7 +62,6 @@ export default function Reception({ userProfile }) {
         ).slice(0, 10);
     }, [search, allStudents]);
 
-    // --- MUDANÇA: Destruturando refetch e isRefetching dos materiais ---
     const { 
         data: types = [],
         refetch: refetchTypes,
@@ -100,7 +99,6 @@ export default function Reception({ userProfile }) {
         addToast('Solicitação de atualização enviada.', 'success');
     };
 
-    // --- NOVA FUNÇÃO: Atualizar Materiais Manualmente ---
     const handleManualRefreshTypes = async () => {
         if (!isOnline) { addToast('Sem conexão para atualizar.', 'error'); return; }
         addToast('Atualizando tipos de materiais...', 'info');
@@ -259,29 +257,31 @@ export default function Reception({ userProfile }) {
     if (isMobileBlock) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center animate-in zoom-in-95">
-                <div className="bg-blue-50 p-6 rounded-full mb-6"><Monitor className="w-16 h-16 text-[#009DE0]" /></div>
-                <h2 className="text-2xl font-bold text-[#021D34] mb-3">Acesso Restrito</h2>
-                <p className="text-slate-500 max-w-md mx-auto">Acesse esta página em um computador.</p>
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-full mb-6 border border-blue-100 dark:border-blue-800">
+                    <Monitor className="w-16 h-16 text-[#009DE0] dark:text-blue-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-[#021D34] dark:text-white mb-3">Acesso Restrito</h2>
+                <p className="text-slate-500 dark:text-slate-400 max-w-md mx-auto">Acesse esta página em um computador.</p>
             </div>
         );
     }
 
     if (step === 3) return (
         <div className="animate-in zoom-in">
-            <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center max-w-3xl mx-auto">
+            <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 text-center max-w-3xl mx-auto shadow-xl transition-colors">
                 <CheckCircle2 className="w-20 h-20 text-green-500 mx-auto mb-4"/>
-                <h2 className="text-2xl font-bold text-[#021D34]">{isOnline ? 'Sucesso!' : 'Salvo Offline!'}</h2>
-                <p className="text-slate-500 mt-2">
+                <h2 className="text-2xl font-bold text-[#021D34] dark:text-white">{isOnline ? 'Sucesso!' : 'Salvo Offline!'}</h2>
+                <p className="text-slate-500 dark:text-slate-400 mt-2">
                     {isOnline 
                         ? 'Etiquetas geradas. Clique abaixo para imprimir.' 
                         : 'Os itens foram salvos no dispositivo e serão enviados assim que a internet voltar. Pode imprimir agora.'}
                 </p>
                 
                 <div className="flex justify-center gap-4 mb-8 mt-6">
-                    <button onClick={() => printItems(createdItems)} className="bg-[#021D34] text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 hover:bg-[#032d50]">
+                    <button onClick={() => printItems(createdItems)} className="bg-[#021D34] dark:bg-slate-700 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 hover:bg-[#032d50] dark:hover:bg-slate-600 transition-colors shadow-lg">
                         <Printer size={20}/> Imprimir TODAS
                     </button>
-                    <button onClick={() => { setStep(1); setSelectedStudent(null); setSearch(''); setCart([]); }} className="border px-6 py-3 rounded-lg font-bold hover:bg-slate-50">
+                    <button onClick={() => { setStep(1); setSelectedStudent(null); setSearch(''); setCart([]); }} className="border border-slate-200 dark:border-slate-600 px-6 py-3 rounded-lg font-bold hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors">
                         Novo Atendimento
                     </button>
                 </div>
@@ -290,15 +290,16 @@ export default function Reception({ userProfile }) {
     );
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-in fade-in duration-500">
+            {/* --- HEADER --- */}
             <div className="flex justify-between items-center">
-                <h2 className="font-bold text-[#021D34] text-2xl flex items-center gap-2">
+                <h2 className="font-bold text-[#021D34] dark:text-white text-2xl flex items-center gap-2 transition-colors">
                     <PackagePlus className="text-[#009DE0]"/> Receção
                 </h2>
                 <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold border transition-colors duration-300 ${
                     isOnline 
-                        ? 'bg-green-50 text-green-700 border-green-200' 
-                        : 'bg-red-50 text-red-700 border-red-200 animate-pulse'
+                        ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' 
+                        : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800 animate-pulse'
                 }`}>
                     {isOnline ? <Wifi size={14}/> : <WifiOff size={14}/>}
                     {isOnline ? 'Conectado' : 'Modo Offline'}
@@ -306,12 +307,18 @@ export default function Reception({ userProfile }) {
             </div>
 
             <div className="grid lg:grid-cols-3 gap-6">
+                
+                {/* --- COLUNA ESQUERDA (ALUNOS E MATERIAIS) --- */}
                 <div className="lg:col-span-2 space-y-6">
-                    <div className={`bg-white p-6 rounded-2xl border transition-all ${selectedStudent ? 'border-[#009DE0]' : 'border-slate-200'}`}>
+                    
+                    {/* 1. CARD IDENTIFICAÇÃO DO ALUNO */}
+                    <div className={`bg-white dark:bg-slate-800 p-6 rounded-2xl border transition-all duration-300 ${selectedStudent ? 'border-[#009DE0] dark:border-[#009DE0]' : 'border-slate-200 dark:border-slate-700'}`}>
                         <div className="flex justify-between items-center mb-4">
-                             <h3 className="font-bold text-lg flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-[#021D34] text-white flex items-center justify-center text-xs">1</span> Identificação</h3>
+                             <h3 className="font-bold text-lg flex items-center gap-2 text-[#021D34] dark:text-white">
+                                 <span className="w-6 h-6 rounded-full bg-[#021D34] dark:bg-slate-700 text-white flex items-center justify-center text-xs">1</span> Identificação
+                             </h3>
                              <div className="flex items-center gap-3">
-                                 <div className="flex items-center gap-1 text-xs font-medium text-slate-400">
+                                 <div className="flex items-center gap-1 text-xs font-medium text-slate-400 dark:text-slate-500">
                                      {loadingStudents ? (
                                          <><Loader2 className="animate-spin w-3 h-3"/> Carregando...</>
                                      ) : (
@@ -323,7 +330,7 @@ export default function Reception({ userProfile }) {
                                  <button 
                                     onClick={handleManualRefreshStudents} 
                                     disabled={!isOnline}
-                                    className={`p-1.5 rounded-full hover:bg-slate-100 transition-colors ${isRefetchingStudents ? 'animate-spin text-[#009DE0]' : 'text-slate-400'} ${!isOnline ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    className={`p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${isRefetchingStudents ? 'animate-spin text-[#009DE0]' : 'text-slate-400'} ${!isOnline ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     title="Recarregar alunos"
                                  >
                                      <RotateCw size={16}/>
@@ -338,7 +345,7 @@ export default function Reception({ userProfile }) {
                                     <Search className="absolute left-3 top-3 w-5 h-5 text-slate-400"/>
                                     <input 
                                         id="student-search-input"
-                                        className="w-full pl-10 p-3 border rounded-lg outline-none focus:border-[#009DE0]" 
+                                        className="w-full pl-10 p-3 border border-slate-200 dark:border-slate-700 rounded-lg outline-none focus:border-[#009DE0] dark:focus:border-[#009DE0] bg-white dark:bg-slate-950 text-slate-900 dark:text-white transition-colors" 
                                         placeholder="Nome ou CPF..." 
                                         value={search} 
                                         onChange={e => setSearch(e.target.value)} 
@@ -347,47 +354,64 @@ export default function Reception({ userProfile }) {
                                     />
                                 </div>
                                 {studentResults.length > 0 && (
-                                    <div className="absolute top-full left-0 right-0 bg-white border mt-2 rounded-xl shadow-xl z-20 overflow-hidden max-h-60 overflow-y-auto animate-in slide-in-from-top-2">
+                                    <div className="absolute top-full left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 mt-2 rounded-xl shadow-xl z-20 overflow-hidden max-h-60 overflow-y-auto animate-in slide-in-from-top-2">
                                         {studentResults.map(s => (
                                             <button key={s.uid} onClick={() => { 
                                                 if (s.active === false) { addToast('Aluno inativo.', 'error'); return; }
                                                 setSelectedStudent(s); 
-                                            }} className="w-full text-left p-3 hover:bg-blue-50 border-b last:border-0 transition-colors">
+                                            }} className="w-full text-left p-3 hover:bg-blue-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors">
                                                 <div className="flex justify-between">
-                                                    <div><p className="font-bold text-[#021D34]">{s.name}</p><p className="text-xs text-slate-500">{maskCPF(s.cpf)}</p></div>
+                                                    <div>
+                                                        <p className="font-bold text-[#021D34] dark:text-white">{s.name}</p>
+                                                        <p className="text-xs text-slate-500 dark:text-slate-400">{maskCPF(s.cpf)}</p>
+                                                    </div>
                                                 </div>
                                             </button>
                                         ))}
                                     </div>
                                 )}
                                 {search.length > 1 && studentResults.length === 0 && !loadingStudents && (
-                                    <div className="absolute top-full left-0 right-0 bg-white border mt-2 rounded-xl shadow-lg z-20 p-4 text-center text-slate-500 text-sm">Nenhum aluno encontrado.</div>
+                                    <div className="absolute top-full left-0 right-0 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 mt-2 rounded-xl shadow-lg z-20 p-4 text-center text-slate-500 dark:text-slate-400 text-sm">
+                                        Nenhum aluno encontrado.
+                                    </div>
                                 )}
                             </div>
                         ) : (
-                            <div className="flex items-center gap-4 bg-blue-50 p-4 rounded-xl border border-blue-100">
-                                <div className="w-12 h-12 rounded-full bg-[#009DE0] text-white flex items-center justify-center font-bold text-lg">{selectedStudent.name.substring(0,2)}</div>
-                                <div><p className="font-bold text-[#021D34] text-lg">{selectedStudent.name}</p><p className="text-sm text-slate-600">{maskCPF(selectedStudent.cpf)}</p></div>
+                            <div className="flex items-center gap-4 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-900/30 transition-colors">
+                                <div className="w-12 h-12 rounded-full bg-[#009DE0] text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                                    {selectedStudent.name.substring(0,2)}
+                                </div>
+                                <div>
+                                    <p className="font-bold text-[#021D34] dark:text-white text-lg">{selectedStudent.name}</p>
+                                    <p className="text-sm text-slate-600 dark:text-slate-300">{maskCPF(selectedStudent.cpf)}</p>
+                                </div>
                             </div>
                         )}
                     </div>
 
-                    <div className={`bg-white p-6 rounded-2xl border border-slate-200 transition-opacity ${!selectedStudent ? 'opacity-50' : 'opacity-100'}`}>
+                    {/* 2. CARD SELEÇÃO DE MATERIAIS */}
+                    <div className={`bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 transition-all duration-300 ${!selectedStudent ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                         <div className="flex justify-between items-center mb-4 gap-4">
-                            <h3 className="font-bold text-lg flex items-center gap-2"><span className="w-6 h-6 rounded-full bg-[#021D34] text-white flex items-center justify-center text-xs">2</span> Materiais</h3>
+                            <h3 className="font-bold text-lg flex items-center gap-2 text-[#021D34] dark:text-white">
+                                <span className="w-6 h-6 rounded-full bg-[#021D34] dark:bg-slate-700 text-white flex items-center justify-center text-xs">2</span> Materiais
+                            </h3>
                             
-                            {/* --- MUDANÇA: ÁREA DE PESQUISA + BOTÃO REFRESH --- */}
                             <div className="flex items-center gap-2 flex-1 justify-end">
                                 {types.length > itemsPerPage && (
                                     <div className="relative w-full max-w-[200px]">
                                         <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400"/>
-                                        <input className="w-full pl-9 p-2 border rounded-lg text-sm outline-none focus:border-[#009DE0]" placeholder="Filtrar..." value={itemSearch} onChange={e => setItemSearch(e.target.value)}/>
+                                        <input 
+                                            className="w-full pl-9 p-2 border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-white rounded-lg text-sm outline-none focus:border-[#009DE0] dark:focus:border-[#009DE0] transition-colors" 
+                                            placeholder="Filtrar..." 
+                                            value={itemSearch} 
+                                            onChange={e => setItemSearch(e.target.value)}
+                                        />
                                     </div>
                                 )}
                                 <button 
                                     onClick={handleManualRefreshTypes} 
                                     disabled={!isOnline}
-                                    className={`p-1.5 rounded-full hover:bg-slate-100 transition-colors ${isRefetchingTypes ? 'animate-spin text-[#009DE0]' : 'text-slate-400'} ${!isOnline ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    className={`p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${isRefetchingTypes ? 'animate-spin text-[#009DE0]' : 'text-slate-400'} ${!isOnline ? 'opacity-50 cursor-not-allowed' : ''}`}
                                     title="Recarregar materiais"
                                 >
                                     <RotateCw size={16}/>
@@ -397,36 +421,70 @@ export default function Reception({ userProfile }) {
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 min-h-[300px]">
                             {visibleTypes.map(t => (
-                                <button key={t.id} onClick={() => handleAddMaterial(t)} className="p-4 border rounded-xl hover:bg-[#009DE0] hover:text-white transition-all flex flex-col items-center gap-2 group">
-                                    <PackagePlus size={24} className="text-slate-300 group-hover:text-white"/><span className="font-medium text-sm">{t.name}</span>
+                                <button 
+                                    key={t.id} 
+                                    onClick={() => handleAddMaterial(t)} 
+                                    className="p-4 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-[#009DE0] hover:border-[#009DE0] hover:text-white dark:text-slate-300 dark:hover:text-white transition-all flex flex-col items-center gap-2 group bg-slate-50 dark:bg-slate-800/50"
+                                >
+                                    <PackagePlus size={24} className="text-slate-400 dark:text-slate-500 group-hover:text-white transition-colors"/>
+                                    <span className="font-medium text-sm text-center line-clamp-2">{t.name}</span>
                                 </button>
                             ))}
                         </div>
                         {totalItemPages > 1 && (
-                            <div className="flex items-center justify-between mt-4 bg-slate-50 p-2 rounded-xl">
-                                <button onClick={prevPage} className="p-2 rounded hover:bg-white"><ChevronLeft/></button>
-                                <div className="flex gap-1">{Array.from({ length: totalItemPages }).map((_, idx) => <div key={idx} className={`w-2 h-2 rounded-full ${idx === itemPage ? 'bg-[#009DE0]' : 'bg-slate-300'}`}/>)}</div>
-                                <button onClick={nextPage} className="p-2 rounded hover:bg-white"><ChevronRight/></button>
+                            <div className="flex items-center justify-between mt-4 bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
+                                <button onClick={prevPage} className="p-2 rounded hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"><ChevronLeft/></button>
+                                <div className="flex gap-1">
+                                    {Array.from({ length: totalItemPages }).map((_, idx) => (
+                                        <div key={idx} className={`w-2 h-2 rounded-full ${idx === itemPage ? 'bg-[#009DE0]' : 'bg-slate-300 dark:bg-slate-700'}`}/>
+                                    ))}
+                                </div>
+                                <button onClick={nextPage} className="p-2 rounded hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"><ChevronRight/></button>
                             </div>
                         )}
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 h-fit sticky top-4 shadow-sm">
-                    <div className="flex justify-between items-center mb-4"><h3 className="font-bold text-[#021D34]">Resumo</h3>{cart.length > 0 && <button onClick={() => setCart([])} className="text-xs text-red-500 hover:underline flex items-center gap-1"><Trash2 size={12}/> Limpar</button>}</div>
-                    <div className="space-y-2 mb-6 max-h-[300px] overflow-y-auto custom-scrollbar">
-                        {cart.length === 0 ? <p className="text-slate-400 text-center text-sm py-4">Nenhum item.</p> : cart.map(item => (
-                            <div key={item.uid} className="flex justify-between items-center bg-slate-50 p-2 rounded border border-slate-100"><span className="text-sm font-medium text-slate-700">{item.name}</span><button onClick={() => setCart(cart.filter(x => x.uid !== item.uid))} className="text-red-400"><X size={16}/></button></div>
-                        ))}
+                {/* --- COLUNA DIREITA (RESUMO / CARRINHO) --- */}
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 h-fit sticky top-4 shadow-sm transition-colors">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-bold text-[#021D34] dark:text-white">Resumo</h3>
+                        {cart.length > 0 && (
+                            <button onClick={() => setCart([])} className="text-xs text-red-500 hover:underline flex items-center gap-1">
+                                <Trash2 size={12}/> Limpar
+                            </button>
+                        )}
                     </div>
+                    
+                    <div className="space-y-2 mb-6 max-h-[300px] overflow-y-auto custom-scrollbar">
+                        {cart.length === 0 ? (
+                            <p className="text-slate-400 dark:text-slate-500 text-center text-sm py-4 border-2 border-dashed border-slate-100 dark:border-slate-700 rounded-xl">
+                                Nenhum item selecionado.
+                            </p>
+                        ) : (
+                            cart.map(item => (
+                                <div key={item.uid} className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-700 transition-colors animate-in fade-in slide-in-from-left-2">
+                                    <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.name}</span>
+                                    <button onClick={() => setCart(cart.filter(x => x.uid !== item.uid))} className="text-red-400 hover:text-red-600 dark:hover:text-red-300 p-1">
+                                        <X size={16}/>
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
                     <button 
                         onClick={finish} 
                         disabled={!selectedStudent || cart.length === 0} 
-                        className={`w-full text-white py-3 rounded-lg font-bold disabled:opacity-50 shadow-lg ${isOnline ? 'bg-[#009DE0] hover:bg-[#008bc5] shadow-blue-500/20' : 'bg-orange-600 hover:bg-orange-700 shadow-orange-500/20'}`}
+                        className={`w-full text-white py-3 rounded-lg font-bold disabled:opacity-50 shadow-lg transition-all active:scale-[0.98] ${
+                            isOnline 
+                                ? 'bg-[#009DE0] hover:bg-[#008bc5] shadow-blue-500/20' 
+                                : 'bg-orange-600 hover:bg-orange-700 shadow-orange-500/20'
+                        }`}
                     >
                         {isOnline ? 'Finalizar e Imprimir' : 'Salvar Offline e Imprimir'}
                     </button>
-                    {!isOnline && <p className="text-xs text-center text-orange-600 mt-2 font-bold">Os dados serão sincronizados ao conectar.</p>}
+                    {!isOnline && <p className="text-xs text-center text-orange-600 dark:text-orange-400 mt-2 font-bold">Os dados serão sincronizados ao conectar.</p>}
                 </div>
             </div>
         </div>

@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 transition-colors duration-300;
+  }
+  /* Estilo base para modo escuro */
+  .dark body {
+    @apply bg-[#020617] text-slate-100; /* slate-950 */
+  }
+}
+
 /* --- CUSTOM SCROLLBAR (Usado nas listas de itens e sidebar) --- */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;

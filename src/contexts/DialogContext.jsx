@@ -1,92 +1,119 @@
-import React, { createContext, useContext, useState } from 'react';
-import { 
-  AlertTriangle, 
-  Info 
-} from 'lucide-react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { X, AlertTriangle, HelpCircle, CheckCircle2, AlertOctagon } from 'lucide-react';
 
 const DialogContext = createContext();
 
-export const useDialog = () => useContext(DialogContext);
+export function useDialog() {
+  return useContext(DialogContext);
+}
 
-export const DialogProvider = ({ children }) => {
-    const [dialog, setDialog] = useState(null);
+export function DialogProvider({ children }) {
+  const [dialog, setDialog] = useState(null);
 
-    const confirm = ({ 
-        title, 
-        message, 
-        confirmText = 'Confirmar', 
-        cancelText = 'Cancelar', 
-        isDestructive = false 
-    }) => {
-        return new Promise((resolve) => {
-            setDialog({
-                title,
-                message,
-                type: 'confirm',
-                confirmText,
-                cancelText,
-                isDestructive,
-                onConfirm: () => { setDialog(null); resolve(true); },
-                onCancel: () => { setDialog(null); resolve(false); }
-            });
-        });
-    };
+  const confirm = useCallback(({ 
+    title, 
+    message, 
+    confirmLabel = 'Confirmar', 
+    cancelLabel = 'Cancelar', 
+    variant = 'default', // 'default', 'destructive', 'info'
+    confirmText, // Retrocompatibilidade
+    cancelText, // Retrocompatibilidade
+    isDestructive // Retrocompatibilidade
+  }) => {
+    return new Promise((resolve) => {
+      setDialog({
+        title,
+        message,
+        confirmLabel: confirmText || confirmLabel,
+        cancelLabel: cancelText || cancelLabel,
+        variant: isDestructive ? 'destructive' : variant,
+        onConfirm: () => {
+          setDialog(null);
+          resolve(true);
+        },
+        onCancel: () => {
+          setDialog(null);
+          resolve(false);
+        }
+      });
+    });
+  }, []);
 
-    const alert = ({ title, message }) => {
-        return new Promise((resolve) => {
-            setDialog({
-                title,
-                message,
-                type: 'alert',
-                onConfirm: () => { setDialog(null); resolve(true); }
-            });
-        });
-    };
+  const getIcon = (variant) => {
+      switch(variant) {
+          case 'destructive': return <AlertOctagon size={24} className="text-red-500" />;
+          case 'info': return <HelpCircle size={24} className="text-blue-500" />;
+          case 'success': return <CheckCircle2 size={24} className="text-green-500" />;
+          default: return <AlertTriangle size={24} className="text-amber-500" />;
+      }
+  };
 
-    return (
-        <DialogContext.Provider value={{ confirm, alert }}>
-            {children}
-            
-            {dialog && (
-                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-[#021D34]/50 backdrop-blur-sm animate-in fade-in duration-200 no-print">
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200">
-                        
-                        <div className="flex items-start gap-4 mb-4">
-                            <div className={`p-3 rounded-full ${dialog.isDestructive ? 'bg-red-100 text-red-600' : 'bg-blue-50 text-[#009DE0]'}`}>
-                                {dialog.isDestructive ? <AlertTriangle size={24}/> : <Info size={24}/>}
-                            </div>
-                            <div className="w-full">
-                                <h3 className="text-lg font-bold text-slate-900">{dialog.title}</h3>
-                                {/* AQUI MUDAMOS DE <p> PARA <div> PARA ACEITAR CONTEÚDO HTML/JSX */}
-                                <div className="text-slate-600 text-sm mt-2 w-full">
-                                    {dialog.message}
-                                </div>
-                            </div>
-                        </div>
+  const getButtonStyles = (variant) => {
+      switch(variant) {
+          case 'destructive': return 'bg-red-600 hover:bg-red-700 text-white shadow-red-900/20';
+          case 'info': return 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-900/20';
+          case 'success': return 'bg-green-600 hover:bg-green-700 text-white shadow-green-900/20';
+          default: return 'bg-[#021D34] hover:bg-[#009DE0] text-white shadow-blue-900/20 dark:bg-sky-600 dark:hover:bg-sky-500';
+      }
+  };
 
-                        <div className="flex justify-end gap-3 mt-6">
-                            {dialog.type === 'confirm' && (
-                                <button 
-                                    onClick={dialog.onCancel}
-                                    className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg transition-colors text-sm"
-                                >
-                                    {dialog.cancelText || 'Cancelar'}
-                                </button>
-                            )}
-                            <button 
-                                onClick={dialog.onConfirm}
-                                className={`px-4 py-2 text-white font-bold rounded-lg shadow-lg transition-transform active:scale-95 text-sm ${
-                                    dialog.isDestructive 
-                                        ? 'bg-red-600 hover:bg-red-700 shadow-red-500/30' 
-                                        : 'bg-[#009DE0] hover:bg-[#008bc5] shadow-blue-500/30'
-                                }`}
-                            >
-                                {dialog.confirmText || 'OK'}
-                            </button>
-                        </div>
-                    </div>
+  return (
+    <DialogContext.Provider value={{ confirm }}>
+      {children}
+      {dialog && (
+        <div className="fixed inset-0 z-[10050] flex items-center justify-center p-4 bg-[#021D34]/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div 
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-100 dark:border-slate-700 transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-5 border-b border-slate-100 dark:border-slate-700 flex gap-4 items-start bg-slate-50 dark:bg-slate-900/50 transition-colors">
+                <div className={`p-2 rounded-full shrink-0 ${dialog.variant === 'destructive' ? 'bg-red-100 dark:bg-red-900/20' : 'bg-amber-100 dark:bg-amber-900/20'}`}>
+                    {getIcon(dialog.variant)}
                 </div>
-            )}
-        </DialogContext.Provider>
-    );
-};
+                <div className="flex-1">
+                    <h3 className="font-bold text-lg text-[#021D34] dark:text-white leading-tight mb-1">
+                        {dialog.title}
+                    </h3>
+                    {/* Se a mensagem for string simples, usa p. Se for componente (JSX), renderiza direto */}
+                    {typeof dialog.message === 'string' ? (
+                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                            {dialog.message}
+                        </p>
+                    ) : (
+                        <div className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                            {dialog.message}
+                        </div>
+                    )}
+                </div>
+                <button 
+                    onClick={dialog.onCancel}
+                    className="text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors"
+                >
+                    <X size={20}/>
+                </button>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-900/50 flex gap-3 transition-colors">
+                {dialog.cancelLabel && (
+                    <button 
+                        onClick={dialog.onCancel}
+                        className="flex-1 px-4 py-2.5 rounded-xl font-bold text-sm text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all"
+                    >
+                        {dialog.cancelLabel}
+                    </button>
+                )}
+                <button 
+                    onClick={dialog.onConfirm}
+                    className={`flex-1 px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg transition-all ${getButtonStyles(dialog.variant)}`}
+                >
+                    {dialog.confirmLabel}
+                </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </DialogContext.Provider>
+  );
+}

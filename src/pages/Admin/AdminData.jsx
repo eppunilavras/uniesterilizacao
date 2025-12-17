@@ -363,46 +363,46 @@ export default function AdminData() {
              
              {/* MODAL DE PREVIEW DO RESTORE */}
              {restorePreview && (
-                <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 max-h-[90vh] flex flex-col">
-                        <div className="bg-[#021D34] p-6 text-white flex justify-between items-center shrink-0">
+                <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 max-h-[90vh] flex flex-col transition-colors">
+                        <div className="bg-[#021D34] dark:bg-slate-900 p-6 text-white flex justify-between items-center shrink-0 transition-colors">
                             <h3 className="text-xl font-bold flex items-center gap-2"><FileUp size={24}/> Restaurar Backup</h3>
                             <button onClick={() => setRestorePreview(null)} className="hover:bg-white/20 p-2 rounded-full transition-colors"><X size={20}/></button>
                         </div>
                         
                         <div className="p-6 space-y-6 overflow-y-auto custom-scrollbar">
-                            {/* ... (Conteúdo do Preview mantido igual ao anterior) ... */}
-                            <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl">
-                                <p className="text-xs font-bold text-slate-500 uppercase mb-1">Arquivo Selecionado</p>
-                                <p className="font-bold text-[#021D34] text-lg truncate">{restorePreview.fileName}</p>
-                                <div className="flex gap-4 mt-2 text-sm text-slate-600">
+                            <div className="bg-blue-50 border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800 p-4 rounded-xl transition-colors">
+                                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Arquivo Selecionado</p>
+                                <p className="font-bold text-[#021D34] dark:text-white text-lg truncate">{restorePreview.fileName}</p>
+                                <div className="flex gap-4 mt-2 text-sm text-slate-600 dark:text-slate-300">
                                     <span className="flex items-center gap-1"><Database size={14}/> {restorePreview.fileSize}</span>
                                     <span className="flex items-center gap-1"><Calendar size={14}/> {restorePreview.date}</span>
                                 </div>
                             </div>
 
                             <div>
-                                <p className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><Activity size={16}/> Resumo Geral:</p>
+                                <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2"><Activity size={16}/> Resumo Geral:</p>
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-center">
-                                        <div className="text-blue-600 mb-1 flex justify-center"><Package size={20}/></div>
-                                        <span className="block font-bold text-lg leading-none">{restorePreview.counts.items}</span>
-                                        <span className="text-[10px] uppercase text-slate-500 font-bold">Itens</span>
+                                    {/* Cards de Estatística */}
+                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-center dark:bg-slate-700 dark:border-slate-600 transition-colors">
+                                        <div className="text-blue-600 dark:text-blue-400 mb-1 flex justify-center"><Package size={20}/></div>
+                                        <span className="block font-bold text-lg leading-none dark:text-white">{restorePreview.counts.items}</span>
+                                        <span className="text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold">Itens</span>
                                     </div>
-                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-center">
-                                        <div className="text-green-600 mb-1 flex justify-center"><Users size={20}/></div>
-                                        <span className="block font-bold text-lg leading-none">{restorePreview.counts.users}</span>
-                                        <span className="text-[10px] uppercase text-slate-500 font-bold">Usuários</span>
+                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-center dark:bg-slate-700 dark:border-slate-600 transition-colors">
+                                        <div className="text-green-600 dark:text-green-400 mb-1 flex justify-center"><Users size={20}/></div>
+                                        <span className="block font-bold text-lg leading-none dark:text-white">{restorePreview.counts.users}</span>
+                                        <span className="text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold">Usuários</span>
                                     </div>
-                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-center">
-                                        <div className="text-purple-600 mb-1 flex justify-center"><FileText size={20}/></div>
-                                        <span className="block font-bold text-lg leading-none">{restorePreview.counts.logs}</span>
-                                        <span className="text-[10px] uppercase text-slate-500 font-bold">Logs</span>
+                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-center dark:bg-slate-700 dark:border-slate-600 transition-colors">
+                                        <div className="text-purple-600 dark:text-purple-400 mb-1 flex justify-center"><FileText size={20}/></div>
+                                        <span className="block font-bold text-lg leading-none dark:text-white">{restorePreview.counts.logs}</span>
+                                        <span className="text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold">Logs</span>
                                     </div>
-                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-center">
-                                        <div className="text-orange-600 mb-1 flex justify-center"><History size={20}/></div>
-                                        <span className="block font-bold text-lg leading-none">{restorePreview.detailedStats.totalHistoryEvents}</span>
-                                        <span className="text-[10px] uppercase text-slate-500 font-bold">Históricos</span>
+                                    <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-center dark:bg-slate-700 dark:border-slate-600 transition-colors">
+                                        <div className="text-orange-600 dark:text-orange-400 mb-1 flex justify-center"><History size={20}/></div>
+                                        <span className="block font-bold text-lg leading-none dark:text-white">{restorePreview.detailedStats.totalHistoryEvents}</span>
+                                        <span className="text-[10px] uppercase text-slate-500 dark:text-slate-400 font-bold">Históricos</span>
                                     </div>
                                 </div>
                             </div>
@@ -410,10 +410,10 @@ export default function AdminData() {
                             {/* Detalhes dos Itens por Status */}
                             {restorePreview.counts.items > 0 && (
                                 <div>
-                                    <p className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><Package size={16}/> Detalhes dos Itens:</p>
+                                    <p className="text-sm font-bold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2"><Package size={16}/> Detalhes dos Itens:</p>
                                     <div className="grid grid-cols-2 gap-2">
                                         {Object.entries(restorePreview.detailedStats.statusCounts).map(([status, count]) => {
-                                            const config = STATUS_CONFIG[status] || { label: status, color: 'bg-gray-100 text-gray-600' };
+                                            const config = STATUS_CONFIG[status] || { label: status, color: 'bg-gray-100 text-gray-600 border-gray-200' };
                                             if (count === 0) return null;
                                             return (
                                                 <div key={status} className={`flex justify-between items-center p-2 rounded border text-xs font-bold uppercase ${config.color}`}>
@@ -426,14 +426,14 @@ export default function AdminData() {
                                 </div>
                             )}
 
-                            <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-xl flex gap-3 text-yellow-800 text-sm">
+                            <div className="p-4 bg-yellow-50 border border-yellow-100 rounded-xl flex gap-3 text-yellow-800 text-sm dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-200 transition-colors">
                                 <AlertTriangle className="shrink-0"/>
                                 <p>Ao confirmar, os dados atuais serão <strong>substituídos</strong>. Será solicitada sua senha.</p>
                             </div>
                         </div>
-                        <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-3 shrink-0">
-                            <button onClick={() => setRestorePreview(null)} className="flex-1 py-3 font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors">Cancelar</button>
-                            <button onClick={requestRestore} className="flex-1 py-3 font-bold text-white bg-[#009DE0] hover:bg-[#008bc5] rounded-xl shadow-lg shadow-blue-200 transition-colors">Continuar...</button>
+                        <div className="p-6 border-t border-slate-100 bg-slate-50 dark:bg-slate-900/50 dark:border-slate-700 flex gap-3 shrink-0 transition-colors">
+                            <button onClick={() => setRestorePreview(null)} className="flex-1 py-3 font-bold text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700 rounded-xl transition-colors">Cancelar</button>
+                            <button onClick={requestRestore} className="flex-1 py-3 font-bold text-white bg-[#009DE0] hover:bg-[#008bc5] dark:bg-sky-600 dark:hover:bg-sky-500 rounded-xl shadow-lg shadow-blue-200 dark:shadow-sky-900/20 transition-colors">Continuar...</button>
                         </div>
                     </div>
                 </div>
@@ -441,14 +441,14 @@ export default function AdminData() {
 
              {/* MODAL DE SENHA UNIFICADO */}
              {showPasswordModal && (
-                <div className="fixed inset-0 z-[10010] flex items-center justify-center p-4 bg-[#021D34]/80 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 p-6 text-center">
-                        <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${pendingAction === 'BACKUP' ? 'bg-blue-100' : 'bg-red-100'}`}>
-                            {pendingAction === 'BACKUP' ? <ShieldCheck className="w-8 h-8 text-blue-600"/> : <Lock className="w-8 h-8 text-red-600"/>}
+                <div className="fixed inset-0 z-[10010] flex items-center justify-center p-4 bg-[#021D34]/80 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 p-6 text-center transition-colors">
+                        <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4 ${pendingAction === 'BACKUP' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
+                            {pendingAction === 'BACKUP' ? <ShieldCheck className="w-8 h-8 text-blue-600 dark:text-blue-400"/> : <Lock className="w-8 h-8 text-red-600 dark:text-red-400"/>}
                         </div>
-                        <h3 className="text-xl font-bold text-[#021D34] mb-2">{getModalTitle()}</h3>
+                        <h3 className="text-xl font-bold text-[#021D34] dark:text-white mb-2">{getModalTitle()}</h3>
                         
-                        <p className="text-sm text-slate-500 mb-6">
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
                             {getModalDescription()}
                         </p>
                         
@@ -456,18 +456,21 @@ export default function AdminData() {
                             type="password" 
                             autoFocus
                             placeholder="Sua senha atual"
-                            className={`w-full p-3 border rounded-xl mb-4 text-center text-lg outline-none transition-all ${pendingAction === 'BACKUP' ? 'focus:border-blue-500 focus:ring-2 focus:ring-blue-100' : 'focus:border-red-500 focus:ring-2 focus:ring-red-100'}`}
+                            className={`w-full p-3 border rounded-xl mb-4 text-center text-lg outline-none transition-all 
+                                bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600
+                                ${pendingAction === 'BACKUP' ? 'focus:border-blue-500 focus:ring-2 focus:ring-blue-100' : 'focus:border-red-500 focus:ring-2 focus:ring-red-100'}
+                            `}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handlePasswordSuccess()}
                         />
                         
                         <div className="flex gap-3">
-                            <button onClick={() => { setShowPasswordModal(false); setPassword(''); setPendingAction(null); }} className="flex-1 py-3 font-bold text-slate-600 hover:bg-slate-100 rounded-xl transition-colors">Cancelar</button>
+                            <button onClick={() => { setShowPasswordModal(false); setPassword(''); setPendingAction(null); }} className="flex-1 py-3 font-bold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700 rounded-xl transition-colors">Cancelar</button>
                             <button 
                                 onClick={handlePasswordSuccess} 
                                 disabled={!password || verifyingPass}
-                                className={`flex-1 py-3 font-bold text-white rounded-xl shadow-lg transition-colors flex justify-center items-center gap-2 ${pendingAction === 'BACKUP' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200' : 'bg-red-600 hover:bg-red-700 shadow-red-200'}`}
+                                className={`flex-1 py-3 font-bold text-white rounded-xl shadow-lg transition-colors flex justify-center items-center gap-2 ${pendingAction === 'BACKUP' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-200 dark:bg-blue-600 dark:hover:bg-blue-500' : 'bg-red-600 hover:bg-red-700 shadow-red-200 dark:bg-red-600 dark:hover:bg-red-500'}`}
                             >
                                 {verifyingPass ? <Loader2 className="animate-spin w-5 h-5"/> : 'Confirmar'}
                             </button>
@@ -477,18 +480,21 @@ export default function AdminData() {
              )}
 
              <div className="space-y-4">
-                 <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-                     <h3 className="font-bold text-[#021D34] flex items-center gap-2 mb-2"><Database size={20}/> Backup Manual</h3>
-                     <p className="text-xs text-slate-500 mb-3">Salva todos os materiais, logs e permissões de usuários.</p>
-                     <button onClick={requestBackup} disabled={loading} className="w-full bg-[#009DE0] text-white py-3 rounded-lg font-bold flex justify-center gap-2 hover:bg-[#008bc5] disabled:opacity-50">
+                 {/* Card Backup Manual */}
+                 <div className="bg-slate-50 dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors">
+                     <h3 className="font-bold text-[#021D34] dark:text-white flex items-center gap-2 mb-2"><Database size={20}/> Backup Manual</h3>
+                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Salva todos os materiais, logs e permissões de usuários.</p>
+                     <button onClick={requestBackup} disabled={loading} className="w-full bg-[#009DE0] dark:bg-sky-600 text-white py-3 rounded-lg font-bold flex justify-center gap-2 hover:bg-[#008bc5] dark:hover:bg-sky-500 disabled:opacity-50 transition-colors">
                          {loading && pendingAction === 'BACKUP' ? <Loader2 className="animate-spin"/> : <FileDown size={20}/>} 
                          {loading && pendingAction === 'BACKUP' ? 'Processando...' : 'Baixar JSON'}
                      </button>
                  </div>
-                 <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
-                     <h3 className="font-bold text-[#021D34] flex items-center gap-2 mb-2"><FileUp size={20}/> Restaurar</h3>
-                     <p className="text-xs text-slate-500 mb-3">Recupera o sistema a partir de um arquivo JSON.</p>
-                     <label className={`w-full border border-dashed border-slate-300 py-3 rounded-lg font-bold flex justify-center gap-2 text-slate-500 cursor-pointer hover:bg-slate-50 transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+
+                 {/* Card Restaurar */}
+                 <div className="bg-slate-50 dark:bg-slate-800 p-6 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors">
+                     <h3 className="font-bold text-[#021D34] dark:text-white flex items-center gap-2 mb-2"><FileUp size={20}/> Restaurar</h3>
+                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Recupera o sistema a partir de um arquivo JSON.</p>
+                     <label className={`w-full border border-dashed border-slate-300 dark:border-slate-600 py-3 rounded-lg font-bold flex justify-center gap-2 text-slate-500 dark:text-slate-400 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}>
                          {loading && statusMsg.includes('Analisando') ? <Loader2 className="animate-spin"/> : <FileUp size={20}/>}
                          <span>{loading && statusMsg.includes('Analisando') ? 'Lendo...' : 'Selecionar Arquivo'}</span>
                          <input ref={fileInputRef} type="file" accept=".json" onChange={handleFileSelect} className="hidden" disabled={loading}/>
@@ -496,27 +502,28 @@ export default function AdminData() {
                  </div>
              </div>
              
-             <div className="bg-red-50 p-6 rounded-xl border border-red-200 flex flex-col justify-center relative overflow-hidden">
+             {/* Zona de Perigo */}
+             <div className="bg-red-50 dark:bg-red-900/10 p-6 rounded-xl border border-red-200 dark:border-red-900/30 flex flex-col justify-center relative overflow-hidden transition-colors">
                  {/* Feedback visual de progresso (Overlay) */}
                  {loading && statusMsg && (
-                     <div className="absolute inset-0 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center z-10 p-4 text-center animate-in fade-in">
-                         <Loader2 className="w-10 h-10 text-[#009DE0] animate-spin mb-3"/>
-                         <p className="text-[#021D34] font-bold text-lg">{statusMsg}</p>
-                         <p className="text-xs text-slate-500 mt-1">Por favor, não feche a página.</p>
+                     <div className="absolute inset-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center z-10 p-4 text-center animate-in fade-in transition-colors">
+                         <Loader2 className="w-10 h-10 text-[#009DE0] dark:text-sky-400 animate-spin mb-3"/>
+                         <p className="text-[#021D34] dark:text-white font-bold text-lg">{statusMsg}</p>
+                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Por favor, não feche a página.</p>
                      </div>
                  )}
 
-                 <div className="flex items-center gap-2 text-red-800 mb-2">
+                 <div className="flex items-center gap-2 text-red-800 dark:text-red-400 mb-2">
                     <AlertTriangle size={24}/>
                     <h3 className="font-bold text-lg">Zona de Perigo</h3>
                  </div>
-                 <p className="text-sm text-red-700 mb-6 leading-relaxed">
+                 <p className="text-sm text-red-700 dark:text-red-300 mb-6 leading-relaxed">
                      Esta ação irá <strong>ZERAR</strong> todas as movimentações e logs.<br/><br/>
                      <span className="font-bold">O que será APAGADO:</span> Itens, Históricos, Logs e Avisos.<br/>
                      <span className="font-bold">O que será MANTIDO:</span> Usuários, Tipos e Configurações.
                  </p>
                  
-                 <button onClick={requestWipe} disabled={loading} className="w-full bg-red-600 text-white py-4 rounded-xl font-bold hover:bg-red-700 disabled:opacity-50 shadow-lg shadow-red-900/20 flex items-center justify-center gap-2">
+                 <button onClick={requestWipe} disabled={loading} className="w-full bg-red-600 text-white py-4 rounded-xl font-bold hover:bg-red-700 disabled:opacity-50 shadow-lg shadow-red-900/20 flex items-center justify-center gap-2 transition-colors">
                      <Trash2 size={20}/> RESETAR TUDO E BAIXAR BACKUP
                  </button>
              </div>
