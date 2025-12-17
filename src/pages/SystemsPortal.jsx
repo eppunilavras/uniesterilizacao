@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, increment } from 'firebase/firestore';
+import { 
+  collection, onSnapshot, query, orderBy, doc, 
+  updateDoc, increment, addDoc, serverTimestamp 
+} from 'firebase/firestore'; 
 import { Link } from 'react-router-dom';
-import { db, appId } from '../config/firebase';
+import { db, appId, auth } from '../config/firebase'; // Adicionado auth para identificar o usuário no log
 import { ExternalLink, LogIn, Search } from 'lucide-react';
 import { ICON_MAP } from '../utils/iconMap';
 import { LOGOS } from '../constants';
@@ -61,9 +64,22 @@ export default function SystemsPortal() {
 
   const handleLinkClick = async (linkId) => {
       try {
+          // 1. Contador Rápido (Visual) - Incrementa o total geral
           const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'external_links', linkId);
-          await updateDoc(docRef, { clicks: increment(1) });
-      } catch (error) { console.error(error); }
+          updateDoc(docRef, { clicks: increment(1) });
+
+          // 2. Log Detalhado (Analytics Silencioso)
+          // Cria um documento novo na subcoleção para permitir gráficos temporais depois
+          const logsRef = collection(db, 'artifacts', appId, 'public', 'data', 'external_links', linkId, 'click_logs');
+          
+          // Usamos addDoc sem await (fire-and-forget) para não atrasar a abertura do link
+          addDoc(logsRef, {
+              createdAt: serverTimestamp(),
+              userId: auth.currentUser ? auth.currentUser.uid : 'anonymous',
+              // Podemos adicionar mais metadados aqui se necessário (ex: userRole)
+          }).catch(err => console.error("Falha ao registrar analytics:", err));
+
+      } catch (error) { console.error("Erro ao processar clique:", error); }
   };
 
   // Classes Visuais
@@ -131,14 +147,12 @@ export default function SystemsPortal() {
                 ) : (
                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in duration-500 pb-20">
                       
-                      {/* NÃO TEM MAIS CARD FIXO AQUI. TUDO É DINÂMICO AGORA. */}
-
                       {filteredLinks.map(link => {
                           const IconComp = ICON_MAP[link.icon] || ICON_MAP['globe'];
                           // Verifica se é link interno (começa com /)
                           const isInternal = link.url && link.url.startsWith('/');
                           
-                          // Conteúdo interno do Card (para evitar duplicação)
+                          // Conteúdo interno do Card (LIMPO, SEM BOTÕES DE ESTATÍSTICAS)
                           const CardContent = () => (
                               <>
                                   <div className={DECORATION_CLASSES}/>

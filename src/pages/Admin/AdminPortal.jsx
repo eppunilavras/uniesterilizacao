@@ -8,6 +8,7 @@ import {
 import { useToast } from '../../contexts/ToastContext';
 import { logEvent } from '../../utils/logger';
 import { ICON_MAP, AVAILABLE_ICONS } from '../../utils/iconMap';
+import LinkStatsModal from '../../components/LinkStatsModal'; // <--- 1. IMPORTAR O MODAL
 
 // Definição das Categorias e suas cores (Estilo Tailwind)
 const CATEGORIES = [
@@ -33,6 +34,9 @@ export default function AdminPortal() {
   const [links, setLinks] = useState([]);
   const [formData, setFormData] = useState(DEFAULT_FORM);
   const [editingId, setEditingId] = useState(null);
+  
+  // --- 2. ESTADO PARA O MODAL ---
+  const [statsLink, setStatsLink] = useState(null);
   
   const { addToast } = useToast();
 
@@ -135,7 +139,15 @@ export default function AdminPortal() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto animate-in fade-in pb-20">
+    <div className="max-w-5xl mx-auto animate-in fade-in pb-20 relative">
+      
+      {/* --- 3. COMPONENTE MODAL INSERIDO AQUI --- */}
+      <LinkStatsModal 
+          isOpen={!!statsLink} 
+          onClose={() => setStatsLink(null)} 
+          linkData={statsLink} 
+      />
+
       <div className="flex items-center gap-3 mb-8">
           <div className="p-3 bg-blue-100 text-[#009DE0] rounded-xl"><LinkIcon size={24}/></div>
           <div>
@@ -179,7 +191,7 @@ export default function AdminPortal() {
           </div>
         </div>
         
-        {/* Seletor de Categoria (Estilizado) */}
+        {/* Seletor de Categoria */}
         <div className="mb-6">
             <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">Categoria</label>
             <div className="flex flex-wrap gap-2">
@@ -278,7 +290,6 @@ export default function AdminPortal() {
           const IconComp = ICON_MAP[link.icon] || ICON_MAP['globe'];
           const isActive = link.active !== false;
           
-          // Encontra a configuração da categoria para usar o label e cor
           const catConfig = CATEGORIES.find(c => c.id === link.category) || CATEGORIES[0];
 
           return (
@@ -298,7 +309,6 @@ export default function AdminPortal() {
               {/* Detalhes */}
               <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                     {/* Badge de Categoria */}
                     <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border ${catConfig.color}`}>
                         {catConfig.label}
                     </span>
@@ -312,16 +322,22 @@ export default function AdminPortal() {
                       <span className="flex items-center gap-1 font-mono text-[10px] text-slate-400 bg-slate-50 px-1 rounded border">
                           {link.btnText || 'PADRÃO'}
                       </span>
-                      
-                      {/* ANALYTICS: Contador de Cliques */}
-                      <span className="flex items-center gap-1 text-[#009DE0] font-bold bg-blue-50 px-2 py-0.5 rounded-full text-[10px]" title="Total de acessos">
-                          <BarChart2 size={10}/> {link.clicks || 0} acessos
-                      </span>
                   </div>
               </div>
 
               {/* Ações */}
               <div className="flex items-center gap-2 border-l pl-4 border-slate-100">
+                  
+                  {/* --- 4. NOVO BOTÃO DE ESTATÍSTICAS (APENAS AQUI) --- */}
+                  <button 
+                    onClick={() => setStatsLink(link)}
+                    className="p-2 text-[#009DE0] bg-blue-50 hover:bg-[#009DE0] hover:text-white rounded-lg transition-colors flex items-center gap-2"
+                    title="Ver Gráfico de Acessos"
+                  >
+                    <BarChart2 size={18}/>
+                    <span className="text-xs font-bold hidden md:inline">{link.clicks || 0}</span>
+                  </button>
+
                   <button 
                     onClick={() => handleToggleActive(link)}
                     className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg"

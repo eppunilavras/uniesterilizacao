@@ -22,7 +22,7 @@ export default defineConfig({
         // --- AQUI ESTÃO AS MUDANÇAS DE NOME ---
         // O nome global agora é o Portal
         name: 'Portal Odontologia Unilavras',
-        short_name: 'Odonto Portal', 
+        short_name: 'Portal Odonto', 
         description: 'Acesso centralizado aos sistemas da clínica odontológica.',
         
         // --- MANTENDO SUAS CONFIGURAÇÕES VISUAIS ---
