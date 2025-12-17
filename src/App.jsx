@@ -8,8 +8,7 @@ import { LOGOS } from './constants';
 import { ToastProvider } from './contexts/ToastContext';
 import { DialogProvider } from './contexts/DialogContext';
 import { PrintProvider } from './contexts/PrintContext';
-import { ThemeProvider } from './contexts/ThemeContext'; // <--- IMPORT NOVO
-import { usePageTitle } from './hooks/usePageTitle';     // <--- IMPORT NOVO
+import { usePageTitle } from './hooks/usePageTitle';
 
 import ReloadPrompt from './components/ReloadPrompt';
 import Reception from './pages/Reception'; 
@@ -36,7 +35,20 @@ const LoadingScreen = () => (
 
 const InitialLoader = () => (
     <div className="h-screen flex flex-col items-center justify-center bg-white dark:bg-[#020617] no-print">
-        <img src={LOGOS.color} className="h-24 w-auto animate-bounce mb-4" alt="Carregando" />
+        {/* Logo Colorida: Aparece no modo claro, some no escuro */}
+        <img 
+            src={LOGOS.color} 
+            className="h-24 w-auto animate-bounce mb-4 dark:hidden" 
+            alt="Carregando" 
+        />
+        
+        {/* Logo Branca: Aparece apenas no modo escuro */}
+        <img 
+            src={LOGOS.white} 
+            className="h-24 w-auto animate-bounce mb-4 hidden dark:block" 
+            alt="Carregando" 
+        />
+        
         <div className="w-8 h-8 border-4 border-[#009DE0] border-t-transparent rounded-full animate-spin"/>
     </div>
 );
@@ -89,64 +101,62 @@ export default function App() {
   if (loading) return <InitialLoader />;
 
   return (
-    <ThemeProvider> {/* <--- ENVOLVENDO A APP INTEIRA */}
-        <ToastProvider>
-            <DialogProvider>
-                <PrintProvider user={user}>
-                    <ReloadPrompt />
-                    
-                    {/* Gerenciador de Títulos (Aba do Navegador) */}
-                    <TitleManager /> 
+    <ToastProvider>
+        <DialogProvider>
+            <PrintProvider user={user}>
+                <ReloadPrompt />
+                
+                {/* Gerenciador de Títulos (Aba do Navegador) */}
+                <TitleManager /> 
 
-                    <style>{`
-                        @media print {
-                            @page { size: 50mm 30mm; margin: 0; }
-                            html, body { margin: 0 !important; padding: 0 !important; width: 50mm; height: 30mm; }
-                            .no-print { display: none !important; }
-                        }
-                    `}</style>
+                <style>{`
+                    @media print {
+                        @page { size: 50mm 30mm; margin: 0; }
+                        html, body { margin: 0 !important; padding: 0 !important; width: 50mm; height: 30mm; }
+                        .no-print { display: none !important; }
+                    }
+                `}</style>
 
-                    <Suspense fallback={<InitialLoader />}>
-                        <Routes>
-                            {/* ROTA PÚBLICA (HOME) */}
-                            <Route path="/" element={<SystemsPortal />} />
+                <Suspense fallback={<InitialLoader />}>
+                    <Routes>
+                        {/* ROTA PÚBLICA (HOME) */}
+                        <Route path="/" element={<SystemsPortal />} />
 
-                            {/* ROTA DE LOGIN */}
-                            <Route path="/login" element={
-                                !user || !userProfile ? (
-                                    <div className="no-print"><LoginScreen globalError={authError} /></div>
-                                ) : (
-                                    <Navigate to="/dashboard" replace />
-                                )
-                            } />
+                        {/* ROTA DE LOGIN */}
+                        <Route path="/login" element={
+                            !user || !userProfile ? (
+                                <div className="no-print"><LoginScreen globalError={authError} /></div>
+                            ) : (
+                                <Navigate to="/dashboard" replace />
+                            )
+                        } />
 
-                            {/* ROTAS PROTEGIDAS */}
-                            <Route path="/*" element={
-                                (!user || !userProfile) ? <Navigate to="/login" replace /> : (
-                                    <div className="no-print">
-                                        <Routes>
-                                            <Route path="/" element={<MainLayout user={user} userProfile={userProfile} />}>
-                                                <Route index element={<Navigate to="dashboard" replace />} />
-                                                
-                                                <Route path="dashboard" element={<Suspense fallback={<LoadingScreen />}><Dashboard userProfile={userProfile} /></Suspense>} />
-                                                <Route path="reception" element={<Reception userProfile={userProfile} />} />
-                                                <Route path="movement" element={<Suspense fallback={<LoadingScreen />}><Movement userProfile={userProfile} /></Suspense>} />
-                                                <Route path="history" element={<Suspense fallback={<LoadingScreen />}><HistoryView userProfile={userProfile} /></Suspense>} />
-                                                <Route path="notifications" element={<Suspense fallback={<LoadingScreen />}><NotificationsView userProfile={userProfile} /></Suspense>} />
-                                                <Route path="users" element={<Suspense fallback={<LoadingScreen />}><UserManagement userProfile={userProfile} /></Suspense>} />
-                                                <Route path="profile" element={<Suspense fallback={<LoadingScreen />}><ProfileView userProfile={userProfile} /></Suspense>} />
-                                                <Route path="admin" element={<Suspense fallback={<LoadingScreen />}><AdminPanel userProfile={userProfile} /></Suspense>} />
-                                                <Route path="portal-config" element={<Suspense fallback={<LoadingScreen />}><AdminPortal /></Suspense>} />
-                                            </Route>
-                                        </Routes>
-                                    </div>
-                                )
-                            } />
-                        </Routes>
-                    </Suspense>
-                </PrintProvider>
-            </DialogProvider>
-        </ToastProvider>
-    </ThemeProvider>
+                        {/* ROTAS PROTEGIDAS */}
+                        <Route path="/*" element={
+                            (!user || !userProfile) ? <Navigate to="/login" replace /> : (
+                                <div className="no-print">
+                                    <Routes>
+                                        <Route path="/" element={<MainLayout user={user} userProfile={userProfile} />}>
+                                            <Route index element={<Navigate to="dashboard" replace />} />
+                                            
+                                            <Route path="dashboard" element={<Suspense fallback={<LoadingScreen />}><Dashboard userProfile={userProfile} /></Suspense>} />
+                                            <Route path="reception" element={<Reception userProfile={userProfile} />} />
+                                            <Route path="movement" element={<Suspense fallback={<LoadingScreen />}><Movement userProfile={userProfile} /></Suspense>} />
+                                            <Route path="history" element={<Suspense fallback={<LoadingScreen />}><HistoryView userProfile={userProfile} /></Suspense>} />
+                                            <Route path="notifications" element={<Suspense fallback={<LoadingScreen />}><NotificationsView userProfile={userProfile} /></Suspense>} />
+                                            <Route path="users" element={<Suspense fallback={<LoadingScreen />}><UserManagement userProfile={userProfile} /></Suspense>} />
+                                            <Route path="profile" element={<Suspense fallback={<LoadingScreen />}><ProfileView userProfile={userProfile} /></Suspense>} />
+                                            <Route path="admin" element={<Suspense fallback={<LoadingScreen />}><AdminPanel userProfile={userProfile} /></Suspense>} />
+                                            <Route path="portal-config" element={<Suspense fallback={<LoadingScreen />}><AdminPortal /></Suspense>} />
+                                        </Route>
+                                    </Routes>
+                                </div>
+                            )
+                        } />
+                    </Routes>
+                </Suspense>
+            </PrintProvider>
+        </DialogProvider>
+    </ToastProvider>
   );
 }
