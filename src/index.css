@@ -50,6 +50,16 @@
   to { transform: translateY(0); }
 }
 
+/* --- NOVA ANIMAÇÃO DE FUNDO (TEXTURA EM MOVIMENTO) --- */
+@keyframes bg-slide {
+  0% { background-position: 0 0; }
+  100% { background-position: 60px 60px; } /* Aumentei o range para ficar mais fluido */
+}
+
+.animate-bg-move {
+  animation: bg-slide 4s linear infinite; /* Ajustei tempo para suavidade */
+}
+
 /* Classes utilitárias para animação simples */
 .animate-in {
   animation-duration: 0.3s;

@@ -9,7 +9,7 @@ import Skeleton from './Skeleton';
 
 /**
  * Componente de Tabela de Dados Universal
- * * @param {Array} columns - Configuração das colunas [{ key, label, sortable, render }]
+ * @param {Array} columns - Configuração das colunas [{ key, label, sortable, render, width, className }]
  * @param {Array} data - Array de objetos com os dados a serem exibidos
  * @param {Function} actions - (Opcional) Função que retorna botões de ação (JSX) para cada linha
  * @param {string} emptyMsg - Mensagem para exibir quando não há dados
@@ -80,7 +80,6 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
                                         <td className="p-4 text-center">
                                             <div className="flex justify-center gap-2">
                                                 <Skeleton className="h-8 w-8 rounded-lg" />
-                                                <Skeleton className="h-8 w-8 rounded-lg" />
                                             </div>
                                         </td>
                                     )}
@@ -128,6 +127,7 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
                                 <th 
                                     key={col.key || idx} 
                                     onClick={() => col.sortable && handleSort(col.key)} 
+                                    style={col.width ? { width: col.width } : {}} // <--- MUDANÇA 1: Largura Fixa Opcional
                                     className={`p-4 font-semibold ${col.sortable ? 'cursor-pointer hover:bg-white/10 select-none' : ''} ${col.key === 'select' ? 'w-12' : ''}`}
                                 >
                                     <div className="flex items-center gap-2 truncate">
@@ -145,7 +145,8 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
                         {currentData.map((row, i) => (
                             <tr key={row.id || i} className="hover:bg-slate-50 transition-colors">
                                 {columns.map((col, idx) => (
-                                    <td key={col.key || idx} className="p-4 text-slate-700 truncate max-w-[200px]">
+                                    // <--- MUDANÇA 2: ClassName customizável ou Padrão Truncado
+                                    <td key={col.key || idx} className={`p-4 text-slate-700 ${col.className ? col.className : 'truncate max-w-[200px]'}`}>
                                         {col.render ? col.render(row) : row[col.key]}
                                     </td>
                                 ))}

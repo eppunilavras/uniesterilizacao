@@ -142,10 +142,38 @@ export default function AdminLogs() {
 
             <DataTable 
                 columns={[
-                    { key: 'timestamp', label: 'Data/Hora', sortable: true, render: (l) => formatDate(l.timestamp) },
-                    { key: 'type', label: 'Tipo', sortable: true, render: (l) => <span className={`text-[10px] font-bold px-2 py-1 rounded border ${LOG_COLORS[l.type] || 'bg-slate-100'}`}>{LOG_TYPES[l.type] || l.type}</span> },
-                    { key: 'message', label: 'Descrição', sortable: true },
-                    { key: 'userName', label: 'Usuário', sortable: true }
+                    { 
+                        key: 'timestamp', 
+                        label: 'Data/Hora', 
+                        sortable: true, 
+                        width: '150px', // Define largura fixa
+                        render: (l) => formatDate(l.timestamp) 
+                    },
+                    { 
+                        key: 'type', 
+                        label: 'Tipo', 
+                        sortable: true, 
+                        width: '120px', // Define largura fixa
+                        render: (l) => <span className={`text-[10px] font-bold px-2 py-1 rounded border ${LOG_COLORS[l.type] || 'bg-slate-100'}`}>{LOG_TYPES[l.type] || l.type}</span> 
+                    },
+                    { 
+                        key: 'message', 
+                        label: 'Descrição', 
+                        sortable: true,
+                        // Configuração para quebrar o texto e não cortar
+                        className: 'whitespace-pre-wrap break-words text-xs leading-relaxed',
+                        render: (l) => (
+                            <span title={l.message}>
+                                {l.message}
+                            </span>
+                        )
+                    },
+                    { 
+                        key: 'userName', 
+                        label: 'Usuário', 
+                        sortable: true,
+                        width: '180px' // Define largura fixa
+                    }
                 ]}
                 data={filteredLogs}
                 mobileRender={(l) => (
@@ -154,7 +182,7 @@ export default function AdminLogs() {
                             <span className="text-xs text-slate-400">{formatDate(l.timestamp)}</span>
                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${LOG_COLORS[l.type] || 'bg-slate-100'}`}>{LOG_TYPES[l.type] || l.type}</span>
                         </div>
-                        <p className="text-sm text-slate-800 font-medium">{l.message}</p>
+                        <p className="text-sm text-slate-800 font-medium whitespace-pre-wrap break-words">{l.message}</p>
                         <p className="text-xs text-slate-500">Por: {l.userName}</p>
                     </div>
                 )}

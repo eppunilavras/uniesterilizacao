@@ -4,8 +4,8 @@ import {
   updateDoc, increment, addDoc, serverTimestamp 
 } from 'firebase/firestore'; 
 import { Link } from 'react-router-dom';
-import { db, appId, auth } from '../config/firebase'; // Adicionado auth para identificar o usuário no log
-import { ExternalLink, LogIn, Search } from 'lucide-react';
+import { db, appId, auth } from '../config/firebase';
+import { ExternalLink, LogIn, Search, Sparkles } from 'lucide-react';
 import { ICON_MAP } from '../utils/iconMap';
 import { LOGOS } from '../constants';
 
@@ -25,6 +25,7 @@ export default function SystemsPortal() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('todos');
 
+  // --- LÓGICA DE DADOS ---
   useEffect(() => {
       const q = query(
           collection(db, 'artifacts', appId, 'public', 'data', 'external_links'),
@@ -35,13 +36,13 @@ export default function SystemsPortal() {
         const data = snap.docs
             .map(d => ({ id: d.id, ...d.data() }))
             .filter(item => item.active !== false);
-        
         setLinks(data);
         setLoading(false);
       });
       return () => unsub();
   }, []);
 
+  // Filtra as categorias para exibir apenas as que têm links (exceto 'todos' que sempre aparece)
   const visibleCategories = CATEGORIES_CONFIG.filter(cat => {
       if (cat.id === 'todos') return true;
       return links.some(link => link.category === cat.id);
@@ -62,143 +63,180 @@ export default function SystemsPortal() {
     setFilteredLinks(result);
   }, [searchTerm, links, activeCategory]);
 
+  // --- REGISTRO DE ESTATÍSTICAS (MANTIDO) ---
   const handleLinkClick = async (linkId) => {
       try {
-          // 1. Contador Rápido (Visual) - Incrementa o total geral
+          // 1. Contador Rápido (para ordenação simples)
           const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'external_links', linkId);
           updateDoc(docRef, { clicks: increment(1) });
 
-          // 2. Log Detalhado (Analytics Silencioso)
-          // Cria um documento novo na subcoleção para permitir gráficos temporais depois
+          // 2. Log Detalhado (para gráficos no Admin)
           const logsRef = collection(db, 'artifacts', appId, 'public', 'data', 'external_links', linkId, 'click_logs');
-          
-          // Usamos addDoc sem await (fire-and-forget) para não atrasar a abertura do link
           addDoc(logsRef, {
               createdAt: serverTimestamp(),
               userId: auth.currentUser ? auth.currentUser.uid : 'anonymous',
-              // Podemos adicionar mais metadados aqui se necessário (ex: userRole)
-          }).catch(err => console.error("Falha ao registrar analytics:", err));
+          }).catch(err => console.error("Falha analytics:", err));
 
-      } catch (error) { console.error("Erro ao processar clique:", error); }
+      } catch (error) { console.error(error); }
   };
 
-  // Classes Visuais
-  const CARD_CLASSES = "bg-gradient-to-br from-white to-blue-50/50 rounded-2xl p-6 shadow-sm border border-blue-100 hover:border-[#009DE0] hover:shadow-xl hover:-translate-y-1 transition-all group flex flex-col relative overflow-hidden ring-1 ring-blue-100/50 h-full text-left";
-  const DECORATION_CLASSES = "absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#009DE0]/10 to-transparent rounded-bl-full -mr-10 -mt-10 transition-transform group-hover:scale-150 duration-500 z-0";
-  const ICON_CONTAINER_CLASSES = "relative z-10 w-14 h-14 rounded-xl bg-[#009DE0] text-white flex items-center justify-center mb-4 shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-300";
-  const BUTTON_CLASSES = "relative z-10 mt-auto inline-flex items-center gap-2 px-4 py-2 bg-[#021D34] text-white text-xs font-bold rounded-lg w-fit group-hover:bg-[#009DE0] transition-colors shadow-lg shadow-blue-900/10";
-
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans text-slate-800 relative overflow-hidden">
+    <div className="min-h-screen bg-slate-50 relative overflow-x-hidden font-sans selection:bg-blue-200 selection:text-blue-900">
         
-        <div className="absolute inset-0 z-0 opacity-40 pointer-events-none" 
-             style={{ backgroundImage: 'radial-gradient(#cbd5e1 1px, transparent 1px)', backgroundSize: '24px 24px' }}>
+        {/* --- Background Moderno com Textura Animada --- */}
+        <div className="fixed inset-0 z-0 pointer-events-none">
+            {/* Blobs coloridos de fundo */}
+            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob"/>
+            <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-2000"/>
+            <div className="absolute -bottom-8 left-20 w-72 h-72 bg-teal-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-blob animation-delay-4000"/>
+            
+            {/* Textura de Pontos (Health/Science feel) em movimento */}
+            <div 
+              className="absolute inset-0 z-10 opacity-30 animate-bg-move"
+              style={{
+                backgroundImage: 'radial-gradient(#009DE0 2px, transparent 2px)',
+                backgroundSize: '30px 30px'
+              }}
+            ></div>
+            
+            {/* Noise overlay */}
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 brightness-100 contrast-150 z-0"></div>
         </div>
-        <div className="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-white via-white/80 to-transparent z-0 pointer-events-none"/>
 
-        <div className="relative z-10 flex flex-col items-center p-6 md:p-12 w-full max-w-7xl mx-auto flex-1">
+        <div className="relative z-10 flex flex-col items-center w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20">
 
-            <div className="flex flex-col items-center text-center mb-8 animate-in fade-in slide-in-from-top-4 duration-700">
-                <img src={LOGOS.color} alt="Logo" className="h-16 w-auto mb-6 hover:scale-105 transition-transform duration-500" />
-                <h1 className="text-3xl md:text-4xl font-extrabold text-[#021D34] mb-3 tracking-tight">Odontologia Unilavras</h1>
-                <p className="text-slate-500 text-sm md:text-base max-w-lg mx-auto leading-relaxed">Central de portais e sistemas do curso de Odontologia</p>
+            {/* --- Header --- */}
+            <div className="text-center max-w-3xl mx-auto mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/50 border border-blue-100 backdrop-blur-md shadow-sm mb-6">
+                    <Sparkles size={14} className="text-[#009DE0]" />
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-slate-500">Portal de Sistemas</span>
+                </div>
+                
+                <h1 className="text-4xl md:text-6xl font-black text-slate-900 mb-6 tracking-tight leading-[1.1]">
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#009DE0] to-blue-600">Odontologia</span> Unilavras
+                </h1>
+                
+                <p className="text-lg text-slate-600 mb-10 leading-relaxed max-w-xl mx-auto">
+                    Acesse as ferramentas, portais e recursos do curso em um único lugar.
+                </p>
 
-                <div className="mt-8 w-full max-w-md relative group">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#009DE0] transition-colors">
-                        <Search size={20} />
+                {/* --- Busca --- */}
+                <div className="relative group max-w-lg mx-auto w-full">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-blue-300 to-purple-300 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
+                    <div className="relative flex items-center bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl shadow-blue-900/5 border border-white/50 overflow-hidden">
+                        <div className="pl-6 text-slate-400">
+                            <Search size={22} />
+                        </div>
+                        <input 
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Buscar sistema, portal ou serviço..."
+                            className="w-full py-5 px-4 bg-transparent outline-none text-slate-700 font-medium placeholder:text-slate-400"
+                        />
                     </div>
-                    <input 
-                        type="text"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        placeholder="O que você procura hoje?"
-                        className="w-full pl-11 pr-4 py-3.5 rounded-full border border-slate-200 shadow-sm bg-white/80 backdrop-blur-sm focus:bg-white focus:ring-4 focus:ring-[#009DE0]/10 focus:border-[#009DE0] outline-none transition-all"
-                    />
                 </div>
             </div>
 
-            <div className="flex flex-wrap justify-center gap-2 mb-10 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-100">
+            {/* --- Filtros --- */}
+            <div className="flex flex-wrap justify-center gap-3 mb-16 w-full animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
                 {visibleCategories.map(cat => {
                     const isActive = activeCategory === cat.id;
-                    let activeClass = "";
-                    if (isActive) {
-                        if (cat.id === 'clinico') activeClass = "bg-teal-600 text-white shadow-teal-500/30 border-teal-600";
-                        else if (cat.id === 'academico') activeClass = "bg-indigo-600 text-white shadow-indigo-500/30 border-indigo-600";
-                        else if (cat.id === 'utilidades') activeClass = "bg-amber-500 text-white shadow-amber-500/30 border-amber-500";
-                        else if (cat.id === 'pesquisa') activeClass = "bg-rose-600 text-white shadow-rose-500/30 border-rose-600";
-                        else activeClass = "bg-[#021D34] text-white shadow-blue-900/30 border-[#021D34]";
-                    }
-
                     return (
-                        <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
-                            className={`px-5 py-2 rounded-full text-xs md:text-sm font-bold transition-all border shadow-sm ${isActive ? `${activeClass} scale-105 shadow-md` : `bg-white text-slate-500 hover:bg-slate-50 border-slate-200`}`}>
+                        <button 
+                            key={cat.id} 
+                            onClick={() => setActiveCategory(cat.id)}
+                            className={`
+                                relative px-6 py-2.5 rounded-full text-sm font-bold transition-all duration-300
+                                ${isActive 
+                                    ? 'bg-[#009DE0] text-white shadow-lg shadow-blue-500/30 scale-105' 
+                                    : 'bg-white/60 text-slate-500 hover:bg-white hover:text-[#009DE0] hover:shadow-md border border-transparent hover:border-blue-100'
+                                }
+                            `}
+                        >
                             {cat.label}
                         </button>
                     )
                 })}
             </div>
 
+            {/* --- Grid de Links --- */}
             <div className="w-full">
                 {loading ? (
-                   <div className="flex flex-col items-center py-20 animate-pulse opacity-60">
-                       <div className="w-16 h-16 bg-slate-200 rounded-2xl mb-4"/>
-                       <div className="h-4 w-48 bg-slate-200 rounded"/>
+                   <div className="flex flex-col items-center justify-center py-20 animate-pulse opacity-50">
+                       <div className="w-16 h-16 bg-slate-300/50 rounded-2xl mb-4"/>
+                       <div className="h-4 w-48 bg-slate-300/50 rounded"/>
                    </div>
                 ) : (
-                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in duration-500 pb-20">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pb-24">
                       
-                      {filteredLinks.map(link => {
+                      {filteredLinks.map((link, idx) => {
                           const IconComp = ICON_MAP[link.icon] || ICON_MAP['globe'];
-                          // Verifica se é link interno (começa com /)
                           const isInternal = link.url && link.url.startsWith('/');
+                          const animationDelay = `${idx * 50}ms`; 
                           
-                          // Conteúdo interno do Card (LIMPO, SEM BOTÕES DE ESTATÍSTICAS)
                           const CardContent = () => (
-                              <>
-                                  <div className={DECORATION_CLASSES}/>
-                                  <div className={ICON_CONTAINER_CLASSES}>
-                                      <IconComp size={28} />
+                              <div className="
+                                  relative h-full p-6 flex flex-col 
+                                  bg-white/70 backdrop-blur-lg border border-white/60 rounded-3xl shadow-sm 
+                                  transition-all duration-300 ease-out
+                                  
+                                  group-hover:scale-105 
+                                  group-hover:-translate-y-1
+                                  group-hover:bg-white 
+                                  group-hover:border-[#009DE0] 
+                                  group-hover:shadow-2xl group-hover:shadow-[#009DE0]/20
+                              ">
+                                  
+                                  <div className="
+                                      w-12 h-12 rounded-2xl bg-gradient-to-br from-white to-blue-50 border border-white shadow-sm 
+                                      flex items-center justify-center text-[#009DE0] mb-5 
+                                      transition-all duration-300 relative z-10
+                                      /* MUDANÇA AQUI: Background azul claro e ícone azul mais forte (blue-600) para legibilidade */
+                                      group-hover:scale-110 group-hover:bg-blue-100 group-hover:text-blue-600 group-hover:rotate-3 group-hover:shadow-lg group-hover:shadow-blue-500/30
+                                  ">
+                                      <IconComp size={24} />
                                   </div>
-                                  <h3 className="relative z-10 font-bold text-lg text-[#021D34] mb-1">{link.name}</h3>
-                                  <p className="relative z-10 text-sm text-slate-500 mb-6 line-clamp-2 leading-relaxed">{link.description}</p>
-                                  <span className={BUTTON_CLASSES}>
-                                      {link.btnText || 'ACESSAR'} {isInternal ? <LogIn size={12}/> : <ExternalLink size={12} />}
-                                  </span>
-                              </>
+
+                                  <div className="flex-1">
+                                    <h3 className="text-lg font-bold text-slate-800 mb-2 group-hover:text-[#009DE0] transition-colors">{link.name}</h3>
+                                    <p className="text-sm text-slate-500 leading-relaxed line-clamp-2">{link.description}</p>
+                                  </div>
+
+                                  <div className="mt-6 pt-6 border-t border-slate-100 flex items-center justify-end">
+                                      <span className="flex items-center gap-2 text-xs font-bold text-slate-700 bg-white px-3 py-1.5 rounded-lg border border-slate-100 shadow-sm group-hover:bg-[#009DE0] group-hover:text-white group-hover:border-[#009DE0] transition-all">
+                                          {link.btnText || 'Acessar'} 
+                                          {isInternal ? <LogIn size={12}/> : <ExternalLink size={12}/>}
+                                      </span>
+                                  </div>
+                              </div>
                           );
 
-                          // Renderização Condicional: Link (Router) vs A (Href)
-                          if (isInternal) {
-                              return (
-                                  <Link 
-                                    key={link.id} 
-                                    to={link.url}
-                                    onClick={() => handleLinkClick(link.id)}
-                                    className={CARD_CLASSES}
-                                  >
-                                      <CardContent />
-                                  </Link>
-                              )
-                          }
+                          const Wrapper = isInternal ? Link : 'a';
+                          const props = isInternal 
+                            ? { to: link.url } 
+                            : { href: link.url, target: "_blank", rel: "noreferrer" };
 
                           return (
-                              <a 
+                              <Wrapper 
                                 key={link.id} 
-                                href={link.url} 
-                                target="_blank" 
-                                rel="noreferrer"
+                                {...props}
                                 onClick={() => handleLinkClick(link.id)}
-                                className={CARD_CLASSES}
+                                className="group relative outline-none animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards"
+                                style={{ animationDelay }}
                               >
                                   <CardContent />
-                              </a>
+                              </Wrapper>
                           )
                       })}
 
                       {filteredLinks.length === 0 && (
-                          <div className="col-span-full py-12 text-center text-slate-400">
-                              <Search className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                              <p>Nenhum sistema encontrado.</p>
+                          <div className="col-span-full py-20 text-center">
+                              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+                                  <Search size={30} />
+                              </div>
+                              <h3 className="text-slate-900 font-bold text-lg mb-1">Nenhum resultado</h3>
+                              <p className="text-slate-500">Tente buscar com outros termos.</p>
                           </div>
                       )}
                    </div>
@@ -206,8 +244,13 @@ export default function SystemsPortal() {
             </div>
         </div>
 
-        <footer className="py-6 text-center w-full relative z-10 opacity-60 hover:opacity-100 transition-opacity mt-auto">
-            <p className="text-slate-400 text-[10px] uppercase tracking-widest">© {new Date().getFullYear()} Centro Universitário de Lavras - Unilavras</p>
+        <footer className="py-8 text-center relative z-10 border-t border-slate-200/50 bg-white/30 backdrop-blur-sm">
+            <div className="flex items-center justify-center gap-2 mb-2 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
+                 <img src={LOGOS.color} alt="Logo" className="h-8 w-auto" />
+            </div>
+            <p className="text-slate-400 text-[10px] uppercase tracking-widest font-bold">
+                © {new Date().getFullYear()} Centro Universitario de Lavras - Unilavras
+            </p>
         </footer>
     </div>
   );
