@@ -396,21 +396,43 @@ export default function UserManagement({ userProfile }) {
      const executeImport = async () => {
          if (selectedImportIndices.size === 0) return;
          setImporting(true);
+         
          let success = 0;
          let errors = 0;
-         const errorDetails = [];
+         
+         // Categorização dos erros para melhor feedback
+         const conflicts = []; // Para CPFs ou Emails já existentes
+         const systemFailures = []; // Para outros erros (senha fraca, conexão, etc)
+         
          const secondaryApp = getSecondaryApp();
          const secondaryAuth = getAuth(secondaryApp);
          const toImport = csvPreview.filter(item => selectedImportIndices.has(item.id));
          let importedStudents = 0;
  
          for (const user of toImport) {
+             // 1. Verificação prévia de CPF (Firestore)
              if (await checkCpfExists(user.cpf)) {
-                 errors++; errorDetails.push(`${user.name}: CPF ${user.cpf} já registado.`); continue;
+                 errors++; 
+                 conflicts.push({
+                     name: user.name,
+                     reason: `CPF ${maskCPF(user.cpf)} já está em uso.`,
+                     type: 'CPF'
+                 });
+                 continue;
              }
+
              try {
+                 // 2. Tentativa de criação no Auth
                  const cred = await createUserWithEmailAndPassword(secondaryAuth, user.email, user.password);
-                 const data = { name: user.name, email: user.email, cpf: user.cpf, role: user.role, active: true, createdAt: serverTimestamp() };
+                 
+                 const data = { 
+                     name: user.name, 
+                     email: user.email, 
+                     cpf: user.cpf, 
+                     role: user.role, 
+                     active: true, 
+                     createdAt: serverTimestamp() 
+                 };
                  
                  const batch = writeBatch(db);
                  batch.set(doc(db, 'artifacts', appId, 'users', cred.user.uid, 'profile', 'data'), data);
@@ -429,16 +451,24 @@ export default function UserManagement({ userProfile }) {
 
              } catch (err) {
                  errors++; 
-                 const msg = err.code === 'auth/email-already-in-use' ? 'Email já registado.' : translateFirebaseError(err);
-                 errorDetails.push(`${user.email}: ${msg}`);
+                 if (err.code === 'auth/email-already-in-use') {
+                     conflicts.push({
+                        name: user.name,
+                        reason: `Email ${user.email} já está em uso.`,
+                        type: 'Email'
+                     });
+                 } else {
+                     systemFailures.push({
+                        name: user.name,
+                        reason: translateFirebaseError(err)
+                     });
+                 }
              }
          }
  
          await signOut(secondaryAuth);
          
-         // --- CACHE UPDATE ---
          if (importedStudents > 0) {
-             console.log(`${importedStudents} alunos importados. Invalidando cache...`);
              await queryClient.invalidateQueries({ queryKey: ['students_full_directory_v2'] });
          }
 
@@ -452,17 +482,61 @@ export default function UserManagement({ userProfile }) {
                  message: (
                      <div className="space-y-4">
                          <div className="flex gap-4">
-                             <div className="flex items-center gap-2 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg border border-green-100 dark:border-green-900 flex-1 justify-center"><CheckCircle2 size={18}/> <div className="flex flex-col leading-none"><span className="font-bold text-lg">{success}</span><span className="text-[10px] uppercase">Sucessos</span></div></div>
-                             <div className="flex items-center gap-2 text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg border border-red-100 dark:border-red-900 flex-1 justify-center"><XCircle size={18}/> <div className="flex flex-col leading-none"><span className="font-bold text-lg">{errors}</span><span className="text-[10px] uppercase">Falhas</span></div></div>
+                             <div className="flex items-center gap-2 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg border border-green-100 dark:border-green-900 flex-1 justify-center">
+                                 <CheckCircle2 size={18}/> 
+                                 <div className="flex flex-col leading-none text-left">
+                                     <span className="font-bold text-lg">{success}</span>
+                                     <span className="text-[10px] uppercase">Sucessos</span>
+                                 </div>
+                             </div>
+                             <div className="flex items-center gap-2 text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg border border-red-100 dark:border-red-900 flex-1 justify-center">
+                                 <XCircle size={18}/> 
+                                 <div className="flex flex-col leading-none text-left">
+                                     <span className="font-bold text-lg">{errors}</span>
+                                     <span className="text-[10px] uppercase">Falhas</span>
+                                 </div>
+                             </div>
                          </div>
-                         <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-                             <div className="bg-slate-100 dark:bg-slate-800 px-3 py-2 border-b border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Detalhes dos Erros</div>
-                             <div className="max-h-48 overflow-y-auto p-2 space-y-2 custom-scrollbar">{errorDetails.map((err, i) => (<div key={i} className="text-xs flex gap-2 items-start text-slate-600 dark:text-slate-300 border-b border-slate-100 dark:border-slate-800 last:border-0 pb-1 last:pb-0"><span className="text-slate-400 font-mono select-none">{i+1}.</span><span>{err}</span></div>))}</div>
-                         </div>
+
+                         {/* Seção de Usuários já cadastrados (Conflitos) */}
+                         {conflicts.length > 0 && (
+                            <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-900 rounded-lg overflow-hidden">
+                                <div className="bg-orange-100 dark:bg-orange-900/30 px-3 py-2 border-b border-orange-200 dark:border-orange-900 text-[10px] font-bold text-orange-700 dark:text-orange-400 uppercase flex items-center gap-2">
+                                    <AlertTriangle size={14}/> Utilizadores já existentes
+                                </div>
+                                <div className="max-h-32 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                    {conflicts.map((c, i) => (
+                                        <div key={i} className="text-xs flex flex-col border-b border-orange-100 dark:border-orange-900 last:border-0 pb-1 mb-1 last:mb-0">
+                                            <span className="font-bold text-orange-900 dark:text-orange-200">{c.name}</span>
+                                            <span className="text-orange-700 dark:text-orange-400 opacity-80">{c.reason}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                         )}
+
+                         {/* Seção de Erros Diversos */}
+                         {systemFailures.length > 0 && (
+                            <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                                <div className="bg-slate-100 dark:bg-slate-800 px-3 py-2 border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
+                                    Outras Falhas de Registo
+                                </div>
+                                <div className="max-h-32 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                                    {systemFailures.map((f, i) => (
+                                        <div key={i} className="text-xs flex justify-between gap-2 border-b border-slate-100 dark:border-slate-800 last:border-0 pb-1 mb-1 last:mb-0">
+                                            <span className="font-medium text-slate-700 dark:text-slate-200">{f.name}:</span>
+                                            <span className="text-red-500">{f.reason}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                         )}
                      </div>
                  ) 
              });
-         } else { addToast(`${success} utilizadores importados com sucesso!`, 'success'); }
+         } else { 
+             addToast(`${success} utilizadores importados com sucesso!`, 'success'); 
+         }
          fetchUsers(search);
      };
 

@@ -34,7 +34,6 @@ export function useStudentsDirectory({ enabled = true } = {}) {
                         return 0;
                     });
                 
-                console.log(`[CACHE] Diretório baixado e processado: ${data.length} alunos ativos.`);
                 return data;
 
             } catch (error) {

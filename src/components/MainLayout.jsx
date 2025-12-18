@@ -39,7 +39,9 @@ export default function MainLayout({ user, userProfile }) {
     const warningTimer = useRef(null);
     
     // --- PRÉ-CARREGAMENTO (PREFETCH) ---
-    useStudentsDirectory({ enabled: !!userProfile });
+	useStudentsDirectory({ 
+		enabled: !!userProfile && (userProfile.role === 'admin' || userProfile.role === 'tech') 
+	});
     useMaterialTypes();
 
     // --- EFEITO: REDIRECIONAMENTO AUTOMÁTICO OFFLINE ---

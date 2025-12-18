@@ -10,7 +10,7 @@ export function useDashboardStats({ userProfile, period, customStart, customEnd 
         queryKey: ['dashboard_stats', userProfile?.uid, period, customStart, customEnd],
         
         // --- CONFIGURAÇÃO DE CACHE ---
-        staleTime: 1000 * 60 * 5, // 5 minutos de dados "frescos"
+		staleTime: Infinity, // Os dados nunca ficam "velhos" automaticamente
         cacheTime: 1000 * 60 * 60 * 24, // Mantém na memória por 24 horas
         networkMode: 'offlineFirst', // Aceita dados do cache/offline
         refetchOnWindowFocus: false, 

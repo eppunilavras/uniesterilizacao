@@ -4,7 +4,8 @@ import {
   Database, 
   Settings2, 
   PackagePlus, 
-  Bell 
+  Bell,
+  Activity  
 } from 'lucide-react';
 
 // Imports dos Sub-componentes
@@ -13,6 +14,7 @@ import AdminMaterials from './AdminMaterials';
 import AdminLabels from './AdminLabels';
 import AdminData from './AdminData';
 import AdminLogs from './AdminLogs';
+import AdminHealth from './AdminHealth';
 
 export default function AdminPanel({ userProfile }) {
     const [activeTab, setActiveTab] = useState('logs');
@@ -26,6 +28,7 @@ export default function AdminPanel({ userProfile }) {
 
     const tabs = [
 		{ id: 'logs', label: 'Auditoria', icon: FileText },
+		{ id: 'health', label: 'Saúde', icon: Activity },
 		{ id: 'data', label: 'Backup', icon: Database },
 		{ id: 'labels', label: 'Etiquetas', icon: Settings2 },
 		{ id: 'materials', label: 'Materiais', icon: PackagePlus },
@@ -80,7 +83,8 @@ export default function AdminPanel({ userProfile }) {
                 {activeTab === 'materials' && <AdminMaterials />}
 				{activeTab === 'labels' && <AdminLabels />}
                 {activeTab === 'data' && <AdminData />}
-                
+                {activeTab === 'health' && <AdminHealth />}
+				
                 <div style={{ display: activeTab === 'logs' ? 'block' : 'none' }}>
                     {logsVisited && <AdminLogs />}
                 </div>

@@ -63,6 +63,21 @@ export default function Dashboard({ userProfile }) {
         types: [], timeline: [], topStudents: [], insights: [],
         lastUpdated: new Date()
     };
+	
+	const [isDataStale, setIsDataStale] = useState(false);
+
+	useEffect(() => {
+		if (!stats?.lastUpdated) return;
+
+		const checkStaleness = () => {
+			const diffInMinutes = (new Date() - new Date(stats.lastUpdated)) / 1000 / 60;
+			setIsDataStale(diffInMinutes > 60); // Define como "velho" após 60 minutos
+		};
+
+		checkStaleness();
+		const interval = setInterval(checkStaleness, 60000); // Verifica a cada minuto
+		return () => clearInterval(interval);
+	}, [stats?.lastUpdated]);
 
     return (
         <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500 w-full max-w-full overflow-x-hidden">
@@ -72,20 +87,23 @@ export default function Dashboard({ userProfile }) {
                     <h2 className="text-2xl md:text-3xl font-bold text-[#021D34] dark:text-white transition-colors">
                         Olá, {userProfile.name.split(' ')[0]}
                     </h2>
-                    <p className="text-slate-500 dark:text-slate-400 flex items-center gap-2 text-sm md:text-base transition-colors">
-                        <Activity size={16}/> Visão geral da central.
-                        
-                        {!isLoading && stats && (
-                            <span className="text-xs text-slate-400 dark:text-slate-500 ml-2 border-l border-slate-300 dark:border-slate-700 pl-2 flex items-center gap-1">
-                                Última verificação: 
-                                <span className="font-bold text-slate-600 dark:text-slate-300">
-                                    {stats.lastUpdated.toLocaleString('pt-BR', { 
-                                        day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
-                                    })}
-                                </span>
-                            </span>
-                        )}
-                    </p>
+                    <p className="text-slate-500 dark:text-slate-400 flex items-center gap-2 text-sm md:text-base">
+						<Activity size={16}/> Visão geral da central.
+						
+						{!isLoading && stats && (
+							<span className={`text-xs ml-2 border-l pl-2 flex items-center gap-1 transition-colors ${
+								isDataStale 
+									? 'text-orange-500 font-bold animate-pulse' // Aviso visual se estiver desatualizado
+									: 'text-slate-400 dark:text-slate-500 border-slate-300 dark:border-slate-700'
+							}`}>
+								{isDataStale && <AlertCircle size={12} />}
+								Última verificação: {stats.lastUpdated.toLocaleString('pt-BR', { 
+									hour: '2-digit', minute: '2-digit' 
+								})}
+								{isDataStale && " (Dados Antigos)"}
+							</span>
+						)}
+					</p>
                 </div>
                 
                 {/* Barra de Filtros - Adaptada Dark Mode */}

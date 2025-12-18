@@ -10,15 +10,16 @@ export function useDialog() {
 export function DialogProvider({ children }) {
   const [dialog, setDialog] = useState(null);
 
+  // Função para Diálogos de Confirmação (Sim/Não)
   const confirm = useCallback(({ 
     title, 
     message, 
     confirmLabel = 'Confirmar', 
     cancelLabel = 'Cancelar', 
-    variant = 'default', // 'default', 'destructive', 'info'
-    confirmText, // Retrocompatibilidade
-    cancelText, // Retrocompatibilidade
-    isDestructive // Retrocompatibilidade
+    variant = 'default', 
+    confirmText, 
+    cancelText, 
+    isDestructive 
   }) => {
     return new Promise((resolve) => {
       setDialog({
@@ -34,6 +35,32 @@ export function DialogProvider({ children }) {
         onCancel: () => {
           setDialog(null);
           resolve(false);
+        }
+      });
+    });
+  }, []);
+
+  // NOVO: Função para Diálogos de Alerta (Apenas OK)
+  const alert = useCallback(({ 
+    title, 
+    message, 
+    confirmLabel = 'OK', 
+    variant = 'default' 
+  }) => {
+    return new Promise((resolve) => {
+      setDialog({
+        title,
+        message,
+        confirmLabel,
+        cancelLabel: null, // Alertas não têm botão de cancelar
+        variant,
+        onConfirm: () => {
+          setDialog(null);
+          resolve(true);
+        },
+        onCancel: () => {
+          setDialog(null);
+          resolve(true);
         }
       });
     });
@@ -58,7 +85,8 @@ export function DialogProvider({ children }) {
   };
 
   return (
-    <DialogContext.Provider value={{ confirm }}>
+    // Adicionado 'alert' ao Provider
+    <DialogContext.Provider value={{ confirm, alert }}>
       {children}
       {dialog && (
         <div className="fixed inset-0 z-[10050] flex items-center justify-center p-4 bg-[#021D34]/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
@@ -75,7 +103,6 @@ export function DialogProvider({ children }) {
                     <h3 className="font-bold text-lg text-[#021D34] dark:text-white leading-tight mb-1">
                         {dialog.title}
                     </h3>
-                    {/* Se a mensagem for string simples, usa p. Se for componente (JSX), renderiza direto */}
                     {typeof dialog.message === 'string' ? (
                         <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                             {dialog.message}

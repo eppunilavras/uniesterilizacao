@@ -95,7 +95,7 @@ export default function HistoryView({ userProfile }) {
     };
 
     // =================================================================================
-    // 1. LÓGICA DE RELATÓRIO POR ALUNO (COM CORREÇÃO DE DATA)
+    // 1. LÓGICA DE RELATÓRIO POR ALUNO
     // =================================================================================
     useEffect(() => {
         if (mode !== 'student_report') return;
@@ -125,7 +125,6 @@ export default function HistoryView({ userProfile }) {
         }
         setGeneratingReport(true);
         try {
-            // CORREÇÃO DE FUSO HORÁRIO
             const [sY, sM, sD] = reportStart.split('-').map(Number);
             const start = new Date(sY, sM - 1, sD, 0, 0, 0, 0);
 
@@ -162,7 +161,7 @@ export default function HistoryView({ userProfile }) {
     };
 
     // =================================================================================
-    // 2. LÓGICA DE RELATÓRIO TÉCNICO (COM CORREÇÃO DE DATA)
+    // 2. LÓGICA DE RELATÓRIO TÉCNICO
     // =================================================================================
     useEffect(() => {
         if (mode !== 'tech_report') return;
@@ -193,7 +192,6 @@ export default function HistoryView({ userProfile }) {
         }
         setGeneratingReport(true);
         try {
-            // CORREÇÃO DE FUSO HORÁRIO
             const [sY, sM, sD] = reportStart.split('-').map(Number);
             const start = new Date(sY, sM - 1, sD, 0, 0, 0, 0);
 
@@ -214,7 +212,6 @@ export default function HistoryView({ userProfile }) {
             const countEntries = logs.filter(l => l.type === 'ITEM_ENTRY').length;
             const countMoves = logs.filter(l => l.type === 'ITEM_MOVE').length;
             const countLogins = logs.filter(l => l.type === 'LOGIN').length;
-            
             const countOthers = logs.length - (countEntries + countMoves + countLogins);
 
             const stats = { total: logs.length, entradas: countEntries, movimentacoes: countMoves, logins: countLogins, outros: countOthers > 0 ? countOthers : 0 };
@@ -268,40 +265,31 @@ export default function HistoryView({ userProfile }) {
             setLoading(true); setHasMore(true); setLastDoc(null);
             try {
                 const itemsRef = collection(db, 'artifacts', appId, 'public', 'data', 'items');
-                
-                // Se tiver busca
                 if (search.length > 2) {
                     const term = formatSearchTerm(search); 
                     const queries = [];
-                    const isStd = userProfile.role === 'student';
                     const isCodeLike = /[a-zA-Z]/.test(term) && /\d/.test(term);
-
-                    // BUSCA 1: Se for parecido com Código
                     if (isCodeLike || term.length <= 8) {
                          const c = [where('code', '>=', term), where('code', '<=', term + '\uf8ff'), orderBy('code'), limit(20)];
-                         if (isStd) c.unshift(where('studentId', '==', userProfile.uid));
+                         if (isStudent) c.unshift(where('studentId', '==', userProfile.uid));
                          queries.push(query(itemsRef, ...c));
                     } 
-                    // BUSCA 2: Nome ou Tipo
                     if (!isCodeLike) {
-                        if (isStd) {
+                        if (isStudent) {
                             queries.push(query(itemsRef, where('studentId', '==', userProfile.uid), orderBy('type'), startAt(term), endAt(term + '\uf8ff'), limit(20)));
                         } else {
                             queries.push(query(itemsRef, orderBy('studentName'), startAt(term), endAt(term + '\uf8ff'), limit(20)));
                             queries.push(query(itemsRef, orderBy('type'), startAt(term), endAt(term + '\uf8ff'), limit(20)));
                         }
                     }
-
                     const snaps = await Promise.all(queries.map(q => getDocs(q)));
                     const unique = new Map();
                     snaps.forEach(s => s.docs.forEach(d => unique.set(d.id, { id: d.id, ...d.data() })));
                     setHistory(Array.from(unique.values()));
                     setHasMore(false);
                 } else {
-                    // Sem busca: lista últimos atualizados
-                    // ORDENAÇÃO POR lastUpdated
                     const c = [orderBy('lastUpdated', 'desc'), limit(50)];
-                    if (userProfile.role === 'student') c.unshift(where('studentId', '==', userProfile.uid));
+                    if (isStudent) c.unshift(where('studentId', '==', userProfile.uid));
                     const q = query(itemsRef, ...c);
                     const s = await getDocs(q);
                     setHistory(s.docs.map(d => ({id: d.id, ...d.data()})));
@@ -311,9 +299,8 @@ export default function HistoryView({ userProfile }) {
             } catch (error) { 
                 console.error("Erro lista:", error); 
                 if (error.code === 'failed-precondition') {
-                    console.warn("Falta índice para lastUpdated. Tentando fallback para createdAt.");
                     const c = [orderBy('createdAt', 'desc'), limit(50)];
-                    if (userProfile.role === 'student') c.unshift(where('studentId', '==', userProfile.uid));
+                    if (isStudent) c.unshift(where('studentId', '==', userProfile.uid));
                     const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'items'), ...c);
                     const s = await getDocs(q);
                     setHistory(s.docs.map(d => ({id: d.id, ...d.data()})));
@@ -321,16 +308,15 @@ export default function HistoryView({ userProfile }) {
             } finally { setLoading(false); }
         }, 600);
         return () => clearTimeout(timer);
-    }, [userProfile, search, mode]);
+    }, [userProfile, search, mode, isStudent]);
 
     const loadMore = async () => {
         if (!lastDoc || loadingMore) return;
         setLoadingMore(true);
         try {
             const ref = collection(db, 'artifacts', appId, 'public', 'data', 'items');
-            // Mantém coerência na ordenação (lastUpdated)
             const c = [orderBy('lastUpdated', 'desc'), startAfter(lastDoc), limit(50)];
-            if (userProfile.role === 'student') c.unshift(where('studentId', '==', userProfile.uid));
+            if (isStudent) c.unshift(where('studentId', '==', userProfile.uid));
             const q = query(ref, ...c);
             const s = await getDocs(q);
             if (!s.empty) {
@@ -341,14 +327,11 @@ export default function HistoryView({ userProfile }) {
         } catch (e) { console.error(e); } setLoadingMore(false);
     };
 
-    // --- FUNÇÃO DE IMPRESSÃO DE DETALHES ---
     const generateTraceReport = () => { 
         if (!selectedItem) return;
         const w = window.open('', '_blank');
         if (!w) { addToast('Pop-up bloqueado.', 'error'); return; }
-        
         const timeline = selectedItem.history ? [...selectedItem.history].reverse() : [];
-        
         const html = `
         <!DOCTYPE html><html><head><title>Rastreabilidade</title>
         <style>
@@ -391,7 +374,6 @@ export default function HistoryView({ userProfile }) {
         </table>
         <script>window.onload=function(){window.print()}</script>
         </body></html>`;
-        
         w.document.write(html);
         w.document.close();
     };
@@ -415,7 +397,12 @@ export default function HistoryView({ userProfile }) {
                 {/* Botões de Navegação Desktop */}
                 <div className="hidden md:flex bg-slate-200 dark:bg-slate-700 p-1 rounded-lg w-fit gap-1 transition-colors">
                     <button onClick={() => { setMode('list'); setScanCode(''); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${mode === 'list' ? 'bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm' : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white'}`}>Lista Geral</button>
-                    <button onClick={() => { setMode('scan'); setSearch(''); setShowCamera(false); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${mode === 'scan' ? 'bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm' : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white'}`}>Rastrear Item</button>
+                    
+                    {/* Alteração: Bloqueio para alunos */}
+                    {!isStudent && (
+                        <button onClick={() => { setMode('scan'); setSearch(''); setShowCamera(false); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${mode === 'scan' ? 'bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm' : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white'}`}>Rastrear Item</button>
+                    )}
+
                     {isAdminOrTech && <button onClick={() => { setMode('student_report'); setSearch(''); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap flex items-center gap-2 ${mode === 'student_report' ? 'bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm' : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white'}`}><GraduationCap size={16}/> Relatório Aluno</button>}
                     {isAdmin && <button onClick={() => { setMode('tech_report'); setTechSearch(''); setReportTech(null); }} className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap flex items-center gap-2 ${mode === 'tech_report' ? 'bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm' : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white'}`}><UserCog size={16}/> Relatório Técnico</button>}
                 </div>
@@ -424,14 +411,17 @@ export default function HistoryView({ userProfile }) {
                 <div className="block md:hidden w-full max-w-full">
                     <select value={mode} onChange={handleMobileModeChange} className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold shadow-sm focus:border-[#009DE0] outline-none transition-colors">
                         <option value="list">Lista Geral</option>
-                        <option value="scan">Rastrear Item</option>
+                        
+                        {/* Alteração: Bloqueio para alunos no Mobile */}
+                        {!isStudent && <option value="scan">Rastrear Item</option>}
+                        
                         {isAdminOrTech && <option value="student_report">Relatório do Aluno</option>}
                         {isAdmin && <option value="tech_report">Relatório do Técnico</option>}
                     </select>
                 </div>
             </div>
 
-            {/* ABAS DE RELATÓRIO (MANTIDAS) */}
+            {/* ABA 1: RELATÓRIOS */}
             {(mode === 'tech_report' || mode === 'student_report') && (
                 <div className="max-w-2xl mx-auto space-y-6 py-4 animate-in zoom-in-95 duration-300">
                     <div className="bg-white dark:bg-slate-800 p-4 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-lg relative transition-colors">
@@ -439,8 +429,6 @@ export default function HistoryView({ userProfile }) {
                             {mode === 'tech_report' ? <UserCog className="text-[#009DE0]"/> : <GraduationCap className="text-[#009DE0]"/>}
                             {mode === 'tech_report' ? 'Relatório do Técnico' : 'Relatório do Aluno'}
                         </h3>
-                        
-                        {/* Conteúdo específico de cada relatório */}
                         {mode === 'tech_report' && (
                             <div className="space-y-4">
                                 <div className="relative">
@@ -521,7 +509,7 @@ export default function HistoryView({ userProfile }) {
                 </div>
             )}
 
-            {/* ABA 3: LISTA GERAL (ATUALIZADA) */}
+            {/* ABA 3: LISTA GERAL */}
             {mode === 'list' && (
                 <div className="space-y-4 animate-in fade-in duration-300 w-full max-w-full">
                     <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row gap-4 justify-between transition-colors">
@@ -597,7 +585,6 @@ export default function HistoryView({ userProfile }) {
                                         <div key={index} className="relative pl-6 md:pl-10">
                                             <div className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800 shadow-sm ${index === 0 ? 'bg-[#009DE0] ring-4 ring-blue-50 dark:ring-blue-900/30' : 'bg-slate-300 dark:bg-slate-600'}`}/>
                                             <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 md:p-4 border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col gap-2 hover:border-blue-100 dark:hover:border-slate-600 transition-colors">
-                                                
                                                 <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-start md:items-center justify-between">
                                                     <div className="flex items-center gap-3">
                                                         <div className={`p-2 rounded-lg ${Config.color} bg-opacity-20`}><Config.icon size={20}/></div>
@@ -610,15 +597,12 @@ export default function HistoryView({ userProfile }) {
                                                         <CalendarClock size={14}/>{formatDate(event.timestamp)}
                                                     </div>
                                                 </div>
-
-                                                {/* --- EXIBIR MOTIVO/OBSERVAÇÃO --- */}
                                                 {event.reason && (
                                                     <div className="mt-2 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-600 dark:text-slate-300 italic border-l-4 border-l-slate-400 flex items-start gap-2">
                                                         <MessageSquare size={16} className="shrink-0 mt-0.5 text-slate-400"/>
                                                         <span>{event.reason}</span>
                                                     </div>
                                                 )}
-
                                             </div>
                                         </div>
                                     );
