@@ -10,10 +10,10 @@ export function usePageTitle() {
     // Lógica de Títulos
     if (path === '/' || path.startsWith('/portal')) {
       // Vitrine Pública
-      document.title = 'Portal Odontologia | Unilavras';
+      document.title = '';
     } else if (path === '/login') {
       // Login do Sistema
-      document.title = 'Acesso Restrito | UniEsterilização';
+      document.title = 'UniEsterilização';
     } else {
       // Sistema Interno (Dashboard, etc)
       document.title = 'UniEsterilização';
