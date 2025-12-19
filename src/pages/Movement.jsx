@@ -11,7 +11,8 @@ import {
   Loader2, 
   AlertTriangle, 
   X,
-  CheckCircle2 
+  CheckCircle2,
+  Calendar // Importado para o filtro de data
 } from 'lucide-react';
 
 import { db, appId } from '../config/firebase';
@@ -40,6 +41,7 @@ export default function Movement({ userProfile }) {
     const [selectedIds, setSelectedIds] = useState([]);
     const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
+    const [filterDate, setFilterDate] = useState(''); // Novo: Estado para filtro de data
     const [loadingScan, setLoadingScan] = useState(false);
     const [visibleLimit, setVisibleLimit] = useState(50);
     
@@ -58,33 +60,23 @@ export default function Movement({ userProfile }) {
     const lastSearchedCode = useRef('');
     const inputRef = useRef(null);
 
-    // --- HELPER: VALIDAÇÃO DE TRANSIÇÃO (Melhorada) ---
+    // --- HELPER: VALIDAÇÃO DE TRANSIÇÃO (Mantido Integralmente) ---
     const canMoveTo = (currentStatus, nextStatus) => {
-        // 1. Sempre permite mover PARA problema (ocorrência)
         if (nextStatus === 'problema') return { allowed: true };
-        
-        // 2. Sempre permite sair DE problema (resolução)
         if (currentStatus === 'problema') return { allowed: true };
 
         const currIndex = STATUS_ORDER.indexOf(currentStatus);
         const nextIndex = STATUS_ORDER.indexOf(nextStatus);
 
-        // Se algum status não estiver na lista padrão (erro de dados), bloqueia por segurança
         if (currIndex === -1 || nextIndex === -1) {
             return { allowed: false, error: 'O status atual do item é inválido. Contate o suporte.' };
         }
-
-        // 3. Bloqueia mesmo status
         if (currIndex === nextIndex) {
             return { allowed: false, error: 'O item já está neste status.' };
         }
-
-        // 4. Bloqueia retrocesso (Voltar status)
         if (nextIndex < currIndex) {
             return { allowed: false, error: 'O fluxo de esterilização é contínuo. Não é permitido retroceder etapas.' };
         }
-
-        // 5. Bloqueia pular etapas (Obrigatório ser sequencial: Index + 1)
         if (nextIndex > currIndex + 1) {
              return { allowed: false, error: `Etapa incorreta. O item deve passar por ${STATUS_CONFIG[STATUS_ORDER[currIndex+1]].label} antes de chegar aqui.` };
         }
@@ -144,7 +136,6 @@ export default function Movement({ userProfile }) {
 
     // --- FUNÇÃO DE ATUALIZAÇÃO ---
     const updateStatus = async (item, newStatus, reason = null) => {
-        // Validação Rigorosa
         const validation = canMoveTo(item.status, newStatus);
         if (!validation.allowed) {
             addToast(`Erro: ${validation.error}`, 'error');
@@ -155,7 +146,6 @@ export default function Movement({ userProfile }) {
         const ref = doc(db, 'artifacts', appId, 'public', 'data', 'items', item.id);
         
         const previousStatus = item.status;
-
         const historyEntry = { 
             status: newStatus, 
             timestamp: new Date().toISOString(), 
@@ -225,15 +215,11 @@ export default function Movement({ userProfile }) {
 
         if (isResolution) {
             const historyReversed = [...(incidentModal.item.history || [])].reverse();
-            // Tenta encontrar o último status válido que não seja problema ou retirado
             const lastValidStatus = historyReversed.find(h => h.status !== 'problema' && h.status !== 'retirado');
-            
-            // Se não achar, volta para recebido por segurança
             newStatus = lastValidStatus ? lastValidStatus.status : 'recebido';
         }
         
         const logText = isResolution ? `Resolução: ${incidentModal.reason}` : incidentModal.reason;
-
         await updateStatus(incidentModal.item, newStatus, logText);
         
         addToast(isResolution ? `Resolvido! Item retornou para: ${STATUS_CONFIG[newStatus].label}` : 'Ocorrência registrada.', 'success');
@@ -242,7 +228,6 @@ export default function Movement({ userProfile }) {
 
     // --- LOTE INTELIGENTE ---
     const handleBatch = async (targetStatus) => {
-        // Filtra APENAS itens que podem mover para o status alvo
         const eligibleItems = listItems.filter(i => {
             const validation = canMoveTo(i.status, targetStatus);
             return selectedIds.includes(i.id) && validation.allowed;
@@ -273,7 +258,9 @@ export default function Movement({ userProfile }) {
         setSelectedIds([]);
     };
 
+    // --- FILTRAGEM (Busca + Status + Data) ---
     const filteredList = listItems.filter(i => {
+        // Busca textual
         let matchesSearch = false;
         if (search.startsWith('"') && search.endsWith('"') && search.length > 2) {
             const exactTerm = search.slice(1, -1);
@@ -281,12 +268,38 @@ export default function Movement({ userProfile }) {
         } else {
             matchesSearch = i.studentName.toLowerCase().includes(search.toLowerCase()) || i.code.toUpperCase().includes(search.toUpperCase()) || (i.type && i.type.toLowerCase().includes(search.toLowerCase()));
         }
-        return matchesSearch && (filterStatus === 'all' ? true : i.status === filterStatus);
+
+        // Status
+        const matchesStatus = filterStatus === 'all' ? true : i.status === filterStatus;
+
+        // Data
+        let matchesDate = true;
+        if (filterDate && i.createdAt) {
+            const itemDate = i.createdAt.toDate ? i.createdAt.toDate() : new Date(i.createdAt);
+            const formattedItemDate = itemDate.toISOString().split('T')[0];
+            matchesDate = formattedItemDate === filterDate;
+        }
+
+        return matchesSearch && matchesStatus && matchesDate;
     });
+
+    // --- LÓGICA SELECIONAR TUDO ---
+    const filteredIds = filteredList.map(item => item.id);
+    const isAllSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.includes(id));
+
+    const toggleSelectAll = () => {
+        if (isAllSelected) {
+            // Remove apenas os IDs que estão atualmente filtrados
+            setSelectedIds(prev => prev.filter(id => !filteredIds.includes(id)));
+        } else {
+            // Adiciona os IDs filtrados ao que já estava selecionado (evitando duplicados)
+            setSelectedIds(prev => [...new Set([...prev, ...filteredIds])]);
+        }
+    };
 
     return (
         <div className="space-y-6 transition-colors">
-            {/* MODAL DE INCIDENTES */}
+            {/* MODAL DE INCIDENTES (Inalterado) */}
             {incidentModal.isOpen && (
                 <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 border dark:border-slate-700">
@@ -299,14 +312,11 @@ export default function Movement({ userProfile }) {
                         </div>
                         
                         <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                            {incidentModal.type === 'resolve' 
-                                ? `Descreva a solução. O item retornará ao status anterior.` 
-                                : `Descreva o problema com o item ${incidentModal.item?.code}.`
-                            }
+                            {incidentModal.type === 'resolve' ? `Descreva a solução. O item retornará ao status anterior.` : `Descreva o problema com o item ${incidentModal.item?.code}.`}
                         </p>
                         
                         <textarea 
-                            className="w-full p-4 border border-slate-200 dark:border-slate-600 rounded-xl outline-none text-sm min-h-[120px] bg-slate-50 dark:bg-slate-900 dark:text-white focus:border-[#009DE0] dark:focus:border-[#009DE0] transition-colors" 
+                            className="w-full p-4 border border-slate-200 dark:border-slate-600 rounded-xl outline-none text-sm min-h-[120px] bg-slate-50 dark:bg-slate-900 dark:text-white focus:border-[#009DE0] transition-colors" 
                             placeholder={incidentModal.type === 'resolve' ? "Ex: Material re-lavado, Item consertado..." : "Motivo do problema..."}
                             value={incidentModal.reason} 
                             onChange={(e) => setIncidentModal({ ...incidentModal, reason: e.target.value })} 
@@ -315,10 +325,7 @@ export default function Movement({ userProfile }) {
                         
                         <div className="flex gap-3 justify-end mt-4">
                             <button onClick={() => setIncidentModal({ ...incidentModal, isOpen: false })} className="px-4 py-2 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm transition-colors">Cancelar</button>
-                            <button 
-                                onClick={confirmIncident} 
-                                className={`px-6 py-2 text-white font-bold rounded-lg hover:brightness-90 text-sm transition-colors ${incidentModal.type === 'resolve' ? 'bg-green-600 dark:bg-green-700' : 'bg-red-600 dark:bg-red-700'}`}
-                            >
+                            <button onClick={confirmIncident} className={`px-6 py-2 text-white font-bold rounded-lg hover:brightness-90 text-sm transition-colors ${incidentModal.type === 'resolve' ? 'bg-green-600 dark:bg-green-700' : 'bg-red-600 dark:bg-red-700'}`}>
                                 {incidentModal.type === 'resolve' ? 'Resolver & Retornar' : 'Confirmar Problema'}
                             </button>
                         </div>
@@ -347,7 +354,7 @@ export default function Movement({ userProfile }) {
                                 <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm">Bipe o código, digite abaixo ou use a câmera.</p>
                                 <input 
                                     ref={inputRef}
-                                    className="w-full text-center font-mono text-3xl uppercase tracking-[0.2em] p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:border-[#009DE0] dark:focus:border-[#009DE0] outline-none mb-4 bg-white dark:bg-slate-900 text-black dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 transition-colors" 
+                                    className="w-full text-center font-mono text-3xl uppercase tracking-[0.2em] p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:border-[#009DE0] outline-none mb-4 bg-white dark:bg-slate-900 text-black dark:text-white transition-colors" 
                                     placeholder="CÓDIGO" 
                                     value={code} 
                                     onChange={e => setCode(e.target.value)} 
@@ -391,7 +398,6 @@ export default function Movement({ userProfile }) {
                             <div className="grid gap-3">
                                 {singleItem.status !== 'problema' && (
                                     <>
-                                        {/* BOTÕES CONDICIONAIS QUE RESPEITAM A ORDEM */}
                                         {singleItem.status === 'recebido' && <button onClick={() => updateStatus(singleItem, 'em_esterilizacao')} className="p-4 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition-colors">Iniciar Esterilização</button>}
                                         {singleItem.status === 'em_esterilizacao' && <button onClick={() => updateStatus(singleItem, 'pronto')} className="p-4 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-colors">Marcar como Pronto</button>}
                                         {singleItem.status === 'pronto' && <button onClick={() => updateStatus(singleItem, 'retirado')} className="p-4 bg-[#009DE0] text-white rounded-xl font-bold hover:bg-[#008bc5] transition-colors">Confirmar Retirada</button>}
@@ -410,7 +416,7 @@ export default function Movement({ userProfile }) {
                                         ) : (
                                             <button 
                                                 onClick={() => handleIncidentClick(singleItem)} 
-                                                className="mt-2 p-3 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 rounded-xl font-bold hover:bg-red-100 dark:hover:bg-red-900/40 flex items-center justify-center gap-2 transition-colors"
+                                                className="mt-2 p-3 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 rounded-xl font-bold hover:bg-red-100 flex items-center justify-center gap-2 transition-colors"
                                             >
                                                 <AlertTriangle size={18}/> Registrar Ocorrência
                                             </button>
@@ -427,8 +433,25 @@ export default function Movement({ userProfile }) {
                         <div className="flex flex-col md:flex-row gap-4 flex-1">
                              <div className="relative flex-1">
                                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400"/>
-                                <input className="w-full pl-10 p-2 border dark:border-slate-600 rounded-lg text-sm outline-none focus:border-[#009DE0] dark:focus:border-[#009DE0] bg-transparent dark:bg-slate-900 text-slate-900 dark:text-white transition-colors" placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)}/>
+                                <input className="w-full pl-10 p-2 border dark:border-slate-600 rounded-lg text-sm outline-none focus:border-[#009DE0] bg-transparent dark:bg-slate-900 text-slate-900 dark:text-white transition-colors" placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)}/>
                              </div>
+
+                             {/* FILTRO DE DATA */}
+                             <div className="relative">
+                                <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none"/>
+                                <input 
+                                    type="date" 
+                                    className="pl-10 p-2 border dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-[#009DE0] transition-colors" 
+                                    value={filterDate} 
+                                    onChange={e => setFilterDate(e.target.value)}
+                                />
+                                {filterDate && (
+                                    <button onClick={() => setFilterDate('')} className="absolute right-2 top-2.5 text-slate-400 hover:text-red-500 transition-colors">
+                                        <X size={14}/>
+                                    </button>
+                                )}
+                             </div>
+
                              <select className="p-2 border dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-[#009DE0] transition-colors" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="all">Todos Ativos</option>{Object.entries(STATUS_CONFIG).filter(([k]) => k !== 'retirado').map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select>
                         </div>
                         {selectedIds.length > 0 && (
@@ -437,7 +460,11 @@ export default function Movement({ userProfile }) {
                     </div>
                     <DataTable 
                         columns={[
-                            { key: 'select', label: '', render: (i) => <input type="checkbox" checked={selectedIds.includes(i.id)} onChange={() => setSelectedIds(p => p.includes(i.id) ? p.filter(x => x !== i.id) : [...p, i.id])} className="rounded text-[#009DE0] focus:ring-[#009DE0] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600"/> },
+                            { 
+                                key: 'select', 
+                                label: <input type="checkbox" checked={isAllSelected} onChange={toggleSelectAll} className="rounded text-[#009DE0] focus:ring-[#009DE0] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 cursor-pointer"/>, 
+                                render: (i) => <input type="checkbox" checked={selectedIds.includes(i.id)} onChange={() => setSelectedIds(p => p.includes(i.id) ? p.filter(x => x !== i.id) : [...p, i.id])} className="rounded text-[#009DE0] focus:ring-[#009DE0] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600"/> 
+                            },
                             { key: 'code', label: 'Código', sortable: true, render: (i) => <span className="font-mono font-bold text-[#009DE0]">{i.code}</span> },
                             { key: 'studentName', label: 'Aluno', sortable: true },
                             { key: 'type', label: 'Material', sortable: true },
@@ -464,16 +491,16 @@ export default function Movement({ userProfile }) {
                                 {item.status !== 'retirado' && (
                                     <>
                                         {item.status === 'problema' ? (
-                                            <button onClick={() => handleResolveClick(item)} className="p-2 text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded transition-colors" title="Resolver"><CheckCircle2 size={20}/></button>
+                                            <button onClick={() => handleResolveClick(item)} className="p-2 text-green-600 hover:text-green-800 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded transition-colors" title="Resolver"><CheckCircle2 size={20}/></button>
                                         ) : (
-                                            <button onClick={() => handleIncidentClick(item)} className="p-2 text-red-400 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded transition-colors" title="Registrar Ocorrência"><AlertTriangle size={20}/></button>
+                                            <button onClick={() => handleIncidentClick(item)} className="p-2 text-red-400 hover:text-red-600 dark:text-red-400 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded transition-colors" title="Registrar Ocorrência"><AlertTriangle size={20}/></button>
                                         )}
                                     </>
                                 )}
                             </div>
                         )}
                     />
-                    {listItems.length >= visibleLimit && <div className="flex justify-center pt-2"><button onClick={() => setVisibleLimit(p => p + 50)} className="bg-white dark:bg-slate-800 border dark:border-slate-600 text-slate-600 dark:text-slate-300 px-6 py-2 rounded-full text-sm font-bold flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"><ArrowDown size={16}/> Carregar Mais</button></div>}
+                    {listItems.length >= visibleLimit && <div className="flex justify-center pt-2"><button onClick={() => setVisibleLimit(p => p + 50)} className="bg-white dark:bg-slate-800 border dark:border-slate-600 text-slate-600 dark:text-slate-300 px-6 py-2 rounded-full text-sm font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors"><ArrowDown size={16}/> Carregar Mais</button></div>}
                 </div>
             )}
         </div>
