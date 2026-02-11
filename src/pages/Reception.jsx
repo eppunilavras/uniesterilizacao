@@ -21,9 +21,13 @@ import { useQueryClient } from '@tanstack/react-query';
 import { logEvent } from '../utils/logger'; 
 
 const generateSafeId = (length = 6) => {
+    // Mantemos apenas números e letras (sem 0, 1, I, O para evitar confusão visual)
     const base = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'; 
-    const specials = '!#$*+-=?&'; 
-    const chars = base + specials;
+    
+    // Removido: const specials = '!#$*+-=?&'; 
+    // Removido: const chars = base + specials;
+    
+    const chars = base; // Agora usa apenas a base segura
 
     const array = new Uint32Array(length);
     window.crypto.getRandomValues(array);
