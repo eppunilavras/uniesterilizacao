@@ -26,6 +26,7 @@ import { STATUS_CONFIG } from '../constants';
 import DataTable from '../components/DataTable';
 
 import { useScanner } from '../hooks/useScanner';
+import { useStudentsDirectory } from '../hooks/useStudentsDirectory';
 
 // --- DEFINIÇÃO DA ORDEM RIGOROSA ---
 const STATUS_ORDER = ['recebido', 'em_esterilizacao', 'pronto', 'retirado'];
@@ -59,6 +60,9 @@ export default function Movement({ userProfile }) {
     const searchTimeout = useRef(null);
     const lastSearchedCode = useRef('');
     const inputRef = useRef(null);
+
+    // Diretório de alunos para busca por CPF (mapeia studentId -> cpf)
+    const { data: studentsDirectory = [] } = useStudentsDirectory({ enabled: !!userProfile });
 
     // --- HELPER: VALIDAÇÃO DE TRANSIÇÃO (Mantido Integralmente) ---
     const canMoveTo = (currentStatus, nextStatus) => {
@@ -259,10 +263,21 @@ export default function Movement({ userProfile }) {
     };
 
     // --- FILTRAGEM (Busca + Status + Data) ---
+    // Detecta busca por CPF: quando o termo contém apenas dígitos/pontuação de CPF
+    const searchDigits = search.replace(/\D/g, '');
+    const isCpfSearch = searchDigits.length >= 3 && /^[\d.\-\s]+$/.test(search.trim());
+    const matchingStudentIds = isCpfSearch
+        ? new Set(studentsDirectory.filter(s => (s.cpf || '').includes(searchDigits)).map(s => s.uid))
+        : null;
+
     const filteredList = listItems.filter(i => {
         // Busca textual
         let matchesSearch = false;
-        if (search.startsWith('"') && search.endsWith('"') && search.length > 2) {
+        if (!search) {
+            matchesSearch = true;
+        } else if (isCpfSearch) {
+            matchesSearch = matchingStudentIds.has(i.studentId);
+        } else if (search.startsWith('"') && search.endsWith('"') && search.length > 2) {
             const exactTerm = search.slice(1, -1);
             matchesSearch = i.studentName.includes(exactTerm) || i.code.includes(exactTerm) || (i.type && i.type.includes(exactTerm));
         } else {
@@ -433,7 +448,7 @@ export default function Movement({ userProfile }) {
                         <div className="flex flex-col md:flex-row gap-4 flex-1">
                              <div className="relative flex-1">
                                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400"/>
-                                <input className="w-full pl-10 p-2 border dark:border-slate-600 rounded-lg text-sm outline-none focus:border-[#009DE0] bg-transparent dark:bg-slate-900 text-slate-900 dark:text-white transition-colors" placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)}/>
+                                <input className="w-full pl-10 p-2 border dark:border-slate-600 rounded-lg text-sm outline-none focus:border-[#009DE0] bg-transparent dark:bg-slate-900 text-slate-900 dark:text-white transition-colors" placeholder="Buscar por nome, código, material ou CPF..." value={search} onChange={e => setSearch(e.target.value)}/>
                              </div>
 
                              {/* FILTRO DE DATA */}

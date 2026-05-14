@@ -56,7 +56,7 @@ const Barcode = ({ value }) => {
             >
                 {elements}
             </svg>
-            <span className="text-[10px] font-mono font-bold leading-none mt-0.5">
+            <span className="text-[14px] font-mono font-bold tracking-widest leading-none mt-1">
                 {value}
             </span>
         </div>

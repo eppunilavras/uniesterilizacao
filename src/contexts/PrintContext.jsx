@@ -270,16 +270,7 @@ export const PrintProvider = ({ children, user }) => {
                                             <div style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%'}}>
                                                 <span style={{fontWeight: 800, marginRight: '3px'}}>ALUNO:</span>
                                                 <span style={{fontWeight: 600, textTransform: 'uppercase'}}>
-													{item.studentName ? (() => {
-														// Divide o nome por espaços
-														const parts = item.studentName.trim().split(/\s+/);
-														// Se tiver mais de um nome, junta o Primeiro + Último
-														if (parts.length > 1) {
-															return `${parts[0]} ${parts[parts.length - 1]}`;
-														}
-														// Se tiver apenas um nome, retorna ele mesmo
-														return parts[0];
-													})() : 'NOME'}
+													{item.studentName ? item.studentName.trim() : 'NOME'}
 												</span>
                                             </div>
                                         )}
