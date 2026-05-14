@@ -28,6 +28,7 @@ import { useScanner } from '../hooks/useScanner';
 import { useStudentsDirectory } from '../hooks/useStudentsDirectory';
 
 // --- DEFINIÇÃO DA ORDEM RIGOROSA ---
+// 'em_esterilizacao' mantido para compatibilidade com itens legados (DB ainda pode ter).
 const STATUS_ORDER = ['recebido', 'em_esterilizacao', 'pronto', 'retirado'];
 
 export default function Movement({ userProfile }) {
@@ -62,7 +63,8 @@ export default function Movement({ userProfile }) {
     // Diretório de alunos para busca por CPF (mapeia studentId -> cpf)
     const { data: studentsDirectory = [] } = useStudentsDirectory({ enabled: !!userProfile });
 
-    // --- HELPER: VALIDAÇÃO DE TRANSIÇÃO (Mantido Integralmente) ---
+    // --- HELPER: VALIDAÇÃO DE TRANSIÇÃO ---
+    // Fluxo simplificado: Recebido → Pronto → Retirado (Em Esterilização aceita como legado).
     const canMoveTo = (currentStatus, nextStatus) => {
         if (nextStatus === 'problema') return { allowed: true };
         if (currentStatus === 'problema') return { allowed: true };
@@ -77,10 +79,7 @@ export default function Movement({ userProfile }) {
             return { allowed: false, error: 'O item já está neste status.' };
         }
         if (nextIndex < currIndex) {
-            return { allowed: false, error: 'O fluxo de esterilização é contínuo. Não é permitido retroceder etapas.' };
-        }
-        if (nextIndex > currIndex + 1) {
-             return { allowed: false, error: `Etapa incorreta. O item deve passar por ${STATUS_CONFIG[STATUS_ORDER[currIndex+1]].label} antes de chegar aqui.` };
+            return { allowed: false, error: 'O fluxo é contínuo. Não é permitido retroceder etapas.' };
         }
 
         return { allowed: true };
@@ -410,8 +409,7 @@ export default function Movement({ userProfile }) {
                             <div className="grid gap-3">
                                 {singleItem.status !== 'problema' && (
                                     <>
-                                        {singleItem.status === 'recebido' && <button onClick={() => updateStatus(singleItem, 'em_esterilizacao')} className="p-4 bg-orange-500 text-white rounded-xl font-bold hover:bg-orange-600 transition-colors">Iniciar Esterilização</button>}
-                                        {singleItem.status === 'em_esterilizacao' && <button onClick={() => updateStatus(singleItem, 'pronto')} className="p-4 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-colors">Marcar como Pronto</button>}
+                                        {(singleItem.status === 'recebido' || singleItem.status === 'em_esterilizacao') && <button onClick={() => updateStatus(singleItem, 'pronto')} className="p-4 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-colors">Marcar como Pronto</button>}
                                         {singleItem.status === 'pronto' && <button onClick={() => updateStatus(singleItem, 'retirado')} className="p-4 bg-[#009DE0] text-white rounded-xl font-bold hover:bg-[#008bc5] transition-colors">Confirmar Retirada</button>}
                                     </>
                                 )}
@@ -464,10 +462,14 @@ export default function Movement({ userProfile }) {
                                 )}
                              </div>
 
-                             <select className="p-2 border dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-[#009DE0] transition-colors" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="all">Todos Ativos</option>{Object.entries(STATUS_CONFIG).filter(([k]) => k !== 'retirado').map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select>
+                             <select className="p-2 border dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-[#009DE0] transition-colors" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                                <option value="all">Todos Ativos</option>
+                                <option value="pronto">{STATUS_CONFIG.pronto.label}</option>
+                                <option value="problema">{STATUS_CONFIG.problema.label}</option>
+                             </select>
                         </div>
                         {selectedIds.length > 0 && (
-                            <div className="flex gap-2 items-center bg-slate-50 dark:bg-slate-900 p-2 rounded-lg transition-colors"><span className="text-xs font-bold dark:text-slate-300">{selectedIds.length} sel.</span><button onClick={() => handleBatch('em_esterilizacao')} className="bg-orange-500 text-white px-2 py-1 rounded text-xs hover:bg-orange-600 transition-colors">Esterilizar</button><button onClick={() => handleBatch('pronto')} className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition-colors">Pronto</button><button onClick={() => handleBatch('retirado')} className="bg-[#009DE0] text-white px-2 py-1 rounded text-xs hover:bg-[#008bc5] transition-colors">Retirado</button></div>
+                            <div className="flex gap-2 items-center bg-slate-50 dark:bg-slate-900 p-2 rounded-lg transition-colors"><span className="text-xs font-bold dark:text-slate-300">{selectedIds.length} sel.</span><button onClick={() => handleBatch('pronto')} className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition-colors">Pronto</button><button onClick={() => handleBatch('retirado')} className="bg-[#009DE0] text-white px-2 py-1 rounded text-xs hover:bg-[#008bc5] transition-colors">Retirado</button></div>
                         )}
                     </div>
                     <DataTable 
