@@ -480,7 +480,7 @@ export default function Movement({ userProfile }) {
                                 render: (i) => <input type="checkbox" checked={selectedIds.includes(i.id)} onChange={() => setSelectedIds(p => p.includes(i.id) ? p.filter(x => x !== i.id) : [...p, i.id])} className="rounded text-[#009DE0] focus:ring-[#009DE0] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600"/> 
                             },
                             { key: 'code', label: 'Código', sortable: true, render: (i) => <span className="font-mono font-bold text-[#009DE0]">{i.code}</span> },
-                            { key: 'studentName', label: 'Aluno', sortable: true },
+                            { key: 'studentName', label: 'Aluno', sortable: true, className: 'p-4 text-slate-700 dark:text-slate-300 whitespace-normal break-words' },
                             { key: 'type', label: 'Material', sortable: true },
                             { key: 'createdAt', label: 'Entrada', sortable: true, render: (i) => formatDate(i.createdAt) },
                             { key: 'status', label: 'Status', sortable: true, render: (i) => { const c = STATUS_CONFIG[i.status] || STATUS_CONFIG['recebido']; return <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase border ${c.color}`}>{c.label}</span> }}
@@ -494,7 +494,7 @@ export default function Movement({ userProfile }) {
                                         <span className="font-mono font-bold text-[#009DE0]">{i.code}</span>
                                         <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase border ${STATUS_CONFIG[i.status]?.color}`}>{STATUS_CONFIG[i.status]?.label}</span>
                                     </div>
-                                    <p className="font-bold text-slate-800 dark:text-slate-200 truncate">{i.studentName}</p>
+                                    <p className="font-bold text-slate-800 dark:text-slate-200 break-words">{i.studentName}</p>
                                     <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{i.type}</p>
                                 </div>
                             </div>
