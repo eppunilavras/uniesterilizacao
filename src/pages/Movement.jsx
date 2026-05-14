@@ -52,8 +52,8 @@ export default function Movement({ userProfile }) {
         type: 'report'
     });
 
-    // Quick View: item selecionado via dropdown da busca
-    const [quickViewItem, setQuickViewItem] = useState(null);
+    // Quick View: aluno selecionado via dropdown da busca (mostra todos os itens dele)
+    const [quickViewStudentId, setQuickViewStudentId] = useState(null);
     const [showQuickDropdown, setShowQuickDropdown] = useState(false);
     
     const { addToast } = useToast();
@@ -348,53 +348,68 @@ export default function Movement({ userProfile }) {
                 </div>
             )}
 
-            {/* MODAL QUICK VIEW (resultado da busca) */}
-            {quickViewItem && (() => {
-                const liveItem = listItems.find(x => x.id === quickViewItem.id) || quickViewItem;
-                const c = STATUS_CONFIG[liveItem.status] || STATUS_CONFIG['recebido'];
-                const isAtivo = liveItem.status === 'recebido' || liveItem.status === 'em_esterilizacao';
+            {/* MODAL QUICK VIEW — todos os itens do aluno selecionado */}
+            {quickViewStudentId && (() => {
+                const studentItems = listItems.filter(i => (i.studentId || i.studentName) === quickViewStudentId);
+                if (studentItems.length === 0) { setTimeout(() => setQuickViewStudentId(null), 0); return null; }
+                const studentName = studentItems[0].studentName;
+
                 return (
-                    <div className="fixed inset-0 z-[10004] flex items-center justify-center p-4 bg-[#021D34]/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setQuickViewItem(null)}>
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 border dark:border-slate-700" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex justify-between items-start mb-4">
+                    <div className="fixed inset-0 z-[10004] flex items-center justify-center p-4 bg-[#021D34]/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setQuickViewStudentId(null)}>
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200 border dark:border-slate-700" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex justify-between items-start p-6 pb-4 border-b border-slate-100 dark:border-slate-700">
                                 <div>
-                                    <p className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Quick View</p>
-                                    <h3 className="text-xl font-bold text-[#021D34] dark:text-white break-words">{liveItem.studentName}</h3>
-                                    <p className="text-lg font-mono font-bold text-[#009DE0] mt-1 tracking-wider">{liveItem.code}</p>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">{liveItem.type}</p>
-                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Entrada: {formatDate(liveItem.createdAt)}</p>
+                                    <p className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Quick View — Aluno</p>
+                                    <h3 className="text-xl font-bold text-[#021D34] dark:text-white break-words">{studentName}</h3>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{studentItems.length} requisiç{studentItems.length === 1 ? 'ão' : 'ões'} ativa{studentItems.length === 1 ? '' : 's'}</p>
                                 </div>
-                                <div className="flex flex-col items-end gap-2">
-                                    <button onClick={() => setQuickViewItem(null)} className="p-2 -mr-2 -mt-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors" title="Fechar">
-                                        <X size={20}/>
-                                    </button>
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold border uppercase ${c.color}`}>{c.label}</span>
-                                </div>
+                                <button onClick={() => setQuickViewStudentId(null)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors" title="Fechar">
+                                    <X size={20}/>
+                                </button>
                             </div>
 
-                            <div className="grid gap-2">
-                                <button onClick={() => { printItems(liveItem); }} className="p-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-2">
-                                    <Printer size={18}/> Imprimir Etiqueta
-                                </button>
+                            <div className="overflow-y-auto p-6 pt-4 space-y-3">
+                                {studentItems.map(it => {
+                                    const c = STATUS_CONFIG[it.status] || STATUS_CONFIG['recebido'];
+                                    const isAtivo = it.status === 'recebido' || it.status === 'em_esterilizacao';
+                                    return (
+                                        <div key={it.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-50 dark:bg-slate-900/50">
+                                            <div className="flex justify-between items-start mb-3 gap-2">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="font-mono font-bold text-[#009DE0] text-base tracking-wider">{it.code}</p>
+                                                    <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm break-words">{it.type}</p>
+                                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Entrada: {formatDate(it.createdAt)}</p>
+                                                </div>
+                                                <span className={`px-2 py-1 rounded-full text-[10px] font-bold border uppercase whitespace-nowrap ${c.color}`}>{c.label}</span>
+                                            </div>
 
-                                {liveItem.status !== 'problema' && liveItem.status !== 'retirado' && (
-                                    <>
-                                        {isAtivo && <button onClick={async () => { await updateStatus(liveItem, 'pronto'); setQuickViewItem(null); }} className="p-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-colors">Marcar como Pronto</button>}
-                                        {liveItem.status === 'pronto' && <button onClick={async () => { await updateStatus(liveItem, 'retirado'); setQuickViewItem(null); }} className="p-3 bg-[#009DE0] text-white rounded-xl font-bold hover:bg-[#008bc5] transition-colors">Confirmar Retirada</button>}
-                                    </>
-                                )}
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button onClick={() => printItems(it)} className="p-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-1">
+                                                    <Printer size={14}/> Imprimir
+                                                </button>
 
-                                {liveItem.status !== 'retirado' && (
-                                    liveItem.status === 'problema' ? (
-                                        <button onClick={() => { handleResolveClick(liveItem); setQuickViewItem(null); }} className="p-3 text-white bg-green-600 border border-green-700 rounded-xl font-bold hover:bg-green-700 flex items-center justify-center gap-2 transition-colors">
-                                            <CheckCircle2 size={18}/> Resolver Ocorrência & Liberar
-                                        </button>
-                                    ) : (
-                                        <button onClick={() => { handleIncidentClick(liveItem); setQuickViewItem(null); }} className="p-3 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 rounded-xl font-bold hover:bg-red-100 dark:hover:bg-red-900/40 flex items-center justify-center gap-2 transition-colors">
-                                            <AlertTriangle size={18}/> Registrar Ocorrência
-                                        </button>
-                                    )
-                                )}
+                                                {it.status !== 'retirado' && (
+                                                    it.status === 'problema' ? (
+                                                        <button onClick={() => { handleResolveClick(it); setQuickViewStudentId(null); }} className="p-2 text-white bg-green-600 rounded-lg text-xs font-bold hover:bg-green-700 flex items-center justify-center gap-1 transition-colors">
+                                                            <CheckCircle2 size={14}/> Resolver
+                                                        </button>
+                                                    ) : (
+                                                        <>
+                                                            {isAtivo && <button onClick={() => updateStatus(it, 'pronto')} className="p-2 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 transition-colors">Marcar Pronto</button>}
+                                                            {it.status === 'pronto' && <button onClick={() => updateStatus(it, 'retirado')} className="p-2 bg-[#009DE0] text-white rounded-lg text-xs font-bold hover:bg-[#008bc5] transition-colors">Confirmar Retirada</button>}
+                                                        </>
+                                                    )
+                                                )}
+
+                                                {it.status !== 'retirado' && it.status !== 'problema' && (
+                                                    <button onClick={() => { handleIncidentClick(it); setQuickViewStudentId(null); }} className="col-span-2 p-2 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 rounded-lg text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/40 flex items-center justify-center gap-1 transition-colors">
+                                                        <AlertTriangle size={14}/> Registrar Ocorrência
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -513,42 +528,51 @@ export default function Movement({ userProfile }) {
                                         <X size={14}/>
                                     </button>
                                 )}
-                                {showQuickDropdown && search.length >= 2 && filteredList.length > 0 && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-30 max-h-80 overflow-y-auto animate-in slide-in-from-top-2">
-                                        <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900">
-                                            Quick View — {filteredList.length} resultado{filteredList.length === 1 ? '' : 's'}
-                                        </div>
-                                        {filteredList.slice(0, 8).map(item => {
-                                            const c = STATUS_CONFIG[item.status] || STATUS_CONFIG['recebido'];
-                                            return (
+                                {showQuickDropdown && search.length >= 2 && (() => {
+                                    // Agrupa filteredList por aluno (studentId)
+                                    const studentMap = new Map();
+                                    for (const it of filteredList) {
+                                        const key = it.studentId || it.studentName;
+                                        if (!studentMap.has(key)) {
+                                            studentMap.set(key, { studentId: it.studentId, studentName: it.studentName, count: 0 });
+                                        }
+                                        studentMap.get(key).count += 1;
+                                    }
+                                    const students = Array.from(studentMap.values()).sort((a, b) => a.studentName.localeCompare(b.studentName));
+
+                                    if (students.length === 0) {
+                                        return (
+                                            <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-30 p-4 text-center text-slate-500 dark:text-slate-400 text-sm">
+                                                Nenhum aluno encontrado.
+                                            </div>
+                                        );
+                                    }
+
+                                    return (
+                                        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-30 max-h-80 overflow-y-auto animate-in slide-in-from-top-2">
+                                            <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900">
+                                                Quick View — {students.length} aluno{students.length === 1 ? '' : 's'}
+                                            </div>
+                                            {students.slice(0, 10).map(s => (
                                                 <button
-                                                    key={item.id}
-                                                    onMouseDown={(e) => { e.preventDefault(); setQuickViewItem(item); setShowQuickDropdown(false); }}
+                                                    key={s.studentId || s.studentName}
+                                                    onMouseDown={(e) => { e.preventDefault(); setQuickViewStudentId(s.studentId || s.studentName); setShowQuickDropdown(false); }}
                                                     className="w-full text-left p-3 hover:bg-blue-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors flex items-center justify-between gap-3"
                                                 >
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-mono font-bold text-[#009DE0] text-sm">{item.code}</span>
-                                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border ${c.color}`}>{c.label}</span>
-                                                        </div>
-                                                        <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm truncate">{item.studentName}</p>
-                                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{item.type}</p>
-                                                    </div>
+                                                    <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm break-words flex-1">{s.studentName}</p>
+                                                    <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-[#009DE0] dark:text-blue-300 whitespace-nowrap">
+                                                        {s.count} {s.count === 1 ? 'item' : 'itens'}
+                                                    </span>
                                                 </button>
-                                            );
-                                        })}
-                                        {filteredList.length > 8 && (
-                                            <div className="px-3 py-2 text-[11px] text-center text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800">
-                                                + {filteredList.length - 8} resultado{filteredList.length - 8 === 1 ? '' : 's'} na tabela abaixo
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                                {showQuickDropdown && search.length >= 2 && filteredList.length === 0 && (
-                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-30 p-4 text-center text-slate-500 dark:text-slate-400 text-sm">
-                                        Nenhum item encontrado.
-                                    </div>
-                                )}
+                                            ))}
+                                            {students.length > 10 && (
+                                                <div className="px-3 py-2 text-[11px] text-center text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800">
+                                                    + {students.length - 10} aluno{students.length - 10 === 1 ? '' : 's'} — refine a busca
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
                              </div>
 
                              {/* FILTRO DE DATA */}
