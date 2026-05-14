@@ -45,12 +45,16 @@ export default function Movement({ userProfile }) {
     const [filterDate, setFilterDate] = useState(''); // Novo: Estado para filtro de data
     const [loadingScan, setLoadingScan] = useState(false);
 
-    const [incidentModal, setIncidentModal] = useState({ 
-        isOpen: false, 
-        item: null, 
-        reason: '', 
-        type: 'report' 
+    const [incidentModal, setIncidentModal] = useState({
+        isOpen: false,
+        item: null,
+        reason: '',
+        type: 'report'
     });
+
+    // Quick View: item selecionado via dropdown da busca
+    const [quickViewItem, setQuickViewItem] = useState(null);
+    const [showQuickDropdown, setShowQuickDropdown] = useState(false);
     
     const { addToast } = useToast();
     const { confirm } = useDialog();
@@ -344,6 +348,59 @@ export default function Movement({ userProfile }) {
                 </div>
             )}
 
+            {/* MODAL QUICK VIEW (resultado da busca) */}
+            {quickViewItem && (() => {
+                const liveItem = listItems.find(x => x.id === quickViewItem.id) || quickViewItem;
+                const c = STATUS_CONFIG[liveItem.status] || STATUS_CONFIG['recebido'];
+                const isAtivo = liveItem.status === 'recebido' || liveItem.status === 'em_esterilizacao';
+                return (
+                    <div className="fixed inset-0 z-[10004] flex items-center justify-center p-4 bg-[#021D34]/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setQuickViewItem(null)}>
+                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 border dark:border-slate-700" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <p className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Quick View</p>
+                                    <h3 className="text-xl font-bold text-[#021D34] dark:text-white break-words">{liveItem.studentName}</h3>
+                                    <p className="text-lg font-mono font-bold text-[#009DE0] mt-1 tracking-wider">{liveItem.code}</p>
+                                    <p className="text-sm text-slate-500 dark:text-slate-400">{liveItem.type}</p>
+                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Entrada: {formatDate(liveItem.createdAt)}</p>
+                                </div>
+                                <div className="flex flex-col items-end gap-2">
+                                    <button onClick={() => setQuickViewItem(null)} className="p-2 -mr-2 -mt-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors" title="Fechar">
+                                        <X size={20}/>
+                                    </button>
+                                    <span className={`px-3 py-1 rounded-full text-xs font-bold border uppercase ${c.color}`}>{c.label}</span>
+                                </div>
+                            </div>
+
+                            <div className="grid gap-2">
+                                <button onClick={() => { printItems(liveItem); }} className="p-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-2">
+                                    <Printer size={18}/> Imprimir Etiqueta
+                                </button>
+
+                                {liveItem.status !== 'problema' && liveItem.status !== 'retirado' && (
+                                    <>
+                                        {isAtivo && <button onClick={async () => { await updateStatus(liveItem, 'pronto'); setQuickViewItem(null); }} className="p-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-colors">Marcar como Pronto</button>}
+                                        {liveItem.status === 'pronto' && <button onClick={async () => { await updateStatus(liveItem, 'retirado'); setQuickViewItem(null); }} className="p-3 bg-[#009DE0] text-white rounded-xl font-bold hover:bg-[#008bc5] transition-colors">Confirmar Retirada</button>}
+                                    </>
+                                )}
+
+                                {liveItem.status !== 'retirado' && (
+                                    liveItem.status === 'problema' ? (
+                                        <button onClick={() => { handleResolveClick(liveItem); setQuickViewItem(null); }} className="p-3 text-white bg-green-600 border border-green-700 rounded-xl font-bold hover:bg-green-700 flex items-center justify-center gap-2 transition-colors">
+                                            <CheckCircle2 size={18}/> Resolver Ocorrência & Liberar
+                                        </button>
+                                    ) : (
+                                        <button onClick={() => { handleIncidentClick(liveItem); setQuickViewItem(null); }} className="p-3 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 rounded-xl font-bold hover:bg-red-100 dark:hover:bg-red-900/40 flex items-center justify-center gap-2 transition-colors">
+                                            <AlertTriangle size={18}/> Registrar Ocorrência
+                                        </button>
+                                    )
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                 <h2 className="font-bold text-[#021D34] dark:text-white text-2xl flex items-center gap-2 w-full md:w-auto transition-colors">
                     <ScanBarcode className="text-[#009DE0]"/> Movimentação
@@ -443,7 +500,55 @@ export default function Movement({ userProfile }) {
                         <div className="flex flex-col md:flex-row gap-4 flex-1">
                              <div className="relative flex-1">
                                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400"/>
-                                <input className="w-full pl-10 p-2 border dark:border-slate-600 rounded-lg text-sm outline-none focus:border-[#009DE0] bg-transparent dark:bg-slate-900 text-slate-900 dark:text-white transition-colors" placeholder="Buscar por nome, código, material ou CPF..." value={search} onChange={e => setSearch(e.target.value)}/>
+                                <input
+                                    className="w-full pl-10 p-2 border dark:border-slate-600 rounded-lg text-sm outline-none focus:border-[#009DE0] bg-transparent dark:bg-slate-900 text-slate-900 dark:text-white transition-colors"
+                                    placeholder="Buscar por nome, código, material ou CPF..."
+                                    value={search}
+                                    onChange={e => { setSearch(e.target.value); setShowQuickDropdown(true); }}
+                                    onFocus={() => setShowQuickDropdown(true)}
+                                    onBlur={() => setTimeout(() => setShowQuickDropdown(false), 150)}
+                                />
+                                {search && (
+                                    <button onClick={() => setSearch('')} className="absolute right-2 top-2.5 text-slate-400 hover:text-red-500 transition-colors" title="Limpar busca">
+                                        <X size={14}/>
+                                    </button>
+                                )}
+                                {showQuickDropdown && search.length >= 2 && filteredList.length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-30 max-h-80 overflow-y-auto animate-in slide-in-from-top-2">
+                                        <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900">
+                                            Quick View — {filteredList.length} resultado{filteredList.length === 1 ? '' : 's'}
+                                        </div>
+                                        {filteredList.slice(0, 8).map(item => {
+                                            const c = STATUS_CONFIG[item.status] || STATUS_CONFIG['recebido'];
+                                            return (
+                                                <button
+                                                    key={item.id}
+                                                    onMouseDown={(e) => { e.preventDefault(); setQuickViewItem(item); setShowQuickDropdown(false); }}
+                                                    className="w-full text-left p-3 hover:bg-blue-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors flex items-center justify-between gap-3"
+                                                >
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-mono font-bold text-[#009DE0] text-sm">{item.code}</span>
+                                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border ${c.color}`}>{c.label}</span>
+                                                        </div>
+                                                        <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm truncate">{item.studentName}</p>
+                                                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{item.type}</p>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                        {filteredList.length > 8 && (
+                                            <div className="px-3 py-2 text-[11px] text-center text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800">
+                                                + {filteredList.length - 8} resultado{filteredList.length - 8 === 1 ? '' : 's'} na tabela abaixo
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {showQuickDropdown && search.length >= 2 && filteredList.length === 0 && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-30 p-4 text-center text-slate-500 dark:text-slate-400 text-sm">
+                                        Nenhum item encontrado.
+                                    </div>
+                                )}
                              </div>
 
                              {/* FILTRO DE DATA */}
