@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Scanner } from '@yudiel/react-qr-scanner';
-import { collection, query, orderBy, limit, where, onSnapshot, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, where, onSnapshot, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
 import { 
-  ScanBarcode, 
-  Printer, 
-  Search, 
-  ArrowDown, 
-  Camera, 
-  XCircle, 
-  Loader2, 
-  AlertTriangle, 
+  ScanBarcode,
+  Printer,
+  Search,
+  Camera,
+  XCircle,
+  Loader2,
+  AlertTriangle,
   X,
   CheckCircle2,
   Calendar // Importado para o filtro de data
@@ -44,8 +43,7 @@ export default function Movement({ userProfile }) {
     const [filterStatus, setFilterStatus] = useState('all');
     const [filterDate, setFilterDate] = useState(''); // Novo: Estado para filtro de data
     const [loadingScan, setLoadingScan] = useState(false);
-    const [visibleLimit, setVisibleLimit] = useState(50);
-    
+
     const [incidentModal, setIncidentModal] = useState({ 
         isOpen: false, 
         item: null, 
@@ -128,15 +126,14 @@ export default function Movement({ userProfile }) {
     useEffect(() => {
         if (mode === 'list') {
             const q = query(
-                collection(db, 'artifacts', appId, 'public', 'data', 'items'), 
-                where('status', 'in', ['recebido', 'em_esterilizacao', 'pronto', 'problema']), 
-                orderBy('lastUpdated', 'desc'), 
-                limit(visibleLimit) 
+                collection(db, 'artifacts', appId, 'public', 'data', 'items'),
+                where('status', 'in', ['recebido', 'em_esterilizacao', 'pronto', 'problema']),
+                orderBy('lastUpdated', 'desc')
             );
             const unsub = onSnapshot(q, s => setListItems(s.docs.map(d => ({id: d.id, ...d.data()}))));
             return () => unsub();
         }
-    }, [mode, visibleLimit]);
+    }, [mode]);
 
     // --- FUNÇÃO DE ATUALIZAÇÃO ---
     const updateStatus = async (item, newStatus, reason = null) => {
@@ -515,7 +512,6 @@ export default function Movement({ userProfile }) {
                             </div>
                         )}
                     />
-                    {listItems.length >= visibleLimit && <div className="flex justify-center pt-2"><button onClick={() => setVisibleLimit(p => p + 50)} className="bg-white dark:bg-slate-800 border dark:border-slate-600 text-slate-600 dark:text-slate-300 px-6 py-2 rounded-full text-sm font-bold flex items-center gap-2 hover:bg-slate-50 transition-colors"><ArrowDown size={16}/> Carregar Mais</button></div>}
                 </div>
             )}
         </div>
