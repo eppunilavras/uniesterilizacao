@@ -9,6 +9,16 @@ import QRCodeComponent from '../components/QRCodeComponent';
 
 import { logEvent } from '../utils/logger'; // <--- ADICIONAR
 
+const formatStudentNameForLabel = (fullName) => {
+    if (!fullName) return 'NOME';
+    const parts = fullName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length <= 2) return parts.join(' ');
+    const first = parts[0];
+    const last = parts[parts.length - 1];
+    const middle = parts.slice(1, -1).map(n => `${n.charAt(0).toUpperCase()}.`).join(' ');
+    return `${first} ${middle} ${last}`;
+};
+
 const PrintContext = createContext();
 
 export const usePrint = () => useContext(PrintContext);
@@ -270,7 +280,7 @@ export const PrintProvider = ({ children, user }) => {
                                             <div style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%'}}>
                                                 <span style={{fontWeight: 800, marginRight: '3px'}}>ALUNO:</span>
                                                 <span style={{fontWeight: 600, textTransform: 'uppercase'}}>
-													{item.studentName ? item.studentName.trim() : 'NOME'}
+													{formatStudentNameForLabel(item.studentName)}
 												</span>
                                             </div>
                                         )}
