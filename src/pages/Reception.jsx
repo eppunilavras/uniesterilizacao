@@ -283,7 +283,7 @@ export default function Reception({ userProfile }) {
                 
                 <div className="flex justify-center gap-4 mb-8 mt-6">
                     <button onClick={() => printItems(createdItems)} className="bg-[#021D34] dark:bg-slate-700 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 hover:bg-[#032d50] dark:hover:bg-slate-600 transition-colors shadow-lg">
-                        <Printer size={20}/> Imprimir TODAS
+                        <Printer size={20}/> Imprimir
                     </button>
                     <button onClick={() => { setStep(1); setSelectedStudent(null); setSearch(''); setCart([]); }} className="border border-slate-200 dark:border-slate-600 px-6 py-3 rounded-lg font-bold hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors">
                         Novo Atendimento

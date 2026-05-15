@@ -9,6 +9,16 @@ import QRCodeComponent from '../components/QRCodeComponent';
 
 import { logEvent } from '../utils/logger'; // <--- ADICIONAR
 
+const formatStudentNameForLabel = (fullName) => {
+    if (!fullName) return 'NOME';
+    const parts = fullName.trim().split(/\s+/).filter(Boolean);
+    if (parts.length <= 2) return parts.join(' ');
+    const first = parts[0];
+    const last = parts[parts.length - 1];
+    const middle = parts.slice(1, -1).map(n => `${n.charAt(0).toUpperCase()}.`).join(' ');
+    return `${first} ${middle} ${last}`;
+};
+
 const PrintContext = createContext();
 
 export const usePrint = () => useContext(PrintContext);
@@ -51,23 +61,50 @@ export const PrintProvider = ({ children, user }) => {
 	const printItems = (items) => {
 		const itemsArray = Array.isArray(items) ? items : [items]; // Garantir array para contagem
 		setPrintQueue(itemsArray);
-		
+
 		// --- NOVO LOG ---
 		// Verifica se temos usuário (pode ser null no login, mas printcontext geralmente exige auth)
 		if (user) {
 			logEvent(
-				'DATA_OP', 
-				`Impressão de ${itemsArray.length} etiquetas`, 
-				{ 
+				'DATA_OP',
+				`Impressão de ${itemsArray.length} etiquetas`,
+				{
 					codes: itemsArray.map(i => i.code || 'S/N'),
 					studentNames: itemsArray.map(i => i.studentName).filter((v, i, a) => a.indexOf(v) === i) // Nomes únicos
 				},
 				// Passamos um objeto user simplificado se não tivermos o profile completo aqui
-				{ uid: user.uid, email: user.email } 
+				{ uid: user.uid, email: user.email }
 			);
 		}
 
-		setTimeout(() => { window.print(); }, 500); 
+		// Aguarda o overlay estar renderizado, com layout medido e imagens carregadas
+		// antes de chamar window.print(). Sem isso, a primeira pré-visualização sai bugada
+		// porque o overlay está display:none até o @media print ativar.
+		const waitForPrintReady = async () => {
+			const overlay = document.getElementById('print-overlay');
+			if (!overlay) return;
+
+			// Garante que React montou os filhos no overlay
+			await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+			// Espera todas as imagens (logo) decodificarem
+			const imgs = Array.from(overlay.querySelectorAll('img'));
+			await Promise.all(imgs.map(img => {
+				if (img.complete && img.naturalWidth > 0) return Promise.resolve();
+				if (img.decode) return img.decode().catch(() => {});
+				return new Promise(res => {
+					img.onload = res;
+					img.onerror = res;
+				});
+			}));
+
+			// Mais um frame para garantir layout final dos SVGs (Barcode/QR)
+			await new Promise(r => requestAnimationFrame(r));
+
+			window.print();
+		};
+
+		waitForPrintReady();
 	};
 
     // =========================================================================
@@ -216,9 +253,12 @@ export const PrintProvider = ({ children, user }) => {
                     #print-overlay {
                         display: block !important;
                         /* Usamos absolute e removemos a largura/altura fixa para permitir o map de múltiplos itens */
-                        position: absolute; left: 0; top: 0;
-                        z-index: 9999; 
-                        background: white; 
+                        position: absolute !important;
+                        left: 0 !important;
+                        top: 0 !important;
+                        visibility: visible !important;
+                        z-index: 9999;
+                        background: white;
                     }
 
                     .sticker-page-break {
@@ -234,7 +274,13 @@ export const PrintProvider = ({ children, user }) => {
                 }
             `}</style>
             
-            <div id="print-overlay" className="hidden">
+            <div
+                id="print-overlay"
+                style={printQueue.length > 0
+                    ? { position: 'fixed', left: '-10000px', top: 0, visibility: 'hidden', pointerEvents: 'none' }
+                    : { display: 'none' }
+                }
+            >
                 {printQueue.map((item, index) => (
                     <div key={item.id || index} className="sticker-page-break">
                         <div style={pageWrapperStyle}>
@@ -270,7 +316,7 @@ export const PrintProvider = ({ children, user }) => {
                                             <div style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%'}}>
                                                 <span style={{fontWeight: 800, marginRight: '3px'}}>ALUNO:</span>
                                                 <span style={{fontWeight: 600, textTransform: 'uppercase'}}>
-													{item.studentName ? item.studentName.trim() : 'NOME'}
+													{formatStudentNameForLabel(item.studentName)}
 												</span>
                                             </div>
                                         )}
