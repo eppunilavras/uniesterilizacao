@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- HELPERS ---
+    function getUserData(appId) {
+      return get(/databases/$(database)/documents/artifacts/$(appId)/users/$(request.auth.uid)/profile/data).data;
+    }
+    function isActive(appId) {
+      return getUserData(appId).active != false;
+    }
+    function isStaff(appId) {
+      let d = getUserData(appId);
+      return isActive(appId) && (d.role == 'admin' || d.role == 'tech');
+    }
+    function isAdmin(appId) {
+      let d = getUserData(appId);
+      return isActive(appId) && d.role == 'admin';
+    }
+
+    match /artifacts/{appId} {
+      // Perfil privado do usuário
+      match /users/{userId}/profile/data {
+        allow read: if request.auth != null && (request.auth.uid == userId || isStaff(appId));
+        allow write: if isStaff(appId);
+      }
+      match /users/{userId}/notifications/{notifId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow write: if isStaff(appId);
+      }
+
+      // Diretório público de usuários
+      match /public/data/users_directory/{userId} {
+        allow read: if request.auth != null && isStaff(appId);
+        allow write: if isStaff(appId);
+      }
+
+      // Itens (materiais em circulação)
+      match /public/data/items/{itemId} {
+        allow read: if request.auth != null && (isStaff(appId) || resource.data.studentId == request.auth.uid);
+        allow create, update: if isStaff(appId);
+        allow delete: if isAdmin(appId);
+      }
+
+      // Catálogos e configurações
+      match /public/data/materialTypes/{typeId} {
+        allow read: if request.auth != null;
+        allow write: if isAdmin(appId);
+      }
+      match /public/data/announcements/{msgId} {
+        allow read: if request.auth != null;
+        allow write: if isAdmin(appId);
+      }
+      match /public/data/settings_labels/{configDoc} {
+        allow read: if request.auth != null;
+        allow write: if isAdmin(appId);
+      }
+
+      // Códigos de Substituição
+      // Leitura pública necessária para validar o código antes do login
+      match /public/data/substitute_codes/{codeId} {
+        allow read: if true;
+        allow create: if isAdmin(appId);
+        allow update: if request.auth != null;
+        allow delete: if isAdmin(appId);
+      }
+
+      // Logs append-only
+      match /public/data/system_logs/{logId} {
+        allow create: if request.auth != null;
+        allow read: if isAdmin(appId);
+        allow update, delete: if false;
+      }
+    }
+  }
+}

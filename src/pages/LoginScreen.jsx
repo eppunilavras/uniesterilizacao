@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
-import { getDoc, doc } from 'firebase/firestore';
-import { ShieldAlert, Loader2, ArrowLeft } from 'lucide-react'; // Adicionado ArrowLeft
-import { Link } from 'react-router-dom'; // Adicionado Link
+import { getDoc, getDocs, doc, collection, query, where, updateDoc } from 'firebase/firestore';
+import { ShieldAlert, Loader2, ArrowLeft, ShieldCheck, KeyRound } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 // Imports internos
 import { auth, db, appId } from '../config/firebase';
@@ -10,14 +10,19 @@ import { LOGOS } from '../constants';
 import { useToast } from '../contexts/ToastContext';
 import { logEvent } from '../utils/logger';
 import { translateFirebaseError } from '../utils/formatters';
-import ThemeToggle from '../components/ThemeToggle'; 
+import ThemeToggle from '../components/ThemeToggle';
+
+// Credenciais da conta compartilhada de substituto (role: tech, gerenciada internamente)
+const SUBSTITUTO_EMAIL = 'substituto@unilavras.edu.br';
+const SUBSTITUTO_PASS = 'UniSubst2025@xK9m';
 
 export default function LoginScreen({ globalError }) {
     const [email, setEmail] = useState('');
     const [pass, setPass] = useState('');
-    const [mode, setMode] = useState('login');
+    const [mode, setMode] = useState('login'); // 'login' | 'forgot' | 'substitute'
     const [keepSigned, setKeepSigned] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [substituteCode, setSubstituteCode] = useState('');
     const { addToast } = useToast();
 
     // Se houver erro global (ex: conta inativa), forçamos o fim do loading
@@ -70,6 +75,46 @@ export default function LoginScreen({ globalError }) {
             } else {
                 localStorage.removeItem('unilavras_keep_signed_in');
             }
+
+        } catch (error) {
+            addToast(translateFirebaseError(error), 'error');
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleSubstituteLogin = async (e) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+            const code = substituteCode.trim().toUpperCase();
+            if (code.length < 4) throw { code: 'substitute/invalid-code' };
+
+            // 1. Buscar o código no Firestore (leitura pública)
+            const q = query(
+                collection(db, 'artifacts', appId, 'public', 'data', 'substitute_codes'),
+                where('code', '==', code),
+                where('active', '==', true)
+            );
+            const snap = await getDocs(q);
+
+            if (snap.empty) throw { code: 'substitute/invalid-code' };
+
+            const codeDoc = snap.docs[0];
+            const codeData = codeDoc.data();
+
+            // 2. Validar uso e expiração
+            if (codeData.usedAt) throw { code: 'substitute/already-used' };
+            if (codeData.expiresAt && codeData.expiresAt.toDate() < new Date()) throw { code: 'substitute/expired' };
+
+            // 3. Autenticar com conta compartilhada de substituto
+            await signInWithEmailAndPassword(auth, SUBSTITUTO_EMAIL, SUBSTITUTO_PASS);
+
+            // 4. Marcar o código como utilizado (agora autenticado)
+            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'substitute_codes', codeDoc.id), {
+                usedAt: new Date(),
+            });
+
+            await logEvent('LOGIN', 'Acesso via código de substituição', { code, label: codeData.label }, { uid: 'substituto', email: SUBSTITUTO_EMAIL });
 
         } catch (error) {
             addToast(translateFirebaseError(error), 'error');
@@ -133,15 +178,63 @@ export default function LoginScreen({ globalError }) {
                     </div>
 
                     <h1 className="text-2xl font-bold text-[#021D34] dark:text-white transition-colors">
-                        {mode === 'login' ? 'Portal de Esterilização' : 'Recuperar Senha'}
+                        {mode === 'forgot' ? 'Recuperar Senha' : 'Portal de Esterilização'}
                     </h1>
                 </div>
+
+                {/* Seletor de modo (apenas quando não está em "recuperar senha") */}
+                {mode !== 'forgot' && (
+                    <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-1 mb-6">
+                        <button
+                            type="button"
+                            onClick={() => setMode('login')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold rounded-lg transition-all ${mode === 'login' ? 'bg-white dark:bg-slate-700 text-[#009DE0] shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                        >
+                            <KeyRound size={14}/> Login
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setMode('substitute')}
+                            className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold rounded-lg transition-all ${mode === 'substitute' ? 'bg-white dark:bg-slate-700 text-[#009DE0] shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
+                        >
+                            <ShieldCheck size={14}/> Acesso Temporário
+                        </button>
+                    </div>
+                )}
 
                 {globalError && (
                     <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50 rounded-lg flex gap-3 text-red-700 dark:text-red-300 text-sm items-start animate-in fade-in slide-in-from-top-2">
                         <ShieldAlert className="w-5 h-5 flex-shrink-0 mt-0.5"/>
                         <span>{globalError}</span>
                     </div>
+                )}
+
+                {mode === 'substitute' && (
+                    <form onSubmit={handleSubstituteLogin} className="space-y-4">
+                        <div className="space-y-1">
+                            <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Código de Acesso</label>
+                            <input
+                                type="text"
+                                placeholder="Ex: AB3K7X"
+                                maxLength={8}
+                                className="w-full p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:border-[#009DE0] dark:focus:border-[#009DE0] outline-none transition-all text-2xl font-mono font-bold tracking-[0.3em] text-center uppercase placeholder:text-base placeholder:tracking-normal placeholder:font-normal"
+                                value={substituteCode}
+                                onChange={e => setSubstituteCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                                required
+                                disabled={isSubmitting}
+                                autoComplete="off"
+                            />
+                            <p className="text-xs text-slate-400 dark:text-slate-500 text-center pt-1">
+                                Informe o código gerado pelo administrador do sistema.
+                            </p>
+                        </div>
+                        <button
+                            disabled={isSubmitting}
+                            className="w-full bg-[#009DE0] hover:bg-[#008bc5] text-white p-3.5 rounded-lg font-bold shadow-lg shadow-blue-500/30 dark:shadow-blue-900/20 transition-all active:scale-[0.98] flex justify-center items-center gap-2"
+                        >
+                            {isSubmitting ? <Loader2 className="animate-spin w-5 h-5"/> : <><ShieldCheck size={18}/> Entrar com Código</>}
+                        </button>
+                    </form>
                 )}
 
                 {mode === 'login' ? (

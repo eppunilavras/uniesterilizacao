@@ -63,7 +63,18 @@ export const translateFirebaseError = (error) => {
     if(code === 'permission-denied') {
         return 'Você não tem permissão para realizar esta ação.';
     }
-    
+
+    // Erros de Código de Substituição
+    if(code === 'substitute/invalid-code') {
+        return 'Código inválido ou inexistente. Verifique e tente novamente.';
+    }
+    if(code === 'substitute/already-used') {
+        return 'Este código já foi utilizado. Solicite um novo ao administrador.';
+    }
+    if(code === 'substitute/expired') {
+        return 'Este código expirou. Solicite um novo ao administrador.';
+    }
+
     // Fallback genérico
     return `Erro inesperado. Tente novamente. (${code})`;
 };

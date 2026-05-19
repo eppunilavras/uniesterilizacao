@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  FileText, 
-  Database, 
-  Settings2, 
-  PackagePlus, 
+import {
+  FileText,
+  Database,
+  Settings2,
+  PackagePlus,
   Bell,
-  Activity  
+  Activity,
+  ShieldCheck
 } from 'lucide-react';
 
 // Imports dos Sub-componentes
@@ -15,6 +16,7 @@ import AdminLabels from './AdminLabels';
 import AdminData from './AdminData';
 import AdminLogs from './AdminLogs';
 import AdminHealth from './AdminHealth';
+import AdminSubstitute from './AdminSubstitute';
 
 export default function AdminPanel({ userProfile }) {
     const [activeTab, setActiveTab] = useState('logs');
@@ -27,12 +29,13 @@ export default function AdminPanel({ userProfile }) {
     }, [activeTab, logsVisited]);
 
     const tabs = [
-		{ id: 'logs', label: 'Auditoria', icon: FileText },
-		{ id: 'health', label: 'Saúde', icon: Activity },
-		{ id: 'data', label: 'Backup', icon: Database },
-		{ id: 'labels', label: 'Etiquetas', icon: Settings2 },
-		{ id: 'materials', label: 'Materiais', icon: PackagePlus },
-        { id: 'announcements', label: 'Recados', icon: Bell }
+        { id: 'logs', label: 'Auditoria', icon: FileText },
+        { id: 'health', label: 'Saúde', icon: Activity },
+        { id: 'data', label: 'Backup', icon: Database },
+        { id: 'labels', label: 'Etiquetas', icon: Settings2 },
+        { id: 'materials', label: 'Materiais', icon: PackagePlus },
+        { id: 'announcements', label: 'Recados', icon: Bell },
+        { id: 'substitute', label: 'Substitutos', icon: ShieldCheck },
     ];
 
     return (
@@ -81,10 +84,11 @@ export default function AdminPanel({ userProfile }) {
             <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-b-xl md:rounded-tr-xl border border-slate-200 dark:border-slate-700 md:border-t-0 shadow-sm min-h-[400px] rounded-xl md:rounded-tl-none transition-colors">
                 {activeTab === 'announcements' && <AdminAnnouncements />}
                 {activeTab === 'materials' && <AdminMaterials />}
-				{activeTab === 'labels' && <AdminLabels />}
+                {activeTab === 'labels' && <AdminLabels />}
                 {activeTab === 'data' && <AdminData />}
                 {activeTab === 'health' && <AdminHealth />}
-				
+                {activeTab === 'substitute' && <AdminSubstitute userProfile={userProfile} />}
+
                 <div style={{ display: activeTab === 'logs' ? 'block' : 'none' }}>
                     {logsVisited && <AdminLogs />}
                 </div>
