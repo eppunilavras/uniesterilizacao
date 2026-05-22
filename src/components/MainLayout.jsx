@@ -122,6 +122,7 @@ export default function MainLayout({ user, userProfile }) {
     const resetInactivity = useCallback(() => {
         const keep = localStorage.getItem('unilavras_keep_signed_in') === 'true';
         if (keep) return;
+        if (userProfile?.role === 'tech') return;
 
         if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
         if (warningTimer.current) clearTimeout(warningTimer.current);
@@ -135,7 +136,7 @@ export default function MainLayout({ user, userProfile }) {
         inactivityTimer.current = setTimeout(() => {
             handleLogout(true);
         }, TIMEOUT_DURATION);
-    }, []);
+    }, [userProfile?.role]);
 
     useEffect(() => {
         const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
