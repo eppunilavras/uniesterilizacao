@@ -225,7 +225,7 @@ export default function LoginScreen({ globalError }) {
                                 autoComplete="off"
                             />
                             <p className="text-xs text-slate-400 dark:text-slate-500 text-center pt-1">
-                                Informe o código gerado pelo administrador do sistema.
+                                Não possui um código? Solicite ao administrador do sistema.
                             </p>
                         </div>
                         <button
@@ -237,82 +237,84 @@ export default function LoginScreen({ globalError }) {
                     </form>
                 )}
 
-                {mode === 'login' ? (
+                {mode === 'login' && (
                     <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Email</label>
-                            <input 
-                                type="email" 
-                                className="w-full p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:border-[#009DE0] dark:focus:border-[#009DE0] outline-none transition-all" 
-                                value={email} 
-                                onChange={e => setEmail(e.target.value)} 
-                                required 
+                            <input
+                                type="email"
+                                className="w-full p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:border-[#009DE0] dark:focus:border-[#009DE0] outline-none transition-all"
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                required
                                 disabled={isSubmitting}
                             />
                         </div>
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Senha</label>
-                            <input 
-                                type="password" 
-                                className="w-full p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:border-[#009DE0] dark:focus:border-[#009DE0] outline-none transition-all" 
-                                value={pass} 
-                                onChange={e => setPass(e.target.value)} 
-                                required 
+                            <input
+                                type="password"
+                                className="w-full p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:border-[#009DE0] dark:focus:border-[#009DE0] outline-none transition-all"
+                                value={pass}
+                                onChange={e => setPass(e.target.value)}
+                                required
                                 disabled={isSubmitting}
                             />
                         </div>
-                        
+
                         <div className="flex items-center justify-between text-sm">
                             <label className="flex items-center gap-2 cursor-pointer select-none group">
-                                <input 
-                                    type="checkbox" 
-                                    checked={keepSigned} 
-                                    onChange={e => setKeepSigned(e.target.checked)} 
-                                    className="rounded text-[#009DE0] focus:ring-[#009DE0] dark:bg-slate-800 dark:border-slate-600" 
+                                <input
+                                    type="checkbox"
+                                    checked={keepSigned}
+                                    onChange={e => setKeepSigned(e.target.checked)}
+                                    className="rounded text-[#009DE0] focus:ring-[#009DE0] dark:bg-slate-800 dark:border-slate-600"
                                     disabled={isSubmitting}
                                 />
                                 <span className="text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors">Manter conectado</span>
                             </label>
-                            <button 
-                                type="button" 
-                                onClick={() => setMode('forgot')} 
-                                className="text-[#009DE0] dark:text-[#38bdf8] hover:underline font-medium transition-colors" 
+                            <button
+                                type="button"
+                                onClick={() => setMode('forgot')}
+                                className="text-[#009DE0] dark:text-[#38bdf8] hover:underline font-medium transition-colors"
                                 disabled={isSubmitting}
                             >
                                 Esqueceu a senha?
                             </button>
                         </div>
 
-                        <button 
-                            disabled={isSubmitting} 
+                        <button
+                            disabled={isSubmitting}
                             className="w-full bg-[#009DE0] hover:bg-[#008bc5] text-white p-3.5 rounded-lg font-bold shadow-lg shadow-blue-500/30 dark:shadow-blue-900/20 transition-all active:scale-[0.98] flex justify-center items-center gap-2"
                         >
                             {isSubmitting ? <Loader2 className="animate-spin w-5 h-5"/> : 'Entrar'}
                         </button>
                     </form>
-                ) : (
+                )}
+
+                {mode === 'forgot' && (
                     <form onSubmit={handleForgot} className="space-y-4">
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Email de Recuperação</label>
-                            <input 
-                                type="email" 
-                                placeholder="exemplo@unilavras.edu.br" 
-                                className="w-full p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:border-[#009DE0] outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600" 
-                                value={email} 
-                                onChange={e => setEmail(e.target.value)} 
-                                required 
+                            <input
+                                type="email"
+                                placeholder="exemplo@unilavras.edu.br"
+                                className="w-full p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:border-[#009DE0] outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                                value={email}
+                                onChange={e => setEmail(e.target.value)}
+                                required
                                 disabled={isSubmitting}
                             />
                         </div>
-                        <button 
-                            disabled={isSubmitting} 
+                        <button
+                            disabled={isSubmitting}
                             className="w-full bg-[#021D34] dark:bg-slate-800 hover:bg-[#032b4b] dark:hover:bg-slate-700 text-white p-3.5 rounded-lg font-bold transition-all shadow-lg"
                         >
                             Enviar Link
                         </button>
-                        <button 
-                            type="button" 
-                            onClick={() => setMode('login')} 
+                        <button
+                            type="button"
+                            onClick={() => setMode('login')}
                             className="w-full text-center text-sm text-slate-500 dark:text-slate-400 hover:text-[#009DE0] dark:hover:text-[#38bdf8] mt-2 transition-colors"
                         >
                             Voltar para Login
