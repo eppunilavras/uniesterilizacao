@@ -434,6 +434,7 @@ export default function Reception({ userProfile }) {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     autoFocus
+                    autoComplete="off"
                     disabled={loadingStudents && allStudents.length === 0}
                   />
                 </div>
