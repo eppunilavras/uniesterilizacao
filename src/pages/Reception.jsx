@@ -530,7 +530,7 @@ export default function Reception({ userProfile }) {
                         : "bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:bg-[#009DE0] hover:border-[#009DE0] hover:text-white dark:text-slate-300 dark:hover:text-white"
                     }`}
                   >
-                    {count > 1 && (
+                    {count > 0 && (
                       <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md">
                         {count}
                       </span>
