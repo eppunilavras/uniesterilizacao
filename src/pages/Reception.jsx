@@ -541,7 +541,7 @@ export default function Reception({ userProfile }) {
                     {count > 0 && (
                       <span
                         onClick={(e) => { e.stopPropagation(); handleRemoveMaterial(t); }}
-                        className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md cursor-pointer transition-colors"
+                        className="absolute -top-2.5 -right-2.5 min-w-[26px] h-[26px] px-1.5 bg-red-500 hover:bg-red-600 text-white text-sm font-bold rounded-full flex items-center justify-center shadow-md cursor-pointer transition-colors"
                         title="Remover um"
                       >
                         {count}
