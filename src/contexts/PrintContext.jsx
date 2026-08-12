@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
 
 // Imports internos
@@ -25,6 +25,7 @@ export const usePrint = () => useContext(PrintContext);
 
 export const PrintProvider = ({ children, user }) => {
     const [printQueue, setPrintQueue] = useState([]);
+    const pendingPrint = useRef(false);
     
     // --- ESTADO INICIAL ---
     const [settings, setSettings] = useState({
@@ -59,26 +60,31 @@ export const PrintProvider = ({ children, user }) => {
     }, [user]);
 
 	const printItems = (items) => {
-		const itemsArray = Array.isArray(items) ? items : [items]; // Garantir array para contagem
+		const itemsArray = Array.isArray(items) ? items : [items];
+		pendingPrint.current = true;
 		setPrintQueue(itemsArray);
-		
-		// --- NOVO LOG ---
-		// Verifica se temos usuário (pode ser null no login, mas printcontext geralmente exige auth)
+
 		if (user) {
 			logEvent(
-				'DATA_OP', 
-				`Impressão de ${itemsArray.length} etiquetas`, 
-				{ 
+				'DATA_OP',
+				`Impressão de ${itemsArray.length} etiquetas`,
+				{
 					codes: itemsArray.map(i => i.code || 'S/N'),
-					studentNames: itemsArray.map(i => i.studentName).filter((v, i, a) => a.indexOf(v) === i) // Nomes únicos
+					studentNames: itemsArray.map(i => i.studentName).filter((v, i, a) => a.indexOf(v) === i)
 				},
-				// Passamos um objeto user simplificado se não tivermos o profile completo aqui
-				{ uid: user.uid, email: user.email } 
+				{ uid: user.uid, email: user.email }
 			);
 		}
-
-		setTimeout(() => { window.print(); }, 500); 
 	};
+
+	// Dispara window.print() apenas depois que o React commitou o DOM com todos os itens renderizados.
+	// useEffect garante que QR codes e barcodes estão no DOM antes do diálogo abrir.
+	useEffect(() => {
+		if (pendingPrint.current && printQueue.length > 0) {
+			pendingPrint.current = false;
+			window.print();
+		}
+	}, [printQueue]);
 
     // =========================================================================
     // 1. CÁLCULOS DIMENSIONAIS (IGUAIS AO PREVIEW)
