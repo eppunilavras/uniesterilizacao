@@ -182,6 +182,14 @@ export default function Reception({ userProfile }) {
     setCart([...cart, { ...t, uid: Math.random() }]);
   };
 
+  const handleRemoveMaterial = (t) => {
+    const idx = cart.findLastIndex((c) => c.id === t.id);
+    if (idx === -1) return;
+    const next = [...cart];
+    next.splice(idx, 1);
+    setCart(next);
+  };
+
   const finish = async () => {
     if (cart.length === 0) return;
 
@@ -531,7 +539,11 @@ export default function Reception({ userProfile }) {
                     }`}
                   >
                     {count > 0 && (
-                      <span className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md">
+                      <span
+                        onClick={(e) => { e.stopPropagation(); handleRemoveMaterial(t); }}
+                        className="absolute -top-2 -right-2 min-w-[20px] h-5 px-1 bg-red-500 hover:bg-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md cursor-pointer transition-colors"
+                        title="Remover um"
+                      >
                         {count}
                       </span>
                     )}
