@@ -1,7 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Scanner } from '@yudiel/react-qr-scanner';
-import { collection, query, orderBy, where, onSnapshot, getDocs, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
-import { 
+import React, { useState, useEffect, useRef } from "react";
+import { Scanner } from "@yudiel/react-qr-scanner";
+import {
+  collection,
+  query,
+  orderBy,
+  where,
+  onSnapshot,
+  getDocs,
+  writeBatch,
+  doc,
+  serverTimestamp,
+} from "firebase/firestore";
+import {
   ScanBarcode,
   Printer,
   Search,
@@ -11,640 +21,1019 @@ import {
   AlertTriangle,
   X,
   CheckCircle2,
-  Calendar // Importado para o filtro de data
-} from 'lucide-react';
+  Calendar, // Importado para o filtro de data
+} from "lucide-react";
 
-import { db, appId } from '../config/firebase';
-import { useToast } from '../contexts/ToastContext';
-import { useDialog } from '../contexts/DialogContext';
-import { usePrint } from '../contexts/PrintContext';
-import { logEvent } from '../utils/logger';
-import { formatDate } from '../utils/formatters';
-import { playSound } from '../utils/audio';
-import { STATUS_CONFIG } from '../constants';
-import DataTable from '../components/DataTable';
+import { db, appId } from "../config/firebase";
+import { useToast } from "../contexts/ToastContext";
+import { useDialog } from "../contexts/DialogContext";
+import { usePrint } from "../contexts/PrintContext";
+import { logEvent } from "../utils/logger";
+import { formatDate } from "../utils/formatters";
+import { playSound } from "../utils/audio";
+import { STATUS_CONFIG } from "../constants";
+import DataTable from "../components/DataTable";
 
-import { useScanner } from '../hooks/useScanner';
-import { useStudentsDirectory } from '../hooks/useStudentsDirectory';
+import { useScanner } from "../hooks/useScanner";
+import { useStudentsDirectory } from "../hooks/useStudentsDirectory";
 
 // --- DEFINIÇÃO DA ORDEM RIGOROSA ---
 // 'em_esterilizacao' mantido para compatibilidade com itens legados (DB ainda pode ter).
-const STATUS_ORDER = ['recebido', 'em_esterilizacao', 'pronto', 'retirado'];
+const STATUS_ORDER = ["recebido", "em_esterilizacao", "pronto", "retirado"];
 
 export default function Movement({ userProfile }) {
-    const [mode, setMode] = useState('list');
-    
-    // Hooks do Scanner
-    const { code, setCode, showCamera, setShowCamera, handleScan } = useScanner();
-    
-    const [singleItem, setSingleItem] = useState(null);
-    const [listItems, setListItems] = useState([]);
-    const [selectedIds, setSelectedIds] = useState([]);
-    const [search, setSearch] = useState('');
-    const [filterStatus, setFilterStatus] = useState('all');
-    const [filterDate, setFilterDate] = useState(''); // Novo: Estado para filtro de data
-    const [loadingScan, setLoadingScan] = useState(false);
+  const [mode, setMode] = useState("list");
 
-    const [incidentModal, setIncidentModal] = useState({
-        isOpen: false,
-        item: null,
-        reason: '',
-        type: 'report'
-    });
+  // Hooks do Scanner
+  const { code, setCode, showCamera, setShowCamera, handleScan } = useScanner();
 
-    // Quick View: aluno selecionado via dropdown da busca (mostra todos os itens dele)
-    const [quickViewStudentId, setQuickViewStudentId] = useState(null);
-    const [showQuickDropdown, setShowQuickDropdown] = useState(false);
-    
-    const { addToast } = useToast();
-    const { confirm } = useDialog();
-    const { printItems } = usePrint();
-    
-    const searchTimeout = useRef(null);
-    const lastSearchedCode = useRef('');
-    const inputRef = useRef(null);
+  const [singleItem, setSingleItem] = useState(null);
+  const [listItems, setListItems] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterDate, setFilterDate] = useState(""); // Novo: Estado para filtro de data
+  const [loadingScan, setLoadingScan] = useState(false);
 
-    // Diretório de alunos para busca por CPF (mapeia studentId -> cpf)
-    const { data: studentsDirectory = [] } = useStudentsDirectory({ enabled: !!userProfile });
+  const [incidentModal, setIncidentModal] = useState({
+    isOpen: false,
+    item: null,
+    reason: "",
+    type: "report",
+  });
 
-    // --- HELPER: VALIDAÇÃO DE TRANSIÇÃO ---
-    // Fluxo simplificado: Recebido → Pronto → Retirado (Em Esterilização aceita como legado).
-    const canMoveTo = (currentStatus, nextStatus) => {
-        if (nextStatus === 'problema') return { allowed: true };
-        if (currentStatus === 'problema') return { allowed: true };
+  // Quick View: aluno selecionado via dropdown da busca (mostra todos os itens dele)
+  const [quickViewStudentId, setQuickViewStudentId] = useState(null);
+  const [showQuickDropdown, setShowQuickDropdown] = useState(false);
 
-        const currIndex = STATUS_ORDER.indexOf(currentStatus);
-        const nextIndex = STATUS_ORDER.indexOf(nextStatus);
+  const { addToast } = useToast();
+  const { confirm } = useDialog();
+  const { printItems } = usePrint();
 
-        if (currIndex === -1 || nextIndex === -1) {
-            return { allowed: false, error: 'O status atual do item é inválido. Contate o suporte.' };
-        }
-        if (currIndex === nextIndex) {
-            return { allowed: false, error: 'O item já está neste status.' };
-        }
-        if (nextIndex < currIndex) {
-            return { allowed: false, error: 'O fluxo é contínuo. Não é permitido retroceder etapas.' };
-        }
+  const searchTimeout = useRef(null);
+  const lastSearchedCode = useRef("");
+  const inputRef = useRef(null);
 
-        return { allowed: true };
-    };
+  // Diretório de alunos para busca por CPF (mapeia studentId -> cpf)
+  const { data: studentsDirectory = [] } = useStudentsDirectory({
+    enabled: !!userProfile,
+  });
 
-    // --- BUSCA AUTOMÁTICA ---
-    useEffect(() => {
-        if (searchTimeout.current) clearTimeout(searchTimeout.current);
-        if (code === '') { 
-            setLoadingScan(false); 
-            lastSearchedCode.current = ''; 
-            return; 
-        }
+  // --- HELPER: VALIDAÇÃO DE TRANSIÇÃO ---
+  // Fluxo simplificado: Recebido → Pronto → Retirado (Em Esterilização aceita como legado).
+  const canMoveTo = (currentStatus, nextStatus) => {
+    if (nextStatus === "problema") return { allowed: true };
+    if (currentStatus === "problema") return { allowed: true };
 
-        if (mode === 'single' && code.length >= 6 && !showCamera && code !== lastSearchedCode.current) {
-            setLoadingScan(true);
-            searchTimeout.current = setTimeout(async () => {
-                try {
-                    const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'items'), where('code', '==', code.toUpperCase()));
-                    const snap = await getDocs(q);
-                    
-                    lastSearchedCode.current = code;
+    const currIndex = STATUS_ORDER.indexOf(currentStatus);
+    const nextIndex = STATUS_ORDER.indexOf(nextStatus);
 
-                    if (snap.empty) {
-                        playSound('error'); 
-                        addToast('Código não encontrado. Verifique se o item foi cadastrado na Recepção.', 'error');
-                        setSingleItem(null); 
-                    } else {
-                        playSound('success'); 
-                        setSingleItem({ id: snap.docs[0].id, ...snap.docs[0].data() });
-                        setCode(''); 
-                    }
-                } catch (error) { 
-                    console.error(error); 
-                } finally { 
-                    setLoadingScan(false); 
-                }
-            }, 500);
-        }
-    }, [code, mode, showCamera, addToast, setCode]);
+    if (currIndex === -1 || nextIndex === -1) {
+      return {
+        allowed: false,
+        error: "O status atual do item é inválido. Contate o suporte.",
+      };
+    }
+    if (currIndex === nextIndex) {
+      return { allowed: false, error: "O item já está neste status." };
+    }
+    if (nextIndex < currIndex) {
+      return {
+        allowed: false,
+        error: "O fluxo é contínuo. Não é permitido retroceder etapas.",
+      };
+    }
 
-    // --- LISTAGEM ---
-    useEffect(() => {
-        if (mode === 'list') {
-            const q = query(
-                collection(db, 'artifacts', appId, 'public', 'data', 'items'),
-                where('status', 'in', ['recebido', 'em_esterilizacao', 'pronto', 'problema']),
-                orderBy('lastUpdated', 'desc')
+    return { allowed: true };
+  };
+
+  // --- BUSCA AUTOMÁTICA ---
+  useEffect(() => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (code === "") {
+      setLoadingScan(false);
+      lastSearchedCode.current = "";
+      return;
+    }
+
+    if (
+      mode === "single" &&
+      code.length >= 6 &&
+      !showCamera &&
+      code !== lastSearchedCode.current
+    ) {
+      setLoadingScan(true);
+      searchTimeout.current = setTimeout(async () => {
+        try {
+          const q = query(
+            collection(db, "artifacts", appId, "public", "data", "items"),
+            where("code", "==", code.toUpperCase()),
+          );
+          const snap = await getDocs(q);
+
+          lastSearchedCode.current = code;
+
+          if (snap.empty) {
+            playSound("error");
+            addToast(
+              "Código não encontrado. Verifique se o item foi cadastrado na Recepção.",
+              "error",
             );
-            const unsub = onSnapshot(q, s => setListItems(s.docs.map(d => ({id: d.id, ...d.data()}))));
-            return () => unsub();
+            setSingleItem(null);
+          } else {
+            playSound("success");
+            setSingleItem({ id: snap.docs[0].id, ...snap.docs[0].data() });
+            setCode("");
+          }
+        } catch (error) {
+          console.error(error);
+        } finally {
+          setLoadingScan(false);
         }
-    }, [mode]);
+      }, 500);
+    }
+  }, [code, mode, showCamera, addToast, setCode]);
 
-    // --- FUNÇÃO DE ATUALIZAÇÃO ---
-    const updateStatus = async (item, newStatus, reason = null) => {
-        const validation = canMoveTo(item.status, newStatus);
-        if (!validation.allowed) {
-            addToast(`Erro: ${validation.error}`, 'error');
-            return;
-        }
+  // --- LISTAGEM ---
+  useEffect(() => {
+    if (mode === "list") {
+      const q = query(
+        collection(db, "artifacts", appId, "public", "data", "items"),
+        where("status", "in", [
+          "recebido",
+          "em_esterilizacao",
+          "pronto",
+          "problema",
+        ]),
+        orderBy("lastUpdated", "desc"),
+      );
+      const unsub = onSnapshot(q, (s) =>
+        setListItems(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      );
+      return () => unsub();
+    }
+  }, [mode]);
 
-        const batch = writeBatch(db);
-        const ref = doc(db, 'artifacts', appId, 'public', 'data', 'items', item.id);
-        
-        const previousStatus = item.status;
-        const historyEntry = { 
-            status: newStatus, 
-            timestamp: new Date().toISOString(), 
-            by: userProfile.name 
-        };
-        if (reason) historyEntry.reason = reason;
+  // --- FUNÇÃO DE ATUALIZAÇÃO ---
+  const updateStatus = async (item, newStatus, reason = null) => {
+    const validation = canMoveTo(item.status, newStatus);
+    if (!validation.allowed) {
+      addToast(`Erro: ${validation.error}`, "error");
+      return;
+    }
 
-        const history = [...(item.history || []), historyEntry];
-        batch.update(ref, { status: newStatus, history, lastUpdated: serverTimestamp() });
-        
-        if (item.studentId) {
-            const nRef = doc(collection(db, 'artifacts', appId, 'users', item.studentId, 'notifications'));
-            let title = 'Atualização de Material';
-            let message = `Seu item ${item.code} - ${item.type} mudou para: ${STATUS_CONFIG[newStatus].label}`;
-            
-            if (newStatus === 'problema' && reason) {
-                title = '⚠️ Atenção: Ocorrência com Material';
-                message = `Houve uma ocorrência com seu item ${item.code} (${item.type}): "${reason}". Por favor, procure a central.`;
-            } else if (reason && reason.startsWith('Resolução:')) {
-                title = '✅ Ocorrência Resolvida';
-                message = `O problema com seu item ${item.code} foi resolvido e ele retornou para: ${STATUS_CONFIG[newStatus].label}.`;
-            }
+    const batch = writeBatch(db);
+    const ref = doc(db, "artifacts", appId, "public", "data", "items", item.id);
 
-            batch.set(nRef, { title, message, read: false, createdAt: serverTimestamp() });
-        }
-        
-        await batch.commit();
-        
-        await logEvent(
-            'ITEM_MOVE', 
-            `Item ${item.code} movido para ${newStatus}`, 
-            { 
-                itemId: item.id, 
-                code: item.code, 
-                studentName: item.studentName,
-                previousStatus: previousStatus,
-                newStatus: newStatus, 
-                reason: reason || 'Fluxo normal' 
-            }
-        );
-        
-        if (mode === 'single' && singleItem && singleItem.id === item.id) { 
-            setSingleItem(prev => ({...prev, status: newStatus})); 
-        }
-
-        if (mode === 'single' && inputRef.current) {
-            setTimeout(() => inputRef.current.focus(), 50);
-        }
+    const previousStatus = item.status;
+    const historyEntry = {
+      status: newStatus,
+      timestamp: new Date().toISOString(),
+      by: userProfile.name,
     };
+    if (reason) historyEntry.reason = reason;
 
-    const handleIncidentClick = (item) => { 
-        setIncidentModal({ isOpen: true, item: item, reason: '', type: 'report' }); 
-    };
-
-    const handleResolveClick = (item) => { 
-        setIncidentModal({ isOpen: true, item: item, reason: '', type: 'resolve' }); 
-    };
-    
-    const confirmIncident = async () => {
-        if (!incidentModal.reason.trim()) { 
-            addToast('Por favor, digite uma descrição.', 'error'); 
-            return; 
-        }
-
-        const isResolution = incidentModal.type === 'resolve';
-        let newStatus = 'problema';
-
-        if (isResolution) {
-            const historyReversed = [...(incidentModal.item.history || [])].reverse();
-            const lastValidStatus = historyReversed.find(h => h.status !== 'problema' && h.status !== 'retirado');
-            newStatus = lastValidStatus ? lastValidStatus.status : 'recebido';
-        }
-        
-        const logText = isResolution ? `Resolução: ${incidentModal.reason}` : incidentModal.reason;
-        await updateStatus(incidentModal.item, newStatus, logText);
-        
-        addToast(isResolution ? `Resolvido! Item retornou para: ${STATUS_CONFIG[newStatus].label}` : 'Ocorrência registrada.', 'success');
-        setIncidentModal({ isOpen: false, item: null, reason: '', type: 'report' });
-    };
-
-    // --- LOTE INTELIGENTE ---
-    const handleBatch = async (targetStatus) => {
-        const eligibleItems = listItems.filter(i => {
-            const validation = canMoveTo(i.status, targetStatus);
-            return selectedIds.includes(i.id) && validation.allowed;
-        });
-
-        const ignoredCount = selectedIds.length - eligibleItems.length;
-
-        if (eligibleItems.length === 0) {
-            if (ignoredCount > 0) {
-                addToast('Nenhum item selecionado pode ir para este status (sequência incorreta).', 'warning');
-            } else {
-                addToast('Selecione itens válidos primeiro.', 'error');
-            }
-            return;
-        }
-
-        const message = ignoredCount > 0 
-            ? `Mover ${eligibleItems.length} itens para ${STATUS_CONFIG[targetStatus].label}? (${ignoredCount} ignorados por estarem na etapa errada)`
-            : `Mover ${eligibleItems.length} itens para ${STATUS_CONFIG[targetStatus].label}?`;
-
-        if (!await confirm({ title: 'Movimentação em Lote', message })) return;
-
-        for (const item of eligibleItems) { 
-            await updateStatus(item, targetStatus); 
-        }
-        
-        addToast(`${eligibleItems.length} itens atualizados!`, 'success'); 
-        setSelectedIds([]);
-    };
-
-    // --- FILTRAGEM (Busca + Status + Data) ---
-    // Detecta busca por CPF: quando o termo contém apenas dígitos/pontuação de CPF
-    const searchDigits = search.replace(/\D/g, '');
-    const isCpfSearch = searchDigits.length >= 3 && /^[\d.\-\s]+$/.test(search.trim());
-    const matchingStudentIds = isCpfSearch
-        ? new Set(studentsDirectory.filter(s => (s.cpf || '').includes(searchDigits)).map(s => s.uid))
-        : null;
-
-    const filteredList = listItems.filter(i => {
-        // Busca textual
-        let matchesSearch = false;
-        if (!search) {
-            matchesSearch = true;
-        } else if (isCpfSearch) {
-            matchesSearch = matchingStudentIds.has(i.studentId);
-        } else if (search.startsWith('"') && search.endsWith('"') && search.length > 2) {
-            const exactTerm = search.slice(1, -1);
-            matchesSearch = i.studentName.includes(exactTerm) || i.code.includes(exactTerm) || (i.type && i.type.includes(exactTerm));
-        } else {
-            matchesSearch = i.studentName.toLowerCase().includes(search.toLowerCase()) || i.code.toUpperCase().includes(search.toUpperCase()) || (i.type && i.type.toLowerCase().includes(search.toLowerCase()));
-        }
-
-        // Status
-        const matchesStatus = filterStatus === 'all' ? true : i.status === filterStatus;
-
-        // Data
-        let matchesDate = true;
-        if (filterDate && i.createdAt) {
-            const itemDate = i.createdAt.toDate ? i.createdAt.toDate() : new Date(i.createdAt);
-            const formattedItemDate = itemDate.toISOString().split('T')[0];
-            matchesDate = formattedItemDate === filterDate;
-        }
-
-        return matchesSearch && matchesStatus && matchesDate;
+    const history = [...(item.history || []), historyEntry];
+    batch.update(ref, {
+      status: newStatus,
+      history,
+      lastUpdated: serverTimestamp(),
     });
 
-    // --- LÓGICA SELECIONAR TUDO ---
-    const filteredIds = filteredList.map(item => item.id);
-    const isAllSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.includes(id));
+    if (item.studentId) {
+      const nRef = doc(
+        collection(
+          db,
+          "artifacts",
+          appId,
+          "users",
+          item.studentId,
+          "notifications",
+        ),
+      );
+      let title = "Atualização de Material";
+      let message = `Seu item ${item.code} - ${item.type} mudou para: ${STATUS_CONFIG[newStatus].label}`;
 
-    const toggleSelectAll = () => {
-        if (isAllSelected) {
-            // Remove apenas os IDs que estão atualmente filtrados
-            setSelectedIds(prev => prev.filter(id => !filteredIds.includes(id)));
-        } else {
-            // Adiciona os IDs filtrados ao que já estava selecionado (evitando duplicados)
-            setSelectedIds(prev => [...new Set([...prev, ...filteredIds])]);
-        }
-    };
+      if (newStatus === "problema" && reason) {
+        title = "⚠️ Atenção: Ocorrência com Material";
+        message = `Houve uma ocorrência com seu item ${item.code} (${item.type}): "${reason}". Por favor, procure a central.`;
+      } else if (reason && reason.startsWith("Resolução:")) {
+        title = "✅ Ocorrência Resolvida";
+        message = `O problema com seu item ${item.code} foi resolvido e ele retornou para: ${STATUS_CONFIG[newStatus].label}.`;
+      }
 
-    return (
-        <div className="space-y-6 transition-colors">
-            {/* MODAL DE INCIDENTES (Inalterado) */}
-            {incidentModal.isOpen && (
-                <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 border dark:border-slate-700">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className={`text-lg font-bold flex items-center gap-2 ${incidentModal.type === 'resolve' ? 'text-green-700 dark:text-green-400' : 'text-[#021D34] dark:text-white'}`}>
-                                {incidentModal.type === 'resolve' ? <CheckCircle2 className="text-green-600 dark:text-green-400"/> : <AlertTriangle className="text-red-500 dark:text-red-400"/>} 
-                                {incidentModal.type === 'resolve' ? 'Resolver Ocorrência' : 'Registrar Ocorrência'}
-                            </h3>
-                            <button onClick={() => setIncidentModal({ ...incidentModal, isOpen: false })} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-full"><X size={20} /></button>
-                        </div>
-                        
-                        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                            {incidentModal.type === 'resolve' ? `Descreva a solução. O item retornará ao status anterior.` : `Descreva o problema com o item ${incidentModal.item?.code}.`}
-                        </p>
-                        
-                        <textarea 
-                            className="w-full p-4 border border-slate-200 dark:border-slate-600 rounded-xl outline-none text-sm min-h-[120px] bg-slate-50 dark:bg-slate-900 dark:text-white focus:border-[#009DE0] transition-colors" 
-                            placeholder={incidentModal.type === 'resolve' ? "Ex: Material re-lavado, Item consertado..." : "Motivo do problema..."}
-                            value={incidentModal.reason} 
-                            onChange={(e) => setIncidentModal({ ...incidentModal, reason: e.target.value })} 
-                            autoFocus 
-                        />
-                        
-                        <div className="flex gap-3 justify-end mt-4">
-                            <button onClick={() => setIncidentModal({ ...incidentModal, isOpen: false })} className="px-4 py-2 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm transition-colors">Cancelar</button>
-                            <button onClick={confirmIncident} className={`px-6 py-2 text-white font-bold rounded-lg hover:brightness-90 text-sm transition-colors ${incidentModal.type === 'resolve' ? 'bg-green-600 dark:bg-green-700' : 'bg-red-600 dark:bg-red-700'}`}>
-                                {incidentModal.type === 'resolve' ? 'Resolver & Retornar' : 'Confirmar Problema'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+      batch.set(nRef, {
+        title,
+        message,
+        read: false,
+        createdAt: serverTimestamp(),
+      });
+    }
 
-            {/* MODAL QUICK VIEW — todos os itens do aluno selecionado */}
-            {quickViewStudentId && (() => {
-                const studentItems = listItems.filter(i => (i.studentId || i.studentName) === quickViewStudentId);
-                if (studentItems.length === 0) { setTimeout(() => setQuickViewStudentId(null), 0); return null; }
-                const studentName = studentItems[0].studentName;
+    await batch.commit();
 
-                return (
-                    <div className="fixed inset-0 z-[10004] flex items-center justify-center p-4 bg-[#021D34]/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setQuickViewStudentId(null)}>
-                        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200 border dark:border-slate-700" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex justify-between items-start p-6 pb-4 border-b border-slate-100 dark:border-slate-700">
-                                <div>
-                                    <p className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">Quick View — Aluno</p>
-                                    <h3 className="text-xl font-bold text-[#021D34] dark:text-white break-words">{studentName}</h3>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{studentItems.length} requisiç{studentItems.length === 1 ? 'ão' : 'ões'} ativa{studentItems.length === 1 ? '' : 's'}</p>
-                                </div>
-                                <button onClick={() => setQuickViewStudentId(null)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors" title="Fechar">
-                                    <X size={20}/>
-                                </button>
-                            </div>
+    await logEvent("ITEM_MOVE", `Item ${item.code} movido para ${newStatus}`, {
+      itemId: item.id,
+      code: item.code,
+      studentName: item.studentName,
+      previousStatus: previousStatus,
+      newStatus: newStatus,
+      reason: reason || "Fluxo normal",
+    });
 
-                            <div className="overflow-y-auto p-6 pt-4 space-y-3">
-                                {studentItems.map(it => {
-                                    const c = STATUS_CONFIG[it.status] || STATUS_CONFIG['recebido'];
-                                    const isAtivo = it.status === 'recebido' || it.status === 'em_esterilizacao';
-                                    return (
-                                        <div key={it.id} className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-50 dark:bg-slate-900/50">
-                                            <div className="flex justify-between items-start mb-3 gap-2">
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="font-mono font-bold text-[#009DE0] text-base tracking-wider">{it.code}</p>
-                                                    <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm break-words">{it.type}</p>
-                                                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Entrada: {formatDate(it.createdAt)}</p>
-                                                </div>
-                                                <span className={`px-2 py-1 rounded-full text-[10px] font-bold border uppercase whitespace-nowrap ${c.color}`}>{c.label}</span>
-                                            </div>
+    if (mode === "single" && singleItem && singleItem.id === item.id) {
+      setSingleItem((prev) => ({ ...prev, status: newStatus }));
+    }
 
-                                            <div className="grid grid-cols-2 gap-2">
-                                                <button onClick={() => printItems(it)} className="p-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-1">
-                                                    <Printer size={14}/> Imprimir
-                                                </button>
+    if (mode === "single" && inputRef.current) {
+      setTimeout(() => inputRef.current.focus(), 50);
+    }
+  };
 
-                                                {it.status !== 'retirado' && (
-                                                    it.status === 'problema' ? (
-                                                        <button onClick={() => { handleResolveClick(it); setQuickViewStudentId(null); }} className="p-2 text-white bg-green-600 rounded-lg text-xs font-bold hover:bg-green-700 flex items-center justify-center gap-1 transition-colors">
-                                                            <CheckCircle2 size={14}/> Resolver
-                                                        </button>
-                                                    ) : (
-                                                        <>
-                                                            {isAtivo && <button onClick={() => updateStatus(it, 'pronto')} className="p-2 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 transition-colors">Marcar Pronto</button>}
-                                                            {it.status === 'pronto' && <button onClick={() => updateStatus(it, 'retirado')} className="p-2 bg-[#009DE0] text-white rounded-lg text-xs font-bold hover:bg-[#008bc5] transition-colors">Confirmar Retirada</button>}
-                                                        </>
-                                                    )
-                                                )}
+  const handleIncidentClick = (item) => {
+    setIncidentModal({ isOpen: true, item: item, reason: "", type: "report" });
+  };
 
-                                                {it.status !== 'retirado' && it.status !== 'problema' && (
-                                                    <button onClick={() => { handleIncidentClick(it); setQuickViewStudentId(null); }} className="col-span-2 p-2 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 rounded-lg text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/40 flex items-center justify-center gap-1 transition-colors">
-                                                        <AlertTriangle size={14}/> Registrar Ocorrência
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    </div>
-                );
-            })()}
+  const handleResolveClick = (item) => {
+    setIncidentModal({ isOpen: true, item: item, reason: "", type: "resolve" });
+  };
 
-            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <h2 className="font-bold text-[#021D34] dark:text-white text-2xl flex items-center gap-2 w-full md:w-auto transition-colors">
-                    <ScanBarcode className="text-[#009DE0]"/> Movimentação
-                </h2>
-                <div className="flex gap-1 bg-slate-200 dark:bg-slate-700 p-1 rounded-lg w-full md:w-fit overflow-x-auto transition-colors">
-                    <button onClick={() => { setMode('list'); setCode(''); setSingleItem(null); setShowCamera(false); }} className={`flex-1 md:flex-none px-4 py-2 text-sm font-bold rounded-md whitespace-nowrap transition-all ${mode === 'list' ? 'bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm' : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white'}`}>Lista / Lote</button>
-                    <button onClick={() => setMode('single')} className={`flex-1 md:flex-none px-4 py-2 text-sm font-bold rounded-md whitespace-nowrap transition-all ${mode === 'single' ? 'bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm' : 'text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white'}`}>Leitura Individual</button>
-                </div>
+  const confirmIncident = async () => {
+    if (!incidentModal.reason.trim()) {
+      addToast("Por favor, digite uma descrição.", "error");
+      return;
+    }
+
+    const isResolution = incidentModal.type === "resolve";
+    let newStatus = "problema";
+
+    if (isResolution) {
+      const historyReversed = [...(incidentModal.item.history || [])].reverse();
+      const lastValidStatus = historyReversed.find(
+        (h) => h.status !== "problema" && h.status !== "retirado",
+      );
+      newStatus = lastValidStatus ? lastValidStatus.status : "recebido";
+    }
+
+    const logText = isResolution
+      ? `Resolução: ${incidentModal.reason}`
+      : incidentModal.reason;
+    await updateStatus(incidentModal.item, newStatus, logText);
+
+    addToast(
+      isResolution
+        ? `Resolvido! Item retornou para: ${STATUS_CONFIG[newStatus].label}`
+        : "Ocorrência registrada.",
+      "success",
+    );
+    setIncidentModal({ isOpen: false, item: null, reason: "", type: "report" });
+  };
+
+  // --- LOTE INTELIGENTE ---
+  const handleBatch = async (targetStatus) => {
+    const eligibleItems = listItems.filter((i) => {
+      const validation = canMoveTo(i.status, targetStatus);
+      return selectedIds.includes(i.id) && validation.allowed;
+    });
+
+    const ignoredCount = selectedIds.length - eligibleItems.length;
+
+    if (eligibleItems.length === 0) {
+      if (ignoredCount > 0) {
+        addToast(
+          "Nenhum item selecionado pode ir para este status (sequência incorreta).",
+          "warning",
+        );
+      } else {
+        addToast("Selecione itens válidos primeiro.", "error");
+      }
+      return;
+    }
+
+    const message =
+      ignoredCount > 0
+        ? `Mover ${eligibleItems.length} itens para ${STATUS_CONFIG[targetStatus].label}? (${ignoredCount} ignorados por estarem na etapa errada)`
+        : `Mover ${eligibleItems.length} itens para ${STATUS_CONFIG[targetStatus].label}?`;
+
+    if (!(await confirm({ title: "Movimentação em Lote", message }))) return;
+
+    for (const item of eligibleItems) {
+      await updateStatus(item, targetStatus);
+    }
+
+    addToast(`${eligibleItems.length} itens atualizados!`, "success");
+    setSelectedIds([]);
+  };
+
+  // --- FILTRAGEM (Busca + Status + Data) ---
+  // Detecta busca por CPF: quando o termo contém apenas dígitos/pontuação de CPF
+  const searchDigits = search.replace(/\D/g, "");
+  const isCpfSearch =
+    searchDigits.length >= 3 && /^[\d.\-\s]+$/.test(search.trim());
+  const matchingStudentIds = isCpfSearch
+    ? new Set(
+        studentsDirectory
+          .filter((s) => (s.cpf || "").includes(searchDigits))
+          .map((s) => s.uid),
+      )
+    : null;
+
+  const filteredList = listItems.filter((i) => {
+    // Busca textual
+    let matchesSearch = false;
+    if (!search) {
+      matchesSearch = true;
+    } else if (isCpfSearch) {
+      matchesSearch = matchingStudentIds.has(i.studentId);
+    } else if (
+      search.startsWith('"') &&
+      search.endsWith('"') &&
+      search.length > 2
+    ) {
+      const exactTerm = search.slice(1, -1);
+      matchesSearch =
+        i.studentName.includes(exactTerm) ||
+        i.code.includes(exactTerm) ||
+        (i.type && i.type.includes(exactTerm));
+    } else {
+      matchesSearch =
+        i.studentName.toLowerCase().includes(search.toLowerCase()) ||
+        i.code.toUpperCase().includes(search.toUpperCase()) ||
+        (i.type && i.type.toLowerCase().includes(search.toLowerCase()));
+    }
+
+    // Status
+    const matchesStatus =
+      filterStatus === "all" ? true : i.status === filterStatus;
+
+    // Data
+    let matchesDate = true;
+    if (filterDate && i.createdAt) {
+      const itemDate = i.createdAt.toDate
+        ? i.createdAt.toDate()
+        : new Date(i.createdAt);
+      const formattedItemDate = itemDate.toISOString().split("T")[0];
+      matchesDate = formattedItemDate === filterDate;
+    }
+
+    return matchesSearch && matchesStatus && matchesDate;
+  });
+
+  // --- LÓGICA SELECIONAR TUDO ---
+  const filteredIds = filteredList.map((item) => item.id);
+  const isAllSelected =
+    filteredIds.length > 0 &&
+    filteredIds.every((id) => selectedIds.includes(id));
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      // Remove apenas os IDs que estão atualmente filtrados
+      setSelectedIds((prev) => prev.filter((id) => !filteredIds.includes(id)));
+    } else {
+      // Adiciona os IDs filtrados ao que já estava selecionado (evitando duplicados)
+      setSelectedIds((prev) => [...new Set([...prev, ...filteredIds])]);
+    }
+  };
+
+  return (
+    <div className="space-y-6 transition-colors">
+      {/* MODAL DE INCIDENTES (Inalterado) */}
+      {incidentModal.isOpen && (
+        <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 border dark:border-slate-700">
+            <div className="flex justify-between items-center mb-4">
+              <h3
+                className={`text-lg font-bold flex items-center gap-2 ${incidentModal.type === "resolve" ? "text-green-700 dark:text-green-400" : "text-[#021D34] dark:text-white"}`}
+              >
+                {incidentModal.type === "resolve" ? (
+                  <CheckCircle2 className="text-green-600 dark:text-green-400" />
+                ) : (
+                  <AlertTriangle className="text-red-500 dark:text-red-400" />
+                )}
+                {incidentModal.type === "resolve"
+                  ? "Resolver Ocorrência"
+                  : "Registrar Ocorrência"}
+              </h3>
+              <button
+                onClick={() =>
+                  setIncidentModal({ ...incidentModal, isOpen: false })
+                }
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-full"
+              >
+                <X size={20} />
+              </button>
             </div>
 
-            {mode === 'single' ? (
-                <div className="max-w-xl mx-auto space-y-6 py-8 animate-in zoom-in-95 duration-300">
-                    <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-lg text-center relative overflow-hidden transition-colors">
-                        {!showCamera ? (
-                            <>
-                                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#009DE0] via-purple-500 to-[#009DE0] animate-pulse"/>
-                                <ScanBarcode className="w-16 h-16 text-[#009DE0] mx-auto mb-6"/>
-                                <h2 className="text-2xl font-bold text-[#021D34] dark:text-white mb-2">Movimentação de Item</h2>
-                                <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm">Bipe o código, digite abaixo ou use a câmera.</p>
-                                <input 
-                                    ref={inputRef}
-                                    className="w-full text-center font-mono text-3xl uppercase tracking-[0.2em] p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:border-[#009DE0] outline-none mb-4 bg-white dark:bg-slate-900 text-black dark:text-white transition-colors" 
-                                    placeholder="CÓDIGO" 
-                                    value={code} 
-                                    onChange={e => setCode(e.target.value)} 
-                                    autoFocus 
-                                />
-                                <button onClick={() => setShowCamera(true)} className="w-full flex items-center justify-center gap-2 bg-[#021D34] text-white py-3 rounded-xl font-bold hover:bg-[#009DE0] transition-colors"><Camera size={20}/> Usar Câmera</button>
-                            </>
-                        ) : (
-                            <div className="relative bg-black rounded-xl overflow-hidden aspect-square max-w-sm mx-auto">
-                                <Scanner onScan={handleScan} components={{ audio: false }} />
-                                <button onClick={() => setShowCamera(false)} className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/20 backdrop-blur-md border border-white/30 text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 hover:bg-white/30 z-20"><XCircle size={18}/> Cancelar</button>
-                            </div>
-                        )}
-                        {loadingScan && <div className="mt-4 flex justify-center text-[#009DE0] gap-2 items-center text-sm font-bold"><Loader2 className="animate-spin" size={16}/> Buscando...</div>}
-                    </div>
-                    
-                    {singleItem && (
-                        <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-md animate-in slide-in-from-bottom-4 transition-colors">
-                            <div className="flex justify-between items-start mb-6">
-                                <div>
-                                    <h3 className="text-xl font-bold text-[#021D34] dark:text-white">{singleItem.studentName}</h3>
-                                    <p className="text-lg font-mono font-bold text-[#009DE0] mt-1 tracking-wider">{singleItem.code}</p>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400">{singleItem.type}</p>
-                                </div>
-                                <div className="flex flex-col items-end gap-2">
-                                    <button 
-                                        onClick={() => { 
-                                            setSingleItem(null); 
-                                            setCode(''); 
-                                            if(inputRef.current) inputRef.current.focus(); 
-                                        }} 
-                                        className="p-2 -mr-2 -mt-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
-                                        title="Fechar e Ler Novo"
-                                    >
-                                        <X size={20}/>
-                                    </button>
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold border uppercase ${STATUS_CONFIG[singleItem.status]?.color}`}>{STATUS_CONFIG[singleItem.status]?.label}</span>
-                                </div>
-                            </div>
-                            
-                            <div className="grid gap-3">
-                                {singleItem.status !== 'problema' && (
-                                    <>
-                                        {(singleItem.status === 'recebido' || singleItem.status === 'em_esterilizacao') && <button onClick={() => updateStatus(singleItem, 'pronto')} className="p-4 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-colors">Marcar como Pronto</button>}
-                                        {singleItem.status === 'pronto' && <button onClick={() => updateStatus(singleItem, 'retirado')} className="p-4 bg-[#009DE0] text-white rounded-xl font-bold hover:bg-[#008bc5] transition-colors">Confirmar Retirada</button>}
-                                    </>
-                                )}
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              {incidentModal.type === "resolve"
+                ? `Descreva a solução. O item retornará ao status anterior.`
+                : `Descreva o problema com o item ${incidentModal.item?.code}.`}
+            </p>
 
-                                {singleItem.status !== 'retirado' && (
-                                    <>
-                                        {singleItem.status === 'problema' ? (
-                                            <button 
-                                                onClick={() => handleResolveClick(singleItem)} 
-                                                className="mt-2 p-3 text-white bg-green-600 border border-green-700 rounded-xl font-bold hover:bg-green-700 flex items-center justify-center gap-2 shadow-sm animate-pulse transition-colors"
-                                            >
-                                                <CheckCircle2 size={18}/> Resolver Ocorrência & Liberar
-                                            </button>
-                                        ) : (
-                                            <button 
-                                                onClick={() => handleIncidentClick(singleItem)} 
-                                                className="mt-2 p-3 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 rounded-xl font-bold hover:bg-red-100 flex items-center justify-center gap-2 transition-colors"
-                                            >
-                                                <AlertTriangle size={18}/> Registrar Ocorrência
-                                            </button>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    <div className="flex flex-col md:flex-row justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
-                        <div className="flex flex-col md:flex-row gap-4 flex-1">
-                             <div className="relative flex-1">
-                                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400"/>
-                                <input
-                                    className="w-full pl-10 p-2 border dark:border-slate-600 rounded-lg text-sm outline-none focus:border-[#009DE0] bg-transparent dark:bg-slate-900 text-slate-900 dark:text-white transition-colors"
-                                    placeholder="Buscar por nome, código, material ou CPF..."
-                                    value={search}
-                                    onChange={e => { setSearch(e.target.value); setShowQuickDropdown(true); }}
-                                    onFocus={() => setShowQuickDropdown(true)}
-                                    onBlur={() => setTimeout(() => setShowQuickDropdown(false), 150)}
-                                />
-                                {search && (
-                                    <button onClick={() => setSearch('')} className="absolute right-2 top-2.5 text-slate-400 hover:text-red-500 transition-colors" title="Limpar busca">
-                                        <X size={14}/>
-                                    </button>
-                                )}
-                                {showQuickDropdown && search.length >= 2 && (() => {
-                                    // Agrupa filteredList por aluno (studentId)
-                                    const studentMap = new Map();
-                                    for (const it of filteredList) {
-                                        const key = it.studentId || it.studentName;
-                                        if (!studentMap.has(key)) {
-                                            studentMap.set(key, { studentId: it.studentId, studentName: it.studentName, count: 0 });
-                                        }
-                                        studentMap.get(key).count += 1;
-                                    }
-                                    const students = Array.from(studentMap.values()).sort((a, b) => a.studentName.localeCompare(b.studentName));
+            <textarea
+              className="w-full p-4 border border-slate-200 dark:border-slate-600 rounded-xl outline-none text-sm min-h-[120px] bg-slate-50 dark:bg-slate-900 dark:text-white focus:border-[#009DE0] transition-colors"
+              placeholder={
+                incidentModal.type === "resolve"
+                  ? "Ex: Material re-lavado, Item consertado..."
+                  : "Motivo do problema..."
+              }
+              value={incidentModal.reason}
+              onChange={(e) =>
+                setIncidentModal({ ...incidentModal, reason: e.target.value })
+              }
+              autoFocus
+            />
 
-                                    if (students.length === 0) {
-                                        return (
-                                            <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-30 p-4 text-center text-slate-500 dark:text-slate-400 text-sm">
-                                                Nenhum aluno encontrado.
-                                            </div>
-                                        );
-                                    }
-
-                                    return (
-                                        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-30 max-h-80 overflow-y-auto animate-in slide-in-from-top-2">
-                                            <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900">
-                                                Quick View — {students.length} aluno{students.length === 1 ? '' : 's'}
-                                            </div>
-                                            {students.slice(0, 10).map(s => (
-                                                <button
-                                                    key={s.studentId || s.studentName}
-                                                    onMouseDown={(e) => { e.preventDefault(); setQuickViewStudentId(s.studentId || s.studentName); setShowQuickDropdown(false); }}
-                                                    className="w-full text-left p-3 hover:bg-blue-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors flex items-center justify-between gap-3"
-                                                >
-                                                    <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm break-words flex-1">{s.studentName}</p>
-                                                    <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-[#009DE0] dark:text-blue-300 whitespace-nowrap">
-                                                        {s.count} {s.count === 1 ? 'item' : 'itens'}
-                                                    </span>
-                                                </button>
-                                            ))}
-                                            {students.length > 10 && (
-                                                <div className="px-3 py-2 text-[11px] text-center text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800">
-                                                    + {students.length - 10} aluno{students.length - 10 === 1 ? '' : 's'} — refine a busca
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })()}
-                             </div>
-
-                             {/* FILTRO DE DATA */}
-                             <div className="relative">
-                                <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none"/>
-                                <input 
-                                    type="date" 
-                                    className="pl-10 p-2 border dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-[#009DE0] transition-colors" 
-                                    value={filterDate} 
-                                    onChange={e => setFilterDate(e.target.value)}
-                                />
-                                {filterDate && (
-                                    <button onClick={() => setFilterDate('')} className="absolute right-2 top-2.5 text-slate-400 hover:text-red-500 transition-colors">
-                                        <X size={14}/>
-                                    </button>
-                                )}
-                             </div>
-
-                             <select className="p-2 border dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-[#009DE0] transition-colors" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-                                <option value="all">Todos Ativos</option>
-                                <option value="pronto">{STATUS_CONFIG.pronto.label}</option>
-                                <option value="problema">{STATUS_CONFIG.problema.label}</option>
-                             </select>
-                        </div>
-                        {selectedIds.length > 0 && (
-                            <div className="flex gap-2 items-center bg-slate-50 dark:bg-slate-900 p-2 rounded-lg transition-colors"><span className="text-xs font-bold dark:text-slate-300">{selectedIds.length} sel.</span><button onClick={() => handleBatch('pronto')} className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition-colors">Pronto</button><button onClick={() => handleBatch('retirado')} className="bg-[#009DE0] text-white px-2 py-1 rounded text-xs hover:bg-[#008bc5] transition-colors">Retirado</button></div>
-                        )}
-                    </div>
-                    <DataTable 
-                        columns={[
-                            { 
-                                key: 'select', 
-                                label: <input type="checkbox" checked={isAllSelected} onChange={toggleSelectAll} className="rounded text-[#009DE0] focus:ring-[#009DE0] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 cursor-pointer"/>, 
-                                render: (i) => <input type="checkbox" checked={selectedIds.includes(i.id)} onChange={() => setSelectedIds(p => p.includes(i.id) ? p.filter(x => x !== i.id) : [...p, i.id])} className="rounded text-[#009DE0] focus:ring-[#009DE0] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600"/> 
-                            },
-                            { key: 'code', label: 'Código', sortable: true, render: (i) => <span className="font-mono font-bold text-[#009DE0]">{i.code}</span> },
-                            { key: 'studentName', label: 'Aluno', sortable: true, className: 'p-4 text-slate-700 dark:text-slate-300 whitespace-normal break-words' },
-                            { key: 'type', label: 'Material', sortable: true },
-                            { key: 'createdAt', label: 'Entrada', sortable: true, render: (i) => formatDate(i.createdAt) },
-                            { key: 'status', label: 'Status', sortable: true, render: (i) => { const c = STATUS_CONFIG[i.status] || STATUS_CONFIG['recebido']; return <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase border ${c.color}`}>{c.label}</span> }}
-                        ]}
-                        data={filteredList}
-                        mobileRender={(i) => (
-                            <div className="flex items-center gap-3">
-                                <input type="checkbox" checked={selectedIds.includes(i.id)} onChange={() => setSelectedIds(p => p.includes(i.id) ? p.filter(x => x !== i.id) : [...p, i.id])} className="w-5 h-5 rounded text-[#009DE0] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600"/>
-                                <div className="flex-1">
-                                    <div className="flex justify-between">
-                                        <span className="font-mono font-bold text-[#009DE0]">{i.code}</span>
-                                        <span className={`text-[10px] font-bold px-2 py-1 rounded uppercase border ${STATUS_CONFIG[i.status]?.color}`}>{STATUS_CONFIG[i.status]?.label}</span>
-                                    </div>
-                                    <p className="font-bold text-slate-800 dark:text-slate-200 break-words">{i.studentName}</p>
-                                    <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{i.type}</p>
-                                </div>
-                            </div>
-                        )}
-                        actions={(item) => (
-                            <div className="flex gap-1 justify-center">
-                                <button onClick={() => printItems(item)} className="p-2 text-slate-400 hover:text-[#009DE0] bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded transition-colors"><Printer size={20}/></button>
-                                {item.status !== 'retirado' && (
-                                    <>
-                                        {item.status === 'problema' ? (
-                                            <button onClick={() => handleResolveClick(item)} className="p-2 text-green-600 hover:text-green-800 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded transition-colors" title="Resolver"><CheckCircle2 size={20}/></button>
-                                        ) : (
-                                            <button onClick={() => handleIncidentClick(item)} className="p-2 text-red-400 hover:text-red-600 dark:text-red-400 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded transition-colors" title="Registrar Ocorrência"><AlertTriangle size={20}/></button>
-                                        )}
-                                    </>
-                                )}
-                            </div>
-                        )}
-                    />
-                </div>
-            )}
+            <div className="flex gap-3 justify-end mt-4">
+              <button
+                onClick={() =>
+                  setIncidentModal({ ...incidentModal, isOpen: false })
+                }
+                className="px-4 py-2 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmIncident}
+                className={`px-6 py-2 text-white font-bold rounded-lg hover:brightness-90 text-sm transition-colors ${incidentModal.type === "resolve" ? "bg-green-600 dark:bg-green-700" : "bg-red-600 dark:bg-red-700"}`}
+              >
+                {incidentModal.type === "resolve"
+                  ? "Resolver & Retornar"
+                  : "Confirmar Problema"}
+              </button>
+            </div>
+          </div>
         </div>
-    );
+      )}
+
+      {/* MODAL QUICK VIEW — todos os itens do aluno selecionado */}
+      {quickViewStudentId &&
+        (() => {
+          const studentItems = listItems.filter(
+            (i) => (i.studentId || i.studentName) === quickViewStudentId,
+          );
+          if (studentItems.length === 0) {
+            setTimeout(() => setQuickViewStudentId(null), 0);
+            return null;
+          }
+          const studentName = studentItems[0].studentName;
+
+          return (
+            <div
+              className="fixed inset-0 z-[10004] flex items-center justify-center p-4 bg-[#021D34]/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+              onClick={() => setQuickViewStudentId(null)}
+            >
+              <div
+                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200 border dark:border-slate-700"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex justify-between items-start p-6 pb-4 border-b border-slate-100 dark:border-slate-700">
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">
+                      Quick View — Aluno
+                    </p>
+                    <h3 className="text-xl font-bold text-[#021D34] dark:text-white break-words">
+                      {studentName}
+                    </h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                      {studentItems.length} requisiç
+                      {studentItems.length === 1 ? "ão" : "ões"} ativa
+                      {studentItems.length === 1 ? "" : "s"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setQuickViewStudentId(null)}
+                    className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+                    title="Fechar"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="overflow-y-auto p-6 pt-4 space-y-3">
+                  {studentItems.map((it) => {
+                    const c =
+                      STATUS_CONFIG[it.status] || STATUS_CONFIG["recebido"];
+                    const isAtivo =
+                      it.status === "recebido" ||
+                      it.status === "em_esterilizacao";
+                    return (
+                      <div
+                        key={it.id}
+                        className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-50 dark:bg-slate-900/50"
+                      >
+                        <div className="flex justify-between items-start mb-3 gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-mono font-bold text-[#009DE0] text-base tracking-wider">
+                              {it.code}
+                            </p>
+                            <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm break-words">
+                              {it.type}
+                            </p>
+                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                              Entrada: {formatDate(it.createdAt)}
+                            </p>
+                          </div>
+                          <span
+                            className={`px-2 py-1 rounded-full text-[10px] font-bold border uppercase whitespace-nowrap ${c.color}`}
+                          >
+                            {c.label}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => printItems(it)}
+                            className="p-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-1"
+                          >
+                            <Printer size={14} /> Imprimir
+                          </button>
+
+                          {it.status !== "retirado" &&
+                            (it.status === "problema" ? (
+                              <button
+                                onClick={() => {
+                                  handleResolveClick(it);
+                                  setQuickViewStudentId(null);
+                                }}
+                                className="p-2 text-white bg-green-600 rounded-lg text-xs font-bold hover:bg-green-700 flex items-center justify-center gap-1 transition-colors"
+                              >
+                                <CheckCircle2 size={14} /> Resolver
+                              </button>
+                            ) : (
+                              <>
+                                {isAtivo && (
+                                  <button
+                                    onClick={() => updateStatus(it, "pronto")}
+                                    className="p-2 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 transition-colors"
+                                  >
+                                    Marcar Pronto
+                                  </button>
+                                )}
+                                {it.status === "pronto" && (
+                                  <button
+                                    onClick={() => updateStatus(it, "retirado")}
+                                    className="p-2 bg-[#009DE0] text-white rounded-lg text-xs font-bold hover:bg-[#008bc5] transition-colors"
+                                  >
+                                    Confirmar Retirada
+                                  </button>
+                                )}
+                              </>
+                            ))}
+
+                          {it.status !== "retirado" &&
+                            it.status !== "problema" && (
+                              <button
+                                onClick={() => {
+                                  handleIncidentClick(it);
+                                  setQuickViewStudentId(null);
+                                }}
+                                className="col-span-2 p-2 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 rounded-lg text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/40 flex items-center justify-center gap-1 transition-colors"
+                              >
+                                <AlertTriangle size={14} /> Registrar Ocorrência
+                              </button>
+                            )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+      <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+        <h2 className="font-bold text-[#021D34] dark:text-white text-2xl flex items-center gap-2 w-full md:w-auto transition-colors">
+          <ScanBarcode className="text-[#009DE0]" /> Movimentação
+        </h2>
+        <div className="flex gap-1 bg-slate-200 dark:bg-slate-700 p-1 rounded-lg w-full md:w-fit overflow-x-auto transition-colors">
+          <button
+            onClick={() => {
+              setMode("list");
+              setCode("");
+              setSingleItem(null);
+              setShowCamera(false);
+            }}
+            className={`flex-1 md:flex-none px-4 py-2 text-sm font-bold rounded-md whitespace-nowrap transition-all ${mode === "list" ? "bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm" : "text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white"}`}
+          >
+            Lista / Lote
+          </button>
+          <button
+            onClick={() => setMode("single")}
+            className={`flex-1 md:flex-none px-4 py-2 text-sm font-bold rounded-md whitespace-nowrap transition-all ${mode === "single" ? "bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm" : "text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white"}`}
+          >
+            Leitura Individual
+          </button>
+        </div>
+      </div>
+
+      {mode === "single" ? (
+        <div className="max-w-xl mx-auto space-y-6 py-8 animate-in zoom-in-95 duration-300">
+          <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-lg text-center relative overflow-hidden transition-colors">
+            {!showCamera ? (
+              <>
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#009DE0] via-purple-500 to-[#009DE0] animate-pulse" />
+                <ScanBarcode className="w-16 h-16 text-[#009DE0] mx-auto mb-6" />
+                <h2 className="text-2xl font-bold text-[#021D34] dark:text-white mb-2">
+                  Movimentação de Item
+                </h2>
+                <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm">
+                  Bipe o código, digite abaixo ou use a câmera.
+                </p>
+                <input
+                  ref={inputRef}
+                  className="w-full text-center font-mono text-3xl uppercase tracking-[0.2em] p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:border-[#009DE0] outline-none mb-4 bg-white dark:bg-slate-900 text-black dark:text-white transition-colors"
+                  placeholder="CÓDIGO"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  autoFocus
+                />
+                <button
+                  onClick={() => setShowCamera(true)}
+                  className="w-full flex items-center justify-center gap-2 bg-[#021D34] text-white py-3 rounded-xl font-bold hover:bg-[#009DE0] transition-colors"
+                >
+                  <Camera size={20} /> Usar Câmera
+                </button>
+              </>
+            ) : (
+              <div className="relative bg-black rounded-xl overflow-hidden aspect-square max-w-sm mx-auto">
+                <Scanner onScan={handleScan} components={{ audio: false }} />
+                <button
+                  onClick={() => setShowCamera(false)}
+                  className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white/20 backdrop-blur-md border border-white/30 text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 hover:bg-white/30 z-20"
+                >
+                  <XCircle size={18} /> Cancelar
+                </button>
+              </div>
+            )}
+            {loadingScan && (
+              <div className="mt-4 flex justify-center text-[#009DE0] gap-2 items-center text-sm font-bold">
+                <Loader2 className="animate-spin" size={16} /> Buscando...
+              </div>
+            )}
+          </div>
+
+          {singleItem && (
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-md animate-in slide-in-from-bottom-4 transition-colors">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-[#021D34] dark:text-white">
+                    {singleItem.studentName}
+                  </h3>
+                  <p className="text-lg font-mono font-bold text-[#009DE0] mt-1 tracking-wider">
+                    {singleItem.code}
+                  </p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {singleItem.type}
+                  </p>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <button
+                    onClick={() => {
+                      setSingleItem(null);
+                      setCode("");
+                      if (inputRef.current) inputRef.current.focus();
+                    }}
+                    className="p-2 -mr-2 -mt-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+                    title="Fechar e Ler Novo"
+                  >
+                    <X size={20} />
+                  </button>
+                  <span
+                    className={`px-3 py-1 rounded-full text-xs font-bold border uppercase ${STATUS_CONFIG[singleItem.status]?.color}`}
+                  >
+                    {STATUS_CONFIG[singleItem.status]?.label}
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid gap-3">
+                {singleItem.status !== "problema" && (
+                  <>
+                    {(singleItem.status === "recebido" ||
+                      singleItem.status === "em_esterilizacao") && (
+                      <button
+                        onClick={() => updateStatus(singleItem, "pronto")}
+                        className="p-4 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-colors"
+                      >
+                        Marcar como Pronto
+                      </button>
+                    )}
+                    {singleItem.status === "pronto" && (
+                      <button
+                        onClick={() => updateStatus(singleItem, "retirado")}
+                        className="p-4 bg-[#009DE0] text-white rounded-xl font-bold hover:bg-[#008bc5] transition-colors"
+                      >
+                        Confirmar Retirada
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {singleItem.status !== "retirado" && (
+                  <>
+                    {singleItem.status === "problema" ? (
+                      <button
+                        onClick={() => handleResolveClick(singleItem)}
+                        className="mt-2 p-3 text-white bg-green-600 border border-green-700 rounded-xl font-bold hover:bg-green-700 flex items-center justify-center gap-2 shadow-sm animate-pulse transition-colors"
+                      >
+                        <CheckCircle2 size={18} /> Resolver Ocorrência & Liberar
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleIncidentClick(singleItem)}
+                        className="mt-2 p-3 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 rounded-xl font-bold hover:bg-red-100 flex items-center justify-center gap-2 transition-colors"
+                      >
+                        <AlertTriangle size={18} /> Registrar Ocorrência
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="flex flex-col md:flex-row justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+            <div className="flex flex-col md:flex-row gap-4 flex-1">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                <input
+                  className="w-full pl-10 p-2 border dark:border-slate-600 rounded-lg text-sm outline-none focus:border-[#009DE0] bg-transparent dark:bg-slate-900 text-slate-900 dark:text-white transition-colors"
+                  placeholder="Buscar por nome, código, material ou CPF..."
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setShowQuickDropdown(true);
+                  }}
+                  onFocus={() => setShowQuickDropdown(true)}
+                  onBlur={() =>
+                    setTimeout(() => setShowQuickDropdown(false), 150)
+                  }
+                />
+                {search && (
+                  <button
+                    onClick={() => setSearch("")}
+                    className="absolute right-2 top-2.5 text-slate-400 hover:text-red-500 transition-colors"
+                    title="Limpar busca"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+                {showQuickDropdown &&
+                  search.length >= 2 &&
+                  (() => {
+                    // Agrupa filteredList por aluno (studentId)
+                    const studentMap = new Map();
+                    for (const it of filteredList) {
+                      const key = it.studentId || it.studentName;
+                      if (!studentMap.has(key)) {
+                        studentMap.set(key, {
+                          studentId: it.studentId,
+                          studentName: it.studentName,
+                          count: 0,
+                        });
+                      }
+                      studentMap.get(key).count += 1;
+                    }
+                    const students = Array.from(studentMap.values()).sort(
+                      (a, b) => a.studentName.localeCompare(b.studentName),
+                    );
+
+                    if (students.length === 0) {
+                      return (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-30 p-4 text-center text-slate-500 dark:text-slate-400 text-sm">
+                          Nenhum aluno encontrado.
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-30 max-h-80 overflow-y-auto animate-in slide-in-from-top-2">
+                        <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900">
+                          Quick View — {students.length} aluno
+                          {students.length === 1 ? "" : "s"}
+                        </div>
+                        {students.slice(0, 10).map((s) => (
+                          <button
+                            key={s.studentId || s.studentName}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setQuickViewStudentId(
+                                s.studentId || s.studentName,
+                              );
+                              setShowQuickDropdown(false);
+                            }}
+                            className="w-full text-left p-3 hover:bg-blue-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors flex items-center justify-between gap-3"
+                          >
+                            <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm break-words flex-1">
+                              {s.studentName}
+                            </p>
+                            <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-[#009DE0] dark:text-blue-300 whitespace-nowrap">
+                              {s.count} {s.count === 1 ? "item" : "itens"}
+                            </span>
+                          </button>
+                        ))}
+                        {students.length > 10 && (
+                          <div className="px-3 py-2 text-[11px] text-center text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800">
+                            + {students.length - 10} aluno
+                            {students.length - 10 === 1 ? "" : "s"} — refine a
+                            busca
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+              </div>
+
+              {/* FILTRO DE DATA */}
+              <div className="relative">
+                <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
+                <input
+                  type="date"
+                  className="pl-10 p-2 border dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-[#009DE0] transition-colors"
+                  value={filterDate}
+                  onChange={(e) => setFilterDate(e.target.value)}
+                />
+                {filterDate && (
+                  <button
+                    onClick={() => setFilterDate("")}
+                    className="absolute right-2 top-2.5 text-slate-400 hover:text-red-500 transition-colors"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              <select
+                className="p-2 border dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-[#009DE0] transition-colors"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                <option value="all">Todos Ativos</option>
+                <option value="pronto">{STATUS_CONFIG.pronto.label}</option>
+                <option value="problema">{STATUS_CONFIG.problema.label}</option>
+              </select>
+            </div>
+            {selectedIds.length > 0 && (
+              <div className="flex gap-2 items-center bg-slate-50 dark:bg-slate-900 p-2 rounded-lg transition-colors">
+                <span className="text-xs font-bold dark:text-slate-300">
+                  {selectedIds.length} sel.
+                </span>
+                <button
+                  onClick={() => handleBatch("pronto")}
+                  className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition-colors"
+                >
+                  Pronto
+                </button>
+                <button
+                  onClick={() => handleBatch("retirado")}
+                  className="bg-[#009DE0] text-white px-2 py-1 rounded text-xs hover:bg-[#008bc5] transition-colors"
+                >
+                  Retirado
+                </button>
+              </div>
+            )}
+          </div>
+          <DataTable
+            columns={[
+              {
+                key: "select",
+                label: (
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={toggleSelectAll}
+                    className="rounded text-[#009DE0] focus:ring-[#009DE0] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 cursor-pointer"
+                  />
+                ),
+                render: (i) => (
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(i.id)}
+                    onChange={() =>
+                      setSelectedIds((p) =>
+                        p.includes(i.id)
+                          ? p.filter((x) => x !== i.id)
+                          : [...p, i.id],
+                      )
+                    }
+                    className="rounded text-[#009DE0] focus:ring-[#009DE0] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600"
+                  />
+                ),
+              },
+              {
+                key: "code",
+                label: "Código",
+                sortable: true,
+                render: (i) => (
+                  <span className="font-mono font-bold text-[#009DE0]">
+                    {i.code}
+                  </span>
+                ),
+              },
+              {
+                key: "studentName",
+                label: "Aluno",
+                sortable: true,
+                className:
+                  "p-4 text-slate-700 dark:text-slate-300 whitespace-normal break-words",
+              },
+              { key: "type", label: "Material", sortable: true },
+              {
+                key: "createdAt",
+                label: "Entrada",
+                sortable: true,
+                render: (i) => formatDate(i.createdAt),
+              },
+              {
+                key: "status",
+                label: "Status",
+                sortable: true,
+                render: (i) => {
+                  const c =
+                    STATUS_CONFIG[i.status] || STATUS_CONFIG["recebido"];
+                  return (
+                    <span
+                      className={`text-[10px] font-bold px-2 py-1 rounded uppercase border ${c.color}`}
+                    >
+                      {c.label}
+                    </span>
+                  );
+                },
+              },
+            ]}
+            data={filteredList}
+            mobileRender={(i) => (
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={selectedIds.includes(i.id)}
+                  onChange={() =>
+                    setSelectedIds((p) =>
+                      p.includes(i.id)
+                        ? p.filter((x) => x !== i.id)
+                        : [...p, i.id],
+                    )
+                  }
+                  className="w-5 h-5 rounded text-[#009DE0] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600"
+                />
+                <div className="flex-1">
+                  <div className="flex justify-between">
+                    <span className="font-mono font-bold text-[#009DE0]">
+                      {i.code}
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-1 rounded uppercase border ${STATUS_CONFIG[i.status]?.color}`}
+                    >
+                      {STATUS_CONFIG[i.status]?.label}
+                    </span>
+                  </div>
+                  <p className="font-bold text-slate-800 dark:text-slate-200 break-words">
+                    {i.studentName}
+                  </p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                    {i.type}
+                  </p>
+                </div>
+              </div>
+            )}
+            actions={(item) => (
+              <div className="flex gap-1 justify-center">
+                <button
+                  onClick={() => printItems(item)}
+                  className="p-2 text-slate-400 hover:text-[#009DE0] bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded transition-colors"
+                >
+                  <Printer size={20} />
+                </button>
+                {item.status !== "retirado" && (
+                  <>
+                    {item.status === "problema" ? (
+                      <button
+                        onClick={() => handleResolveClick(item)}
+                        className="p-2 text-green-600 hover:text-green-800 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded transition-colors"
+                        title="Resolver"
+                      >
+                        <CheckCircle2 size={20} />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleIncidentClick(item)}
+                        className="p-2 text-red-400 hover:text-red-600 dark:text-red-400 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded transition-colors"
+                        title="Registrar Ocorrência"
+                      >
+                        <AlertTriangle size={20} />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          />
+        </div>
+      )}
+    </div>
+  );
 }
