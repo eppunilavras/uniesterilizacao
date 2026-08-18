@@ -437,14 +437,23 @@ export default function HistoryView({ userProfile }) {
       } catch (error) {
         console.error("Erro lista:", error);
         if (error.code === "failed-precondition") {
-          const c = [orderBy("createdAt", "desc"), limit(50)];
-          if (isStudent) c.unshift(where("studentId", "==", userProfile.uid));
-          const q = query(
-            collection(db, "artifacts", appId, "public", "data", "items"),
-            ...c,
-          );
-          const s = await getDocs(q);
-          setHistory(s.docs.map((d) => ({ id: d.id, ...d.data() })));
+          try {
+            const c = [orderBy("createdAt", "desc"), limit(50)];
+            if (isStudent) c.unshift(where("studentId", "==", userProfile.uid));
+            const q = query(
+              collection(db, "artifacts", appId, "public", "data", "items"),
+              ...c,
+            );
+            const s = await getDocs(q);
+            setHistory(s.docs.map((d) => ({ id: d.id, ...d.data() })));
+          } catch (e2) {
+            console.error("Erro fallback:", e2);
+            addToast("Erro ao carregar histórico. Índice ausente.", "error");
+          }
+        } else if (error.code === "permission-denied") {
+          addToast("Sem permissão para acessar o histórico.", "error");
+        } else {
+          addToast("Erro ao carregar histórico: " + (error.message || error.code), "error");
         }
       } finally {
         setLoading(false);
@@ -942,6 +951,7 @@ export default function HistoryView({ userProfile }) {
           </div>
 
           <DataTable
+            loading={loading}
             columns={[
               {
                 key: "code",
@@ -965,17 +975,24 @@ export default function HistoryView({ userProfile }) {
                 key: "status",
                 label: "Status Atual",
                 sortable: true,
-                render: (i) => (
-                  <span
-                    className={`text-[10px] uppercase font-bold px-2 py-1 rounded border ${STATUS_CONFIG[i.status].color}`}
-                  >
-                    {STATUS_CONFIG[i.status].label}
-                  </span>
-                ),
+                render: (i) => {
+                  const cfg = STATUS_CONFIG[i.status];
+                  return cfg ? (
+                    <span
+                      className={`text-[10px] uppercase font-bold px-2 py-1 rounded border ${cfg.color}`}
+                    >
+                      {cfg.label}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] uppercase font-bold px-2 py-1 rounded border bg-slate-100 text-slate-600 border-slate-200">
+                      {i.status || "—"}
+                    </span>
+                  );
+                },
               },
             ]}
             data={history}
-            emptyMsg={loading ? "Carregando..." : "Nenhum registro encontrado."}
+            emptyMsg="Nenhum registro encontrado."
             mobileRender={(i) => (
               <div className="flex items-center gap-3">
                 <div
@@ -990,9 +1007,9 @@ export default function HistoryView({ userProfile }) {
                       {i.code}
                     </span>
                     <span
-                      className={`text-[10px] font-bold px-2 py-1 rounded uppercase border h-fit ${STATUS_CONFIG[i.status].color} shrink-0`}
+                      className={`text-[10px] font-bold px-2 py-1 rounded uppercase border h-fit ${STATUS_CONFIG[i.status]?.color || "bg-slate-100 text-slate-600 border-slate-200"} shrink-0`}
                     >
-                      {STATUS_CONFIG[i.status].label}
+                      {STATUS_CONFIG[i.status]?.label || i.status || "—"}
                     </span>
                   </div>
                   <p className="font-bold text-slate-800 dark:text-slate-200 truncate">
@@ -1059,7 +1076,7 @@ export default function HistoryView({ userProfile }) {
                     {selectedItem.code}
                   </h2>
                   <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-white text-slate-900 border border-slate-300 shadow-sm shrink-0">
-                    {STATUS_CONFIG[selectedItem.status].label}
+                    {STATUS_CONFIG[selectedItem.status]?.label || selectedItem.status}
                   </span>
                 </div>
                 <p className="opacity-80">{selectedItem.type}</p>
