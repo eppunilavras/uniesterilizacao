@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  ArrowUp, 
-  ArrowDown, 
-  ChevronLeft, 
-  ChevronRight 
+import React, { useState, useMemo } from 'react';
+import {
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import Skeleton from './Skeleton';
 
@@ -17,10 +15,8 @@ import Skeleton from './Skeleton';
  * @param {boolean} loading - Estado de carregamento
  */
 const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) => {
-    const [page, setPage] = useState(1);
     const [sortCol, setSortCol] = useState(null);
     const [sortDir, setSortDir] = useState('asc');
-    const itemsPerPage = 10;
 
     // --- LÓGICA DE ORDENAÇÃO ---
     const sortedData = useMemo(() => {
@@ -28,28 +24,21 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
         return [...data].sort((a, b) => {
             let valA = a[sortCol];
             let valB = b[sortCol];
-            
+
             // Tratamento seguro para strings (Case Insensitive)
             if(typeof valA === 'string') valA = valA.toLowerCase();
             if(typeof valB === 'string') valB = valB.toLowerCase();
-            
+
             if (valA < valB) return sortDir === 'asc' ? -1 : 1;
             if (valA > valB) return sortDir === 'asc' ? 1 : -1;
             return 0;
         });
     }, [data, sortCol, sortDir]);
 
-    // --- PAGINAÇÃO ---
-    const totalPages = Math.ceil(sortedData.length / itemsPerPage);
-    const currentData = sortedData.slice((page - 1) * itemsPerPage, page * itemsPerPage);
-
     const handleSort = (key) => {
         if (sortCol === key) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
         else { setSortCol(key); setSortDir('asc'); }
     };
-
-    // Reseta para a página 1 sempre que os dados mudam (ex: ao filtrar)
-    useEffect(() => { setPage(1); }, [data.length]);
 
     // --- RENDERIZAÇÃO DE LOADING (SKELETON) ---
     if (loading) {
@@ -107,7 +96,7 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
     }
 
     // --- RENDERIZAÇÃO DE ESTADO VAZIO ---
-    if (currentData.length === 0) {
+    if (sortedData.length === 0) {
         return (
             <div className="p-8 text-center text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl transition-colors">
                 {emptyMsg || 'Nenhum registro encontrado.'}
@@ -142,7 +131,7 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                        {currentData.map((row, i) => (
+                        {sortedData.map((row, i) => (
                             <tr key={row.id || i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
                                 {columns.map((col, idx) => (
                                     <td key={col.key || idx} className={`p-4 text-slate-700 dark:text-slate-300 ${col.className ? col.className : 'truncate max-w-[200px]'}`}>
@@ -160,7 +149,7 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
             <div className="md:hidden">
                 {mobileRender ? (
                     <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                        {currentData.map((row, i) => (
+                        {sortedData.map((row, i) => (
                             <div key={row.id || i} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors w-full max-w-full overflow-hidden">
                                 {mobileRender(row)}
                                 {actions && (
@@ -174,7 +163,7 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
                 ) : (
                     // Fallback Genérico Mobile
                     <div className="divide-y divide-slate-100 dark:divide-slate-700">
-                        {currentData.map((row, i) => (
+                        {sortedData.map((row, i) => (
                             <div key={row.id || i} className="p-4 space-y-2 w-full max-w-full overflow-hidden">
                                 {columns.map((col, idx) => (
                                     <div key={idx} className="flex justify-between items-center text-sm gap-4">
@@ -195,30 +184,6 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
                 )}
             </div>
 
-            {/* --- PAGINAÇÃO (RODAPÉ) --- */}
-            {totalPages > 1 && (
-                <div className="p-4 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                        Pág {page}/{totalPages}
-                    </span>
-                    <div className="flex gap-2">
-                        <button 
-                            disabled={page === 1} 
-                            onClick={() => setPage(p => p - 1)} 
-                            className="p-2 border border-slate-200 dark:border-slate-700 rounded hover:bg-white dark:hover:bg-slate-700 disabled:opacity-50 text-slate-600 dark:text-slate-300 transition-colors"
-                        >
-                            <ChevronLeft size={16}/>
-                        </button>
-                        <button 
-                            disabled={page === totalPages} 
-                            onClick={() => setPage(p => p + 1)} 
-                            className="p-2 border border-slate-200 dark:border-slate-700 rounded hover:bg-white dark:hover:bg-slate-700 disabled:opacity-50 text-slate-600 dark:text-slate-300 transition-colors"
-                        >
-                            <ChevronRight size={16}/>
-                        </button>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
