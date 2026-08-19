@@ -65,6 +65,8 @@ export default function HistoryView({ userProfile }) {
   const [reportStudent, setReportStudent] = useState(null);
   const [reportStart, setReportStart] = useState("");
   const [reportEnd, setReportEnd] = useState("");
+  const [studentItems, setStudentItems] = useState([]);
+  const [loadingStudentItems, setLoadingStudentItems] = useState(false);
 
   // --- ESTADOS DO RELATÓRIO TÉCNICO ---
   const [techSearch, setTechSearch] = useState("");
@@ -144,6 +146,29 @@ export default function HistoryView({ userProfile }) {
     }, 500);
     return () => clearTimeout(timer);
   }, [reportSearch, mode]);
+
+  // Carrega TODOS os itens do aluno selecionado (sem limit — busca por UID)
+  useEffect(() => {
+    if (!reportStudent) { setStudentItems([]); return; }
+    setLoadingStudentItems(true);
+    const fetchItems = async () => {
+      try {
+        const q = query(
+          collection(db, "artifacts", appId, "public", "data", "items"),
+          where("studentId", "==", reportStudent.uid),
+          orderBy("createdAt", "desc"),
+        );
+        const snap = await getDocs(q);
+        setStudentItems(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.error("Erro ao buscar itens do aluno:", e);
+        addToast("Erro ao carregar itens do aluno.", "error");
+      } finally {
+        setLoadingStudentItems(false);
+      }
+    };
+    fetchItems();
+  }, [reportStudent]);
 
   const generateStudentPDF = async () => {
     if (!reportStudent || !reportStart || !reportEnd) {
@@ -872,6 +897,55 @@ export default function HistoryView({ userProfile }) {
                   )}{" "}
                   {generatingReport ? "Gerando PDF..." : "Gerar Relatório"}
                 </button>
+
+                {/* Lista interativa de todos os itens do aluno */}
+                {reportStudent && (
+                  <div className="mt-6 border-t border-slate-100 dark:border-slate-700 pt-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-bold text-sm text-slate-700 dark:text-slate-300 uppercase tracking-wide flex items-center gap-2">
+                        <History size={14} className="text-[#009DE0]" />
+                        Todos os Itens — {reportStudent.name}
+                      </h4>
+                      {!loadingStudentItems && (
+                        <span className="text-xs text-slate-400 font-bold">{studentItems.length} registro{studentItems.length !== 1 ? "s" : ""}</span>
+                      )}
+                    </div>
+
+                    {loadingStudentItems ? (
+                      <div className="flex items-center justify-center py-8 gap-2 text-slate-400 text-sm">
+                        <Loader2 className="animate-spin w-4 h-4" /> Carregando todos os itens...
+                      </div>
+                    ) : studentItems.length === 0 ? (
+                      <p className="text-center text-slate-400 text-sm py-6">Nenhum item encontrado para este aluno.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+                        {studentItems.map((item) => {
+                          const cfg = STATUS_CONFIG[item.status];
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => { setSelectedItem(item); setMode("details"); }}
+                              className="w-full text-left p-3 rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 hover:border-[#009DE0] hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all group"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-mono font-bold text-[#009DE0] text-sm">{item.code}</span>
+                                {cfg ? (
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${cfg.color} shrink-0`}>{cfg.label}</span>
+                                ) : (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-slate-100 text-slate-600 border-slate-200 shrink-0">{item.status}</span>
+                                )}
+                              </div>
+                              <div className="flex items-center justify-between mt-1">
+                                <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">{item.type}</span>
+                                <span className="text-xs text-slate-400">{formatDate(item.createdAt)}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
