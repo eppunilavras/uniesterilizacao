@@ -11,8 +11,6 @@ import {
   X,
   CheckCircle2,
   Printer,
-  ChevronLeft,
-  ChevronRight,
   Trash2,
   Monitor,
   Loader2,
@@ -94,10 +92,6 @@ export default function Reception({ userProfile }) {
   const [createdItems, setCreatedItems] = useState([]);
 
   const [itemSearch, setItemSearch] = useState("");
-  const [itemPage, setItemPage] = useState(0);
-  const [itemsPerPage, setItemsPerPage] = useState(
-    window.innerWidth < 768 ? 6 : 15,
-  );
   const [isMobileBlock, setIsMobileBlock] = useState(window.innerWidth < 768);
 
   const { addToast } = useToast();
@@ -105,18 +99,10 @@ export default function Reception({ userProfile }) {
   const { printItems } = usePrint();
 
   useEffect(() => {
-    const handleResize = () => {
-      const width = window.innerWidth;
-      setItemsPerPage(width < 768 ? 6 : 15);
-      setIsMobileBlock(width < 768);
-    };
+    const handleResize = () => setIsMobileBlock(window.innerWidth < 768);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-
-  useEffect(() => {
-    setItemPage(0);
-  }, [itemSearch, itemsPerPage]);
 
   const handleManualRefreshStudents = async () => {
     if (!isOnline) {
@@ -143,15 +129,6 @@ export default function Reception({ userProfile }) {
   const filteredTypes = types.filter((t) =>
     t.name.toLowerCase().includes(itemSearch.toLowerCase()),
   );
-  const totalItemPages = Math.ceil(filteredTypes.length / itemsPerPage);
-  const visibleTypes = filteredTypes.slice(
-    itemPage * itemsPerPage,
-    (itemPage + 1) * itemsPerPage,
-  );
-
-  const nextPage = () => setItemPage((p) => (p + 1) % totalItemPages);
-  const prevPage = () =>
-    setItemPage((p) => (p - 1 + totalItemPages) % totalItemPages);
 
   const handleChangeStudent = async () => {
     if (cart.length > 0) {
@@ -504,7 +481,7 @@ export default function Reception({ userProfile }) {
               </h3>
 
               <div className="flex items-center gap-2 flex-1 justify-end">
-                {types.length > itemsPerPage && (
+                {types.length > 0 && (
                   <div className="relative w-full max-w-[200px]">
                     <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
                     <input
@@ -526,7 +503,7 @@ export default function Reception({ userProfile }) {
               </div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 min-h-[300px]">
-              {visibleTypes.map((t) => {
+              {filteredTypes.map((t) => {
                 const count = cart.filter((c) => c.id === t.id).length;
                 const isSelected = count > 0;
                 return (
@@ -559,30 +536,6 @@ export default function Reception({ userProfile }) {
                 );
               })}
             </div>
-            {totalItemPages > 1 && (
-              <div className="flex items-center justify-between mt-4 bg-slate-50 dark:bg-slate-900 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
-                <button
-                  onClick={prevPage}
-                  className="p-2 rounded hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
-                >
-                  <ChevronLeft />
-                </button>
-                <div className="flex gap-1">
-                  {Array.from({ length: totalItemPages }).map((_, idx) => (
-                    <div
-                      key={idx}
-                      className={`w-2 h-2 rounded-full ${idx === itemPage ? "bg-[#009DE0]" : "bg-slate-300 dark:bg-slate-700"}`}
-                    />
-                  ))}
-                </div>
-                <button
-                  onClick={nextPage}
-                  className="p-2 rounded hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400"
-                >
-                  <ChevronRight />
-                </button>
-              </div>
-            )}
           </div>
         </div>
 
