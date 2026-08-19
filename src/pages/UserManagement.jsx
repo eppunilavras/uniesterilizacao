@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import * as XLSX from "xlsx";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getAuth,
@@ -38,6 +39,9 @@ import {
   Users,
   Eye,
   EyeOff,
+  GraduationCap,
+  RefreshCw,
+  MinusCircle,
 } from "lucide-react";
 
 import { useForm } from "react-hook-form";
@@ -56,7 +60,7 @@ import DataTable from "../components/DataTable";
 const userSchema = z.object({
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
   email: z.string().email("Email inválido"),
-  cpf: z.string().min(14, "CPF incompleto"),
+  cpf: z.string().refine((v) => v === "" || v.replace(/\D/g, "").length === 11, { message: "CPF incompleto" }),
   role: z.enum(["student", "tech", "admin"]),
   active: z.boolean(),
   password: z.string().optional(),
@@ -104,6 +108,13 @@ export default function UserManagement({ userProfile }) {
   const [selectedImportIndices, setSelectedImportIndices] = useState(new Set());
   const [importStats, setImportStats] = useState({ ignored: 0 });
   const fileInputRef = useRef(null);
+
+  // --- Importação simplificada de alunos (CPF + Nome) ---
+  const [showStudentImportModal, setShowStudentImportModal] = useState(false);
+  const [studentImportPreview, setStudentImportPreview] = useState([]);
+  const [importingStudents, setImportingStudents] = useState(false);
+  const [studentImportProgress, setStudentImportProgress] = useState(0);
+  const studentFileInputRef = useRef(null);
 
   const { addToast } = useToast();
   const { confirm, alert } = useDialog();
@@ -761,6 +772,239 @@ export default function UserManagement({ userProfile }) {
     fetchUsers(search);
   };
 
+  // --- Importação de Alunos por Planilha (CPF + Nome) ---
+
+  const handleStudentFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = "";
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const wb = XLSX.read(evt.target.result, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+
+        if (rows.length < 2) {
+          addToast("Planilha vazia ou sem dados.", "error");
+          return;
+        }
+
+        // Detecta índices das colunas CPF e Nome (tolerante a cabeçalho)
+        const header = rows[0].map((h) => String(h).toLowerCase().trim());
+        const cpfIdx = header.findIndex((h) => h.includes("cpf"));
+        const nameIdx = header.findIndex(
+          (h) => h.includes("nome") || h.includes("name"),
+        );
+
+        if (cpfIdx === -1 || nameIdx === -1) {
+          addToast(
+            'Cabeçalho inválido. Planilha deve ter colunas "CPF" e "Nome".',
+            "error",
+          );
+          return;
+        }
+
+        const parsed = [];
+        const invalid = [];
+        rows.slice(1).forEach((row, i) => {
+          const rawCpf = String(row[cpfIdx] ?? "").trim();
+          const name = String(row[nameIdx] ?? "").trim();
+          const cpf = rawCpf.replace(/\D/g, "");
+
+          if (!cpf && !name) return; // linha em branco
+
+          if (cpf.length !== 11) {
+            invalid.push(`Linha ${i + 2}: CPF inválido (${rawCpf || "vazio"})`);
+            return;
+          }
+          if (name.length < 3) {
+            invalid.push(`Linha ${i + 2}: Nome inválido ("${name}")`);
+            return;
+          }
+
+          parsed.push({ id: i, cpf, name });
+        });
+
+        if (parsed.length === 0) {
+          addToast(
+            `Nenhuma linha válida encontrada.${invalid.length ? ` ${invalid.length} linha(s) ignoradas.` : ""}`,
+            "error",
+          );
+          return;
+        }
+
+        if (invalid.length > 0) {
+          console.warn("Linhas ignoradas na planilha:", invalid);
+          addToast(
+            `${invalid.length} linha(s) inválida(s) ignoradas. ${parsed.length} válidas.`,
+            "warning",
+          );
+        }
+
+        setStudentImportPreview(parsed);
+        setShowStudentImportModal(true);
+      } catch (err) {
+        console.error("Erro ao ler planilha:", err);
+        addToast("Erro ao ler o arquivo. Verifique o formato.", "error");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  const executeStudentImport = async () => {
+    if (studentImportPreview.length === 0) return;
+    setImportingStudents(true);
+    setStudentImportProgress(0);
+
+    try {
+      // 1. Carrega todo o users_directory para checar CPFs localmente
+      const dirSnap = await getDocs(
+        collection(db, "artifacts", appId, "public", "data", "users_directory"),
+      );
+      // Mapa: cpf (11 dígitos) → { uid, name }
+      const cpfMap = new Map();
+      dirSnap.forEach((d) => {
+        const data = d.data();
+        const cpf = (data.cpf || "").replace(/\D/g, "");
+        if (cpf.length === 11) cpfMap.set(cpf, { uid: d.id, name: data.name || "" });
+      });
+
+      let created = 0;
+      let updated = 0;
+      let ignored = 0;
+      let errors = 0;
+      const errorList = [];
+
+      // 2. Determina ação para cada entrada
+      const toProcess = studentImportPreview.map((entry) => {
+        const existing = cpfMap.get(entry.cpf);
+        if (!existing) return { ...entry, action: "create" };
+        const normalize = (s) =>
+          (s || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+        if (normalize(existing.name) === normalize(entry.name))
+          return { ...entry, action: "ignore", existingUid: existing.uid };
+        return { ...entry, action: "update", existingUid: existing.uid };
+      });
+
+      // 3. Processa em lotes de 200 ops (cada entrada = 2 writes)
+      const BATCH_SIZE = 100; // 100 entradas = até 200 writes por batch
+      const chunks = [];
+      for (let i = 0; i < toProcess.length; i += BATCH_SIZE)
+        chunks.push(toProcess.slice(i, i + BATCH_SIZE));
+
+      for (const chunk of chunks) {
+        const batch = writeBatch(db);
+        let opsInBatch = 0;
+
+        for (const entry of chunk) {
+          if (entry.action === "ignore") {
+            ignored++;
+            continue;
+          }
+
+          try {
+            if (entry.action === "create") {
+              const uid = crypto.randomUUID();
+              const data = {
+                name: entry.name,
+                cpf: entry.cpf,
+                email: "",
+                role: "student",
+                active: true,
+                createdAt: serverTimestamp(),
+              };
+              batch.set(
+                doc(db, "artifacts", appId, "users", uid, "profile", "data"),
+                data,
+              );
+              batch.set(
+                doc(db, "artifacts", appId, "public", "data", "users_directory", uid),
+                data,
+              );
+              opsInBatch += 2;
+              created++;
+            } else {
+              // update: apenas o nome
+              const nameUpdate = { name: entry.name };
+              batch.update(
+                doc(db, "artifacts", appId, "users", entry.existingUid, "profile", "data"),
+                nameUpdate,
+              );
+              batch.update(
+                doc(db, "artifacts", appId, "public", "data", "users_directory", entry.existingUid),
+                nameUpdate,
+              );
+              opsInBatch += 2;
+              updated++;
+            }
+          } catch (err) {
+            errors++;
+            errorList.push(`${entry.name}: ${err.message}`);
+          }
+        }
+
+        if (opsInBatch > 0) await batch.commit();
+        setStudentImportProgress(
+          Math.round(((chunks.indexOf(chunk) + 1) / chunks.length) * 100),
+        );
+      }
+
+      // 4. Invalida cache de alunos
+      if (created > 0 || updated > 0) {
+        await queryClient.invalidateQueries({
+          queryKey: ["students_full_directory_v2"],
+        });
+        await logEvent(
+          "USER_MGMT",
+          `Importação de alunos por planilha: ${created} criados, ${updated} atualizados`,
+          { created, updated, ignored, errors, executor: userProfile.email },
+        );
+      }
+
+      setImportingStudents(false);
+      setShowStudentImportModal(false);
+      setStudentImportPreview([]);
+
+      await alert({
+        title: "Importação Concluída",
+        message: (
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="flex flex-col items-center bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900 rounded-lg p-3 text-green-700 dark:text-green-400">
+                <CheckCircle2 size={20} className="mb-1" />
+                <span className="font-bold text-xl">{created}</span>
+                <span className="text-[10px] uppercase font-bold">Criados</span>
+              </div>
+              <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900 rounded-lg p-3 text-blue-700 dark:text-blue-400">
+                <RefreshCw size={20} className="mb-1" />
+                <span className="font-bold text-xl">{updated}</span>
+                <span className="text-[10px] uppercase font-bold">Atualizados</span>
+              </div>
+              <div className="flex flex-col items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-500 dark:text-slate-400">
+                <MinusCircle size={20} className="mb-1" />
+                <span className="font-bold text-xl">{ignored}</span>
+                <span className="text-[10px] uppercase font-bold">Ignorados</span>
+              </div>
+            </div>
+            {errors > 0 && (
+              <p className="text-xs text-red-600 dark:text-red-400">
+                {errors} erro(s) durante o processamento. Verifique o console.
+              </p>
+            )}
+          </div>
+        ),
+      });
+
+      fetchUsers(search);
+    } catch (err) {
+      console.error("Erro na importação de alunos:", err);
+      addToast("Erro ao processar importação.", "error");
+      setImportingStudents(false);
+    }
+  };
+
   const toggleSelect = (id) => {
     const newSet = new Set(selectedImportIndices);
     if (newSet.has(id)) newSet.delete(id);
@@ -781,6 +1025,24 @@ export default function UserManagement({ userProfile }) {
         </h2>
 
         <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+          {/* Importação simplificada de alunos — admin only */}
+          {userProfile.role === "admin" && (
+            <div className="relative">
+              <input
+                type="file"
+                accept=".xlsx,.csv"
+                className="hidden"
+                ref={studentFileInputRef}
+                onChange={handleStudentFileSelect}
+              />
+              <button
+                onClick={() => studentFileInputRef.current?.click()}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-[#009DE0] text-white hover:bg-[#007ab5] transition-colors shadow-sm"
+              >
+                <GraduationCap size={16} /> Importar Alunos
+              </button>
+            </div>
+          )}
           <div className="relative">
             <input
               type="file"
@@ -821,6 +1083,101 @@ export default function UserManagement({ userProfile }) {
         <div className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700 mb-2 flex items-center gap-2 transition-colors">
           <Upload size={12} /> Formato CSV:{" "}
           <strong>Nome, Email, CPF, Perfil (Aluno/Técnico/Admin), Senha</strong>
+        </div>
+      )}
+
+      {/* Modal: Importação de Alunos por Planilha */}
+      {showStudentImportModal && (
+        <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 border dark:border-slate-700 transition-colors">
+            {/* Header */}
+            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-start">
+              <div>
+                <h3 className="text-xl font-bold text-[#021D34] dark:text-white flex items-center gap-2">
+                  <GraduationCap size={22} className="text-[#009DE0]" />
+                  Importar Alunos
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  {studentImportPreview.length} aluno(s) encontrado(s) na planilha.
+                  Novos CPFs serão criados; CPFs existentes com nome diferente terão o nome atualizado.
+                </p>
+              </div>
+              <button
+                onClick={() => { setShowStudentImportModal(false); setStudentImportPreview([]); }}
+                disabled={importingStudents}
+                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-500 dark:text-slate-300 disabled:opacity-50"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Preview */}
+            <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-white dark:bg-slate-800 sticky top-0 z-10 shadow-sm text-slate-600 dark:text-slate-300">
+                  <tr>
+                    <th className="p-4 font-bold">#</th>
+                    <th className="p-4 font-bold">Nome Completo</th>
+                    <th className="p-4 font-bold">CPF</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                  {studentImportPreview.map((item, idx) => (
+                    <tr key={item.id} className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+                      <td className="p-4 text-slate-400 dark:text-slate-500 text-xs font-mono">
+                        {idx + 1}
+                      </td>
+                      <td className="p-4 font-medium text-[#021D34] dark:text-white">
+                        {item.name}
+                      </td>
+                      <td className="p-4 text-slate-500 dark:text-slate-400 font-mono text-xs">
+                        {maskCPF(item.cpf)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Barra de progresso (visível durante processamento) */}
+            {importingStudents && (
+              <div className="px-6 py-2 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700">
+                <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+                  <Loader2 size={14} className="animate-spin shrink-0" />
+                  <span>Processando... {studentImportProgress}%</span>
+                  <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
+                    <div
+                      className="bg-[#009DE0] h-1.5 rounded-full transition-all duration-300"
+                      style={{ width: `${studentImportProgress}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 flex justify-end gap-3 rounded-b-2xl transition-colors">
+              <button
+                onClick={() => { setShowStudentImportModal(false); setStudentImportPreview([]); }}
+                disabled={importingStudents}
+                className="px-6 py-3 border border-slate-200 dark:border-slate-600 rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={executeStudentImport}
+                disabled={importingStudents || studentImportPreview.length === 0}
+                className="px-6 py-3 bg-[#021D34] text-white rounded-xl font-bold hover:bg-[#009DE0] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors shadow-lg shadow-blue-900/20"
+              >
+                {importingStudents ? (
+                  <Loader2 className="animate-spin w-5 h-5" />
+                ) : (
+                  <GraduationCap size={18} />
+                )}
+                {importingStudents ? "Processando..." : "Confirmar Importação"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
