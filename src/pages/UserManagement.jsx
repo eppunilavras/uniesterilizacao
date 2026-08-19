@@ -260,6 +260,10 @@ export default function UserManagement({ userProfile }) {
   }, [search, filterRole, showInactive]);
 
   const onSubmit = async (data) => {
+    if (!editing && userProfile.role !== "admin") {
+      addToast("Sem permissão para criar utilizadores.", "error");
+      return;
+    }
     if (!editing && (!data.password || data.password.length < 6)) {
       addToast(
         "A senha deve ter no mínimo 6 caracteres para novos utilizadores.",
@@ -1043,21 +1047,23 @@ export default function UserManagement({ userProfile }) {
               </button>
             </div>
           )}
-          <div className="relative">
-            <input
-              type="file"
-              accept=".csv"
-              className="hidden"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-green-600 text-white hover:bg-green-700 transition-colors shadow-sm"
-            >
-              <FileUp size={16} /> Importar CSV
-            </button>
-          </div>
+          {userProfile.role === "admin" && (
+            <div className="relative">
+              <input
+                type="file"
+                accept=".csv"
+                className="hidden"
+                ref={fileInputRef}
+                onChange={handleFileSelect}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-green-600 text-white hover:bg-green-700 transition-colors shadow-sm"
+              >
+                <FileUp size={16} /> Importar CSV
+              </button>
+            </div>
+          )}
           <div className="flex gap-2 w-full sm:w-auto">
             <button
               onClick={() => {
@@ -1069,12 +1075,14 @@ export default function UserManagement({ userProfile }) {
             >
               Listar
             </button>
-            <button
-              onClick={handleNewClick}
-              className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === "form" ? "bg-[#021D34] text-white shadow-sm" : "bg-white dark:bg-slate-800 dark:text-slate-200 border dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
-            >
-              Novo
-            </button>
+            {userProfile.role === "admin" && (
+              <button
+                onClick={handleNewClick}
+                className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === "form" ? "bg-[#021D34] text-white shadow-sm" : "bg-white dark:bg-slate-800 dark:text-slate-200 border dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
+              >
+                Novo
+              </button>
+            )}
           </div>
         </div>
       </div>
