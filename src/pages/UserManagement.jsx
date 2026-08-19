@@ -155,40 +155,44 @@ export default function UserManagement({ userProfile }) {
         "data",
         "users_directory",
       );
-      const constraints = [];
 
-      if (filterRole !== "all")
-        constraints.push(where("role", "==", filterRole));
+      if (searchTerm.length >= 2) {
+        // Busca local: carrega todos e filtra no cliente.
+        // Resolve case-sensitivity, acentos e posição do termo no nome.
+        const snapAll = await getDocs(usersRef);
+        const allUsers = snapAll.docs.map((d) => ({ uid: d.id, ...d.data() }));
 
-      if (!showInactive) {
-        constraints.push(where("active", "==", true));
-      }
+        const normalize = (s) =>
+          (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const term = normalize(searchTerm);
+        const isNumeric = /^\d+$/.test(searchTerm.replace(/\D/g, ""));
 
-      if (searchTerm.length > 2) {
-        const term = formatSearchTerm(searchTerm);
-        const isNumeric = /^\d+$/.test(term);
-        if (isNumeric) {
-          constraints.push(orderBy("cpf"));
-          constraints.push(startAt(term));
-          constraints.push(endAt(term + "\uf8ff"));
-        } else {
-          constraints.push(orderBy("name"));
-          constraints.push(startAt(term));
-          constraints.push(endAt(term + "\uf8ff"));
-        }
-        constraints.push(limit(20));
+        const filtered = allUsers.filter((u) => {
+          if (filterRole !== "all" && u.role !== filterRole) return false;
+          if (!showInactive && u.active === false) return false;
+          if (isNumeric) {
+            return (u.cpf || "").replace(/\D/g, "").includes(searchTerm.replace(/\D/g, ""));
+          }
+          return normalize(u.name).includes(term) || normalize(u.email).includes(term);
+        });
+
+        // Ordena por nome para resultado consistente
+        filtered.sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR"));
+        setUsers(filtered);
+        setHasMore(false);
       } else {
+        const constraints = [];
+        if (filterRole !== "all") constraints.push(where("role", "==", filterRole));
+        if (!showInactive) constraints.push(where("active", "==", true));
         constraints.push(orderBy("createdAt", "desc"));
         constraints.push(limit(20));
+
+        const q = query(usersRef, ...constraints);
+        const snapshot = await getDocs(q);
+        setUsers(snapshot.docs.map((d) => ({ uid: d.id, ...d.data() })));
+        setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+        if (snapshot.docs.length < 20) setHasMore(false);
       }
-
-      const q = query(usersRef, ...constraints);
-      const snapshot = await getDocs(q);
-      setUsers(snapshot.docs.map((d) => ({ uid: d.id, ...d.data() })));
-      setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-
-      if (snapshot.docs.length < 20) setHasMore(false);
-      if (searchTerm.length > 2) setHasMore(false);
     } catch (error) {
       console.error("Erro utilizadores:", error);
       if (error.code === "failed-precondition") {
