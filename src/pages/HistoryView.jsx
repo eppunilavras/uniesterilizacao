@@ -99,53 +99,40 @@ export default function HistoryView({ userProfile }) {
 
   // =================================================================================
   // 1. LÓGICA DE RELATÓRIO POR ALUNO
+  // Carrega TODOS os alunos do directory uma vez e filtra localmente.
+  // Resolve case-sensitivity, acentos e busca por qualquer parte do nome.
   // =================================================================================
+  const [allStudentsDir, setAllStudentsDir] = useState([]);
   useEffect(() => {
     if (mode !== "student_report") return;
-    const timer = setTimeout(async () => {
-      if (reportSearch.length < 3) {
-        setReportResults([]);
-        return;
-      }
+    if (allStudentsDir.length > 0) return;
+    const fetchAll = async () => {
       try {
-        const usersRef = collection(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "users_directory",
+        const snap = await getDocs(
+          query(
+            collection(db, "artifacts", appId, "public", "data", "users_directory"),
+            where("role", "==", "student"),
+          )
         );
-        const term = formatSearchTerm(reportSearch);
-        let q;
-
-        if (/^\d+$/.test(term)) {
-          q = query(
-            usersRef,
-            where("role", "==", "student"),
-            orderBy("cpf"),
-            startAt(term),
-            endAt(term + "\uf8ff"),
-            limit(5),
-          );
-        } else {
-          q = query(
-            usersRef,
-            where("role", "==", "student"),
-            orderBy("name"),
-            startAt(term),
-            endAt(term + "\uf8ff"),
-            limit(5),
-          );
-        }
-        const snap = await getDocs(q);
-        setReportResults(snap.docs.map((d) => ({ uid: d.id, ...d.data() })));
+        setAllStudentsDir(snap.docs.map((d) => ({ uid: d.id, ...d.data() })));
       } catch (e) {
-        console.error(e);
+        console.error("Erro ao carregar diretório:", e);
       }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [reportSearch, mode]);
+    };
+    fetchAll();
+  }, [mode]);
+
+  useEffect(() => {
+    if (reportSearch.length < 2) { setReportResults([]); return; }
+    const normalize = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const term = normalize(reportSearch);
+    const results = allStudentsDir.filter((s) => {
+      const name = normalize(s.name);
+      const cpf = (s.cpf || "").replace(/\D/g, "");
+      return name.includes(term) || cpf.includes(term);
+    }).slice(0, 8);
+    setReportResults(results);
+  }, [reportSearch, allStudentsDir]);
 
   // Carrega TODOS os itens do aluno selecionado (sem limit — busca por UID)
   useEffect(() => {
