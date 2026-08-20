@@ -43,11 +43,11 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
     // --- RENDERIZAÇÃO DE LOADING (SKELETON) ---
     if (loading) {
         return (
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden w-full max-w-full transition-colors">
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden w-full max-w-full transition-colors">
                 {/* Desktop Skeleton */}
                 <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-sm text-left table-fixed">
-                        <thead className="bg-[#021D34] dark:bg-slate-950 text-white">
+                        <thead className="bg-[#021D34] text-white">
                             <tr>
                                 {columns.map((col, idx) => (
                                     <th key={col.key || idx} className="p-4 font-semibold">
@@ -57,7 +57,7 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
                                 {actions && <th className="p-4 text-center w-32">Ações</th>}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        <tbody className="divide-y divide-slate-100">
                             {[...Array(5)].map((_, i) => (
                                 <tr key={i}>
                                     {columns.map((_, cIdx) => (
@@ -79,7 +79,7 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
                 </div>
 
                 {/* Mobile Skeleton */}
-                <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-700">
+                <div className="md:hidden divide-y divide-slate-100">
                     {[...Array(5)].map((_, i) => (
                         <div key={i} className="p-4 space-y-3">
                             <div className="flex justify-between gap-4">
@@ -98,19 +98,19 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
     // --- RENDERIZAÇÃO DE ESTADO VAZIO ---
     if (sortedData.length === 0) {
         return (
-            <div className="p-8 text-center text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl transition-colors">
+            <div className="p-8 text-center text-slate-400 bg-white border border-slate-200 rounded-xl transition-colors">
                 {emptyMsg || 'Nenhum registro encontrado.'}
             </div>
         );
     }
 
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden w-full max-w-full transition-colors">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden w-full max-w-full transition-colors">
             
             {/* --- VISÃO DESKTOP (TABELA TRADICIONAL) --- */}
             <div className={`hidden md:block overflow-x-auto`}>
                 <table className="w-full text-sm text-left table-fixed">
-                    <thead className="bg-[#021D34] dark:bg-slate-950 text-white">
+                    <thead className="bg-[#021D34] text-white">
                         <tr>
                             {columns.map((col, idx) => (
                                 <th 
@@ -130,11 +130,11 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
                             {actions && <th className="p-4 text-center w-32">Ações</th>}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                    <tbody className="divide-y divide-slate-100">
                         {sortedData.map((row, i) => (
-                            <tr key={row.id || i} className="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors">
+                            <tr key={row.id || i} className="hover:bg-slate-50 transition-colors">
                                 {columns.map((col, idx) => (
-                                    <td key={col.key || idx} className={`p-4 text-slate-700 dark:text-slate-300 ${col.className ? col.className : 'truncate max-w-[200px]'}`}>
+                                    <td key={col.key || idx} className={`p-4 text-slate-700 ${col.className ? col.className : 'truncate max-w-[200px]'}`}>
                                         {col.render ? col.render(row) : row[col.key]}
                                     </td>
                                 ))}
@@ -148,12 +148,12 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
             {/* --- VISÃO MOBILE (LISTA DE CARDS) --- */}
             <div className="md:hidden">
                 {mobileRender ? (
-                    <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                    <div className="divide-y divide-slate-100">
                         {sortedData.map((row, i) => (
-                            <div key={row.id || i} className="p-4 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors w-full max-w-full overflow-hidden">
+                            <div key={row.id || i} className="p-4 hover:bg-slate-50 transition-colors w-full max-w-full overflow-hidden">
                                 {mobileRender(row)}
                                 {actions && (
-                                    <div className="mt-3 pt-2 border-t border-slate-100 dark:border-slate-700 flex justify-end gap-2">
+                                    <div className="mt-3 pt-2 border-t border-slate-100 flex justify-end gap-2">
                                         {actions(row)}
                                     </div>
                                 )}
@@ -162,19 +162,19 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
                     </div>
                 ) : (
                     // Fallback Genérico Mobile
-                    <div className="divide-y divide-slate-100 dark:divide-slate-700">
+                    <div className="divide-y divide-slate-100">
                         {sortedData.map((row, i) => (
                             <div key={row.id || i} className="p-4 space-y-2 w-full max-w-full overflow-hidden">
                                 {columns.map((col, idx) => (
                                     <div key={idx} className="flex justify-between items-center text-sm gap-4">
-                                        <span className="font-bold text-slate-500 dark:text-slate-400 shrink-0">{col.label}</span>
-                                        <div className="text-right truncate min-w-0 flex-1 text-slate-700 dark:text-slate-200">
+                                        <span className="font-bold text-slate-500 shrink-0">{col.label}</span>
+                                        <div className="text-right truncate min-w-0 flex-1 text-slate-700">
                                             {col.render ? col.render(row) : row[col.key]}
                                         </div>
                                     </div>
                                 ))}
                                 {actions && (
-                                    <div className="flex justify-end pt-2 mt-2 border-t border-slate-100 dark:border-slate-700 gap-2">
+                                    <div className="flex justify-end pt-2 mt-2 border-t border-slate-100 gap-2">
                                         {actions(row)}
                                     </div>
                                 )}

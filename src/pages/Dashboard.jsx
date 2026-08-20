@@ -109,17 +109,17 @@ export default function Dashboard({ userProfile }) {
       {/* Header e Filtros */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
-          <h2 className="text-2xl md:text-3xl font-bold text-[#021D34] dark:text-white transition-colors">
+          <h2 className="text-2xl md:text-3xl font-bold text-[#021D34] transition-colors">
             Olá, {userProfile.name.split(" ")[0]}
           </h2>
-          <p className="text-slate-500 dark:text-slate-400 flex items-center gap-2 text-sm md:text-base">
+          <p className="text-slate-500 flex items-center gap-2 text-sm md:text-base">
             <Activity size={16} /> Visão geral da central.
             {!isLoading && stats && (
               <span
                 className={`text-xs ml-2 border-l pl-2 flex items-center gap-1 transition-colors ${
                   isDataStale
                     ? "text-orange-500 font-bold animate-pulse" // Aviso visual se estiver desatualizado
-                    : "text-slate-400 dark:text-slate-500 border-slate-300 dark:border-slate-700"
+                    : "text-slate-400 border-slate-300"
                 }`}
               >
                 {isDataStale && <AlertCircle size={12} />}
@@ -135,11 +135,11 @@ export default function Dashboard({ userProfile }) {
         </div>
 
         {/* Barra de Filtros - Adaptada Dark Mode */}
-        <div className="flex flex-col sm:flex-row gap-2 bg-white dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm w-full md:w-auto items-center transition-colors">
+        <div className="flex flex-col sm:flex-row gap-2 bg-white p-2 rounded-lg border border-slate-200 shadow-sm w-full md:w-auto items-center transition-colors">
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            className="p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-sm outline-none focus:border-[#009DE0] dark:focus:border-[#009DE0] font-medium text-slate-700 dark:text-slate-200 w-full md:w-auto transition-colors"
+            className="p-2 bg-slate-50 border border-slate-200 rounded text-sm outline-none focus:border-[#009DE0]] font-medium text-slate-700 w-full md:w-auto transition-colors"
           >
             <option value="7d">Últimos 7 dias</option>
             <option value="30d">Últimos 30 dias</option>
@@ -153,13 +153,13 @@ export default function Dashboard({ userProfile }) {
                 type="date"
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
-                className="p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-sm w-full text-slate-700 dark:text-slate-200 outline-none focus:border-[#009DE0]"
+                className="p-2 bg-slate-50 border border-slate-200 rounded text-sm w-full text-slate-700 outline-none focus:border-[#009DE0]"
               />
               <input
                 type="date"
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
-                className="p-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded text-sm w-full text-slate-700 dark:text-slate-200 outline-none focus:border-[#009DE0]"
+                className="p-2 bg-slate-50 border border-slate-200 rounded text-sm w-full text-slate-700 outline-none focus:border-[#009DE0]"
               />
             </div>
           )}
@@ -167,7 +167,7 @@ export default function Dashboard({ userProfile }) {
           <button
             onClick={() => refetch()}
             disabled={isLoading || isRefetching}
-            className={`p-2 rounded text-white transition-all disabled:opacity-50 ${isRefetching ? "bg-[#009DE0] ring-2 ring-blue-200 dark:ring-blue-900" : "bg-[#021D34] dark:bg-slate-700 hover:bg-[#009DE0] dark:hover:bg-[#009DE0]"}`}
+            className={`p-2 rounded text-white transition-all disabled:opacity-50 ${isRefetching ? "bg-[#009DE0] ring-2 ring-blue-200" : "bg-[#021D34] hover:bg-[#009DE0]]"}`}
             title="Atualizar Dados Agora"
           >
             {isLoading || isRefetching ? (
@@ -185,7 +185,7 @@ export default function Dashboard({ userProfile }) {
           {anns.map((a) => (
             <div
               key={a.id}
-              className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm hover:shadow-md transition-all group relative flex flex-col h-full"
+              className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all group relative flex flex-col h-full"
             >
               {a.imageUrl ? (
                 <div className="h-32 overflow-hidden relative shrink-0">
@@ -203,16 +203,16 @@ export default function Dashboard({ userProfile }) {
                 <div className="h-2 bg-[#009DE0] w-full shrink-0" />
               )}
               <div className="p-4 md:p-5 flex-1 flex flex-col">
-                <h4 className="font-bold text-[#021D34] dark:text-white text-lg mb-2">
+                <h4 className="font-bold text-[#021D34] text-lg mb-2">
                   {a.title}
                 </h4>
-                <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-3 whitespace-pre-wrap mb-2">
+                <p className="text-sm text-slate-600 line-clamp-3 whitespace-pre-wrap mb-2">
                   {a.content}
                 </p>
 
                 {userProfile.role === "admin" &&
                   (a.validUntil || a.validFrom) && (
-                    <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-700 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                    <div className="mt-auto pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-slate-400">
                       <Clock size={12} />
                       <span>
                         {a.validFrom
@@ -237,7 +237,7 @@ export default function Dashboard({ userProfile }) {
           [...Array(4)].map((_, i) => (
             <div
               key={i}
-              className="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm animate-pulse"
+              className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm animate-pulse"
             >
               <div className="flex justify-between items-start mb-4">
                 <Skeleton className="w-12 h-12 rounded-xl" />
@@ -252,29 +252,29 @@ export default function Dashboard({ userProfile }) {
               title="Recebidos"
               count={safeStats.current.rec}
               icon={Clock}
-              color="text-slate-600 dark:text-slate-300"
-              bg="bg-slate-100 dark:bg-slate-700/50"
+              color="text-slate-600"
+              bg="bg-slate-100"
             />
             <StatCard
               title="Em Processo"
               count={safeStats.current.em}
               icon={AlertCircle}
-              color="text-orange-600 dark:text-orange-400"
-              bg="bg-orange-50 dark:bg-orange-900/20"
+              color="text-orange-600"
+              bg="bg-orange-50"
             />
             <StatCard
               title="Prontos"
               count={safeStats.current.pront}
               icon={CheckCircle2}
-              color="text-green-600 dark:text-green-400"
-              bg="bg-green-50 dark:bg-green-900/20"
+              color="text-green-600"
+              bg="bg-green-50"
             />
             <StatCard
               title="Retirados"
               count={safeStats.current.ret}
               icon={CheckSquare}
-              color="text-[#009DE0] dark:text-sky-400"
-              bg="bg-blue-50 dark:bg-sky-900/20"
+              color="text-[#009DE0]"
+              bg="bg-blue-50"
             />
           </>
         )}
@@ -282,8 +282,8 @@ export default function Dashboard({ userProfile }) {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* AreaChart Container */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-800 p-4 md:p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm w-full min-w-0 flex flex-col transition-colors">
-          <h3 className="font-bold text-[#021D34] dark:text-white mb-6 flex items-center gap-2 text-sm md:text-base">
+        <div className="lg:col-span-2 bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm w-full min-w-0 flex flex-col transition-colors">
+          <h3 className="font-bold text-[#021D34] mb-6 flex items-center gap-2 text-sm md:text-base">
             <TrendingUp className="text-[#009DE0]" /> Fluxo Recente (
             {safeStats.timeline.length} dias)
           </h3>
@@ -374,7 +374,7 @@ export default function Dashboard({ userProfile }) {
           {isLoading ? (
             <Skeleton className="h-40 w-full rounded-2xl" />
           ) : (
-            <div className="bg-gradient-to-br from-[#021D34] to-[#009DE0] dark:from-slate-900 dark:to-slate-800 p-4 md:p-6 rounded-2xl shadow-lg text-white border border-transparent dark:border-slate-700">
+            <div className="bg-gradient-to-br from-[#021D34] to-[#009DE0] p-4 md:p-6 rounded-2xl shadow-lg text-white border border-transparent">
               <h3 className="font-bold flex items-center gap-2 mb-4 text-white/90 text-sm md:text-base">
                 <Lightbulb className="text-yellow-400" /> Insights
               </h3>
@@ -394,8 +394,8 @@ export default function Dashboard({ userProfile }) {
           )}
 
           {/* BarChart Container */}
-          <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm h-[300px] flex flex-col w-full min-w-0 relative transition-colors">
-            <h3 className="font-bold text-[#021D34] dark:text-white mb-2 flex items-center gap-2 text-sm md:text-base">
+          <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm h-[300px] flex flex-col w-full min-w-0 relative transition-colors">
+            <h3 className="font-bold text-[#021D34] mb-2 flex items-center gap-2 text-sm md:text-base">
               <BarChart3 className="text-[#009DE0]" /> Tipos (Amostra Recente)
             </h3>
             <div
@@ -474,8 +474,8 @@ export default function Dashboard({ userProfile }) {
 
       {/* Top Students - Apenas para Admins/Techs */}
       {userProfile.role !== "student" && safeStats.topStudents.length > 0 && (
-        <div className="bg-white dark:bg-slate-800 p-4 md:p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm w-full min-w-0 transition-colors">
-          <h3 className="font-bold text-[#021D34] dark:text-white mb-6 flex items-center gap-2 text-sm md:text-base">
+        <div className="bg-white p-4 md:p-6 rounded-2xl border border-slate-200 shadow-sm w-full min-w-0 transition-colors">
+          <h3 className="font-bold text-[#021D34] mb-6 flex items-center gap-2 text-sm md:text-base">
             <UserCog className="text-[#009DE0]" /> Top Alunos (Atividade
             Recente)
           </h3>

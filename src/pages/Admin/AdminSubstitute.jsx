@@ -25,7 +25,7 @@ const getCodeStatus = (codeDoc) => {
     if (!codeDoc.active) return { label: 'Desativado', color: 'text-slate-400', icon: XCircle };
     if (codeDoc.usedAt) return { label: 'Utilizado', color: 'text-slate-400', icon: CheckCircle };
     if (codeDoc.expiresAt && codeDoc.expiresAt.toDate() < new Date()) return { label: 'Expirado', color: 'text-red-500', icon: XCircle };
-    return { label: 'Ativo', color: 'text-green-600 dark:text-green-400', icon: CheckCircle };
+    return { label: 'Ativo', color: 'text-green-600', icon: CheckCircle };
 };
 
 export default function AdminSubstitute({ userProfile }) {
@@ -101,11 +101,11 @@ export default function AdminSubstitute({ userProfile }) {
         <div className="space-y-6">
             <div className="flex items-center justify-between gap-4">
                 <div>
-                    <h3 className="font-bold text-lg text-slate-800 dark:text-white flex items-center gap-2">
+                    <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
                         <ShieldCheck className="text-[#009DE0]" size={20}/>
                         Acesso de Substitutos
                     </h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                    <p className="text-sm text-slate-500 mt-0.5">
                         Gere códigos temporários para técnicos substitutos. O código é utilizado na tela de login.
                     </p>
                 </div>
@@ -118,21 +118,21 @@ export default function AdminSubstitute({ userProfile }) {
             </div>
 
             {showForm && (
-                <form onSubmit={handleCreate} className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-5 space-y-4">
+                <form onSubmit={handleCreate} className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Identificação (opcional)</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Identificação (opcional)</label>
                             <input
                                 type="text"
                                 placeholder="Ex: Semana 20/05 – Maria"
                                 value={label}
                                 onChange={e => setLabel(e.target.value)}
                                 maxLength={60}
-                                className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-800 dark:text-white focus:border-[#009DE0] outline-none"
+                                className="w-full p-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-800 focus:border-[#009DE0] outline-none"
                             />
                         </div>
                         <div className="space-y-1">
-                            <label className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Validade</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Validade</label>
                             <div className="flex flex-wrap gap-2">
                                 {DURATION_OPTIONS.map(opt => (
                                     <button
@@ -142,7 +142,7 @@ export default function AdminSubstitute({ userProfile }) {
                                         className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
                                             duration === opt.hours
                                                 ? 'bg-[#009DE0] text-white border-[#009DE0]'
-                                                : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:border-[#009DE0]'
+                                                : 'bg-white text-slate-600 border-slate-200 hover:border-[#009DE0]'
                                         }`}
                                     >
                                         {opt.hours === null ? <Infinity size={12} className="inline mr-1"/> : null}
@@ -153,7 +153,7 @@ export default function AdminSubstitute({ userProfile }) {
                         </div>
                     </div>
                     <div className="flex gap-3 justify-end">
-                        <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition-colors">
+                        <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-slate-500 hover:text-slate-700 transition-colors">
                             Cancelar
                         </button>
                         <button type="submit" disabled={isCreating} className="px-5 py-2 bg-[#009DE0] text-white rounded-lg font-bold text-sm hover:bg-[#008bc5] transition-all disabled:opacity-60">
@@ -165,7 +165,7 @@ export default function AdminSubstitute({ userProfile }) {
 
             <div className="space-y-2">
                 {codes.length === 0 && (
-                    <div className="text-center py-12 text-slate-400 dark:text-slate-600">
+                    <div className="text-center py-12 text-slate-400">
                         <ShieldCheck size={40} className="mx-auto mb-2 opacity-30"/>
                         <p className="text-sm">Nenhum código gerado ainda.</p>
                     </div>
@@ -174,9 +174,9 @@ export default function AdminSubstitute({ userProfile }) {
                     const status = getCodeStatus(codeDoc);
                     const isUsable = status.label === 'Ativo';
                     return (
-                        <div key={codeDoc.id} className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-white dark:bg-slate-800 border rounded-xl transition-all ${isUsable ? 'border-slate-200 dark:border-slate-700' : 'border-slate-100 dark:border-slate-800 opacity-60'}`}>
+                        <div key={codeDoc.id} className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-white border rounded-xl transition-all ${isUsable ? 'border-slate-200' : 'border-slate-100 opacity-60'}`}>
                             <div className="flex items-center gap-3 flex-1">
-                                <div className={`text-2xl font-mono font-black tracking-widest ${isUsable ? 'text-[#021D34] dark:text-white' : 'text-slate-400'}`}>
+                                <div className={`text-2xl font-mono font-black tracking-widest ${isUsable ? 'text-[#021D34]' : 'text-slate-400'}`}>
                                     {codeDoc.code}
                                 </div>
                                 {isUsable && (
@@ -187,7 +187,7 @@ export default function AdminSubstitute({ userProfile }) {
                             </div>
 
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 truncate">{codeDoc.label}</p>
+                                <p className="text-sm font-semibold text-slate-700 truncate">{codeDoc.label}</p>
                                 <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
                                     <span className="text-xs text-slate-400">Criado: {formatDate(codeDoc.createdAt)}</span>
                                     {codeDoc.expiresAt ? (

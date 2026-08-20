@@ -1,39 +1,15 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+// Dark mode removido. Arquivo mantido para compatibilidade de imports remanescentes.
+import { createContext, useContext } from 'react';
 
-const ThemeContext = createContext();
+const ThemeContext = createContext({ theme: 'light', toggleTheme: () => {} });
 
 export function ThemeProvider({ children }) {
-  // 1. Tenta pegar do localStorage, senão usa 'light'
-  const [theme, setTheme] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('unilavras_theme') || 'light';
-    }
-    return 'light';
-  });
-
-  // 2. Aplica a classe 'dark' no elemento HTML (root)
-  useEffect(() => {
-    const root = window.document.documentElement;
-    
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    
-    // Salva a preferência
-    localStorage.setItem('unilavras_theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
-
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
+  // Remove classe 'dark' caso ainda esteja no HTML de sessões anteriores
+  if (typeof window !== 'undefined') {
+    window.document.documentElement.classList.remove('dark');
+    localStorage.removeItem('unilavras_theme');
+  }
+  return children;
 }
 
 export const useTheme = () => useContext(ThemeContext);

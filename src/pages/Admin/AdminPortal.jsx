@@ -12,11 +12,11 @@ import { ICON_MAP, AVAILABLE_ICONS } from '../../utils/iconMap';
 import LinkStatsModal from '../../components/LinkStatsModal';
 
 const CATEGORIES = [
-    { id: 'geral', label: 'Geral', color: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600' },
-    { id: 'academico', label: 'Acadêmico', color: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800' },
-    { id: 'clinico', label: 'Clínica', color: 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/30 dark:text-teal-300 dark:border-teal-800' },
-    { id: 'pesquisa', label: 'Pesquisa', color: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-300 dark:border-rose-800' },
-    { id: 'admin', label: 'Admin', color: 'bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800' }
+    { id: 'geral', label: 'Geral', color: 'bg-slate-100 text-slate-600 border-slate-200' },
+    { id: 'academico', label: 'Acadêmico', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+    { id: 'clinico', label: 'Clínica', color: 'bg-teal-50 text-teal-700 border-teal-200' },
+    { id: 'pesquisa', label: 'Pesquisa', color: 'bg-rose-50 text-rose-700 border-rose-200' },
+    { id: 'admin', label: 'Admin', color: 'bg-orange-50 text-orange-700 border-orange-200' }
 ];
 
 const DEFAULT_FORM = { 
@@ -126,7 +126,7 @@ export default function AdminPortal() {
 
   const IconSelector = () => (
     <div className="w-full">
-        <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 block px-1">Ícone</label>
+        <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block px-1">Ícone</label>
         <div className="flex gap-2 overflow-x-auto pb-2 w-full no-scrollbar">
             {AVAILABLE_ICONS.map(iconKey => {
             const IconComp = ICON_MAP[iconKey];
@@ -139,7 +139,7 @@ export default function AdminPortal() {
                 className={`p-2 rounded-lg border transition-all shrink-0 ${
                     isSelected 
                     ? 'bg-[#009DE0] text-white border-[#009DE0] shadow-sm' 
-                    : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700'
+                    : 'bg-white text-slate-400 border-slate-200'
                 }`}
                 >
                 <IconComp size={20} />
@@ -154,17 +154,17 @@ export default function AdminPortal() {
 
   // 1. Tela de Formulário Mobile (OVERLAY FIXO - Resolve estouro e tamanho)
   const MobileFormView = () => (
-    <div className="fixed inset-0 z-[60] bg-[#F8FAFC] dark:bg-[#0b1120] flex flex-col animate-in slide-in-from-right duration-200">
+    <div className="fixed inset-0 z-[60] bg-[#F8FAFC]] flex flex-col animate-in slide-in-from-right duration-200">
         
         {/* Header Compacto */}
-        <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 py-3 flex items-center justify-between shrink-0 shadow-sm">
+        <div className="bg-white border-b border-slate-200 px-3 py-3 flex items-center justify-between shrink-0 shadow-sm">
             <button 
                 onClick={resetForm} 
-                className="p-1.5 -ml-1 text-slate-500 active:bg-slate-100 rounded-lg dark:text-slate-400 dark:active:bg-slate-800"
+                className="p-1.5 -ml-1 text-slate-500 active:bg-slate-100 rounded-lg"
             >
                 <ChevronLeft size={24}/>
             </button>
-            <h2 className="text-sm font-bold text-[#021D34] dark:text-white uppercase tracking-wide">
+            <h2 className="text-sm font-bold text-[#021D34] uppercase tracking-wide">
                 {editingId ? 'Editar' : 'Novo Sistema'}
             </h2>
             <div className="w-8"/> {/* Espaçador */}
@@ -178,7 +178,7 @@ export default function AdminPortal() {
                 <div>
                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block px-1">Nome</label>
                     <input 
-                        className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-bold text-[#021D34] dark:text-white focus:border-[#009DE0] focus:ring-1 focus:ring-[#009DE0] outline-none"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-sm font-bold text-[#021D34] focus:border-[#009DE0] focus:ring-1 focus:ring-[#009DE0] outline-none"
                         value={formData.name}
                         onChange={e => setFormData({...formData, name: e.target.value})}
                         placeholder="Ex: Biblioteca"
@@ -187,7 +187,7 @@ export default function AdminPortal() {
                 <div>
                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block px-1">URL</label>
                     <input 
-                        className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 focus:border-[#009DE0] focus:ring-1 focus:ring-[#009DE0] outline-none font-mono"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-xs text-slate-600 focus:border-[#009DE0] focus:ring-1 focus:ring-[#009DE0] outline-none font-mono"
                         value={formData.url}
                         onChange={e => setFormData({...formData, url: e.target.value})}
                         placeholder="https://..."
@@ -208,8 +208,8 @@ export default function AdminPortal() {
                                 type="button"
                                 className={`py-2 rounded-lg text-[10px] font-bold border transition-all text-center truncate px-1 ${
                                     isSelected 
-                                    ? 'bg-[#021D34] text-white border-[#021D34] dark:bg-sky-600 dark:border-sky-600' 
-                                    : 'bg-white text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+                                    ? 'bg-[#021D34] text-white border-[#021D34]' 
+                                    : 'bg-white text-slate-500 border-slate-200'
                                 }`}
                             >
                                 {cat.label}
@@ -225,7 +225,7 @@ export default function AdminPortal() {
                 <div>
                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block px-1">Descrição</label>
                     <textarea 
-                        className="w-full h-20 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-600 dark:text-slate-300 focus:border-[#009DE0] focus:ring-1 focus:ring-[#009DE0] outline-none resize-none"
+                        className="w-full h-20 p-3 rounded-lg border border-slate-200 bg-white text-xs text-slate-600 focus:border-[#009DE0] focus:ring-1 focus:ring-[#009DE0] outline-none resize-none"
                         value={formData.description}
                         onChange={e => setFormData({...formData, description: e.target.value})}
                         placeholder="Opcional..."
@@ -234,7 +234,7 @@ export default function AdminPortal() {
                 <div>
                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block px-1">Texto do Botão</label>
                     <input 
-                        className="w-full h-10 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 focus:border-[#009DE0] focus:ring-1 focus:ring-[#009DE0] outline-none uppercase"
+                        className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-700 focus:border-[#009DE0] focus:ring-1 focus:ring-[#009DE0] outline-none uppercase"
                         value={formData.btnText}
                         onChange={e => setFormData({...formData, btnText: e.target.value})}
                         placeholder="ACESSAR"
@@ -244,7 +244,7 @@ export default function AdminPortal() {
         </div>
 
         {/* Footer Fixo */}
-        <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 shrink-0 pb-safe">
+        <div className="p-3 bg-white border-t border-slate-100 shrink-0 pb-safe">
             <button 
                 onClick={handleSubmit}
                 className="w-full py-3 bg-[#009DE0] text-white rounded-xl font-bold text-sm shadow-md active:scale-95 transition-transform flex items-center justify-center gap-2"
@@ -260,12 +260,12 @@ export default function AdminPortal() {
     <div className="md:hidden flex flex-col w-full pb-20">
         <div className="flex items-center justify-between mb-4 mt-2 px-1">
             <div>
-                <h2 className="text-lg font-bold text-[#021D34] dark:text-white">Sistemas</h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">{links.length} cadastrados</p>
+                <h2 className="text-lg font-bold text-[#021D34]">Sistemas</h2>
+                <p className="text-xs text-slate-500">{links.length} cadastrados</p>
             </div>
             <button 
                 onClick={() => { resetForm(); setMobileMode('form'); }}
-                className="h-9 px-3 bg-[#021D34] dark:bg-white text-white dark:text-[#021D34] rounded-lg font-bold text-xs flex items-center gap-2 shadow-sm active:scale-95 transition-transform"
+                className="h-9 px-3 bg-[#021D34] text-white] rounded-lg font-bold text-xs flex items-center gap-2 shadow-sm active:scale-95 transition-transform"
             >
                 <Plus size={16}/> Novo
             </button>
@@ -278,21 +278,21 @@ export default function AdminPortal() {
                 const catConfig = CATEGORIES.find(c => c.id === link.category) || CATEGORIES[0];
 
                 return (
-                    <div key={link.id} className="bg-white dark:bg-slate-800 rounded-xl p-3 shadow-sm border border-slate-100 dark:border-slate-700 relative w-full overflow-hidden">
+                    <div key={link.id} className="bg-white rounded-xl p-3 shadow-sm border border-slate-100 relative w-full overflow-hidden">
                         
                         {!isActive && (
-                            <div className="absolute top-0 right-0 bg-slate-100 dark:bg-slate-700 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-bl-lg border-l border-b border-slate-200 dark:border-slate-600">
+                            <div className="absolute top-0 right-0 bg-slate-100 text-slate-500 text-[9px] font-bold px-1.5 py-0.5 rounded-bl-lg border-l border-b border-slate-200">
                                 OCULTO
                             </div>
                         )}
 
                         <div className="flex items-start gap-3 mb-2">
-                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-blue-50 text-[#009DE0] dark:bg-slate-700 dark:text-sky-400' : 'bg-slate-100 text-slate-300'}`}>
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isActive ? 'bg-blue-50 text-[#009DE0]' : 'bg-slate-100 text-slate-300'}`}>
                                 <IconComp size={18} />
                             </div>
                             
                             <div className="flex-1 min-w-0">
-                                <h4 className="font-bold text-[#021D34] dark:text-white text-sm truncate pr-8">{link.name}</h4>
+                                <h4 className="font-bold text-[#021D34] text-sm truncate pr-8">{link.name}</h4>
                                 <div className="flex items-center gap-2 mt-0.5">
                                     <span className={`text-[9px] font-bold uppercase px-1 py-px rounded border ${catConfig.color}`}>
                                         {catConfig.label}
@@ -304,10 +304,10 @@ export default function AdminPortal() {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-1 mt-3 pt-2 border-t border-slate-50 dark:border-slate-700/50 justify-between">
+                        <div className="flex items-center gap-1 mt-3 pt-2 border-t border-slate-50 justify-between">
                             <div className="flex gap-1">
-                                <button onClick={() => moveItem(idx, 'up')} disabled={idx === 0} className="p-1.5 rounded-md text-slate-400 bg-slate-50 dark:bg-slate-700/50 disabled:opacity-20"><ArrowUp size={14}/></button>
-                                <button onClick={() => moveItem(idx, 'down')} disabled={idx === links.length - 1} className="p-1.5 rounded-md text-slate-400 bg-slate-50 dark:bg-slate-700/50 disabled:opacity-20"><ArrowDown size={14}/></button>
+                                <button onClick={() => moveItem(idx, 'up')} disabled={idx === 0} className="p-1.5 rounded-md text-slate-400 bg-slate-50 disabled:opacity-20"><ArrowUp size={14}/></button>
+                                <button onClick={() => moveItem(idx, 'down')} disabled={idx === links.length - 1} className="p-1.5 rounded-md text-slate-400 bg-slate-50 disabled:opacity-20"><ArrowDown size={14}/></button>
                             </div>
                             
                             <div className="flex gap-2">
@@ -332,18 +332,18 @@ export default function AdminPortal() {
   const DesktopLayout = () => (
     <div className="hidden md:block w-full max-w-5xl mx-auto px-0">
         <div className="flex items-center gap-4 mb-8">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-[#009DE0] dark:text-sky-400 rounded-xl">
+            <div className="p-3 bg-blue-100 text-[#009DE0] rounded-xl">
                 <LinkIcon size={24}/>
             </div>
             <div className="flex-1">
-                <h2 className="text-2xl font-bold text-[#021D34] dark:text-white">Portal de Sistemas</h2>
-                <p className="text-base text-slate-500 dark:text-slate-400">Gerencie os links e visualize as estatísticas.</p>
+                <h2 className="text-2xl font-bold text-[#021D34]">Portal de Sistemas</h2>
+                <p className="text-base text-slate-500">Gerencie os links e visualize as estatísticas.</p>
             </div>
         </div>
 
-        <div className={`p-5 rounded-xl border shadow-sm transition-colors w-full mb-8 ${editingId ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/10 dark:border-blue-800' : 'bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700'}`}>
+        <div className={`p-5 rounded-xl border shadow-sm transition-colors w-full mb-8 ${editingId ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200'}`}>
             <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-lg text-[#021D34] dark:text-white flex items-center gap-2">
+                <h3 className="font-bold text-lg text-[#021D34] flex items-center gap-2">
                     {editingId ? <><Edit2 size={18}/> Editando</> : <><Plus size={18}/> Novo Sistema</>}
                 </h3>
                 {editingId && (
@@ -354,11 +354,11 @@ export default function AdminPortal() {
             <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Nome</label>
-                    <input className="w-full h-11 px-3 border rounded-lg outline-none focus:border-[#009DE0] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                    <input className="w-full h-11 px-3 border rounded-lg outline-none focus:border-[#009DE0] bg-white border-slate-200 text-slate-900" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                 </div>
                 <div>
                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">URL</label>
-                    <input className="w-full h-11 px-3 border rounded-lg outline-none focus:border-[#009DE0] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white" value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} />
+                    <input className="w-full h-11 px-3 border rounded-lg outline-none focus:border-[#009DE0] bg-white border-slate-200 text-slate-900" value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} />
                 </div>
             </div>
 
@@ -366,7 +366,7 @@ export default function AdminPortal() {
                 <label className="text-[10px] font-bold text-slate-500 uppercase mb-2 block">Categoria</label>
                 <div className="flex flex-wrap gap-2">
                     {CATEGORIES.map(cat => (
-                        <button key={cat.id} onClick={() => setFormData({...formData, category: cat.id})} className={`px-3 py-2 rounded-lg text-xs font-bold border ${formData.category === cat.id ? 'bg-[#021D34] text-white border-[#021D34] dark:bg-sky-600 dark:border-sky-600' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700'}`}>
+                        <button key={cat.id} onClick={() => setFormData({...formData, category: cat.id})} className={`px-3 py-2 rounded-lg text-xs font-bold border ${formData.category === cat.id ? 'bg-[#021D34] text-white border-[#021D34]' : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50'}`}>
                             {cat.label}
                         </button>
                     ))}
@@ -378,15 +378,15 @@ export default function AdminPortal() {
             <div className="grid grid-cols-3 gap-4 mt-4">
                 <div className="col-span-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Descrição</label>
-                    <input className="w-full h-11 px-3 border rounded-lg outline-none focus:border-[#009DE0] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                    <input className="w-full h-11 px-3 border rounded-lg outline-none focus:border-[#009DE0] bg-white border-slate-200 text-slate-900" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
                 </div>
                 <div>
                     <label className="text-[10px] font-bold text-slate-500 uppercase mb-1 block">Botão</label>
-                    <input className="w-full h-11 px-3 border rounded-lg outline-none focus:border-[#009DE0] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white" value={formData.btnText} onChange={e => setFormData({...formData, btnText: e.target.value})} />
+                    <input className="w-full h-11 px-3 border rounded-lg outline-none focus:border-[#009DE0] bg-white border-slate-200 text-slate-900" value={formData.btnText} onChange={e => setFormData({...formData, btnText: e.target.value})} />
                 </div>
             </div>
 
-            <button onClick={handleSubmit} className={`w-full text-white py-3 rounded-xl font-bold mt-6 flex items-center justify-center gap-2 shadow-lg active:scale-95 ${editingId ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#021D34] hover:bg-[#009DE0] dark:bg-sky-600 dark:hover:bg-sky-500'}`}>
+            <button onClick={handleSubmit} className={`w-full text-white py-3 rounded-xl font-bold mt-6 flex items-center justify-center gap-2 shadow-lg active:scale-95 ${editingId ? 'bg-orange-500 hover:bg-orange-600' : 'bg-[#021D34] hover:bg-[#009DE0]'}`}>
                 <Save size={20} /> {editingId ? 'Salvar' : 'Cadastrar'}
             </button>
         </div>
@@ -398,12 +398,12 @@ export default function AdminPortal() {
                 const isActive = link.active !== false;
                 const catConfig = CATEGORIES.find(c => c.id === link.category) || CATEGORIES[0];
                 return (
-                    <div key={link.id} className={`flex p-4 rounded-xl border items-center gap-4 transition-all ${isActive ? 'bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700' : 'bg-slate-50 border-slate-200 opacity-70 dark:bg-slate-900/50 dark:border-slate-800'}`}>
+                    <div key={link.id} className={`flex p-4 rounded-xl border items-center gap-4 transition-all ${isActive ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200 opacity-70'}`}>
                         <div className="flex flex-col gap-1 shrink-0">
                             <button onClick={() => moveItem(index, 'up')} disabled={index === 0} className="p-1 text-slate-400 hover:text-[#009DE0] disabled:opacity-20"><ArrowUp size={16}/></button>
                             <button onClick={() => moveItem(index, 'down')} disabled={index === links.length - 1} className="p-1 text-slate-400 hover:text-[#009DE0] disabled:opacity-20"><ArrowDown size={16}/></button>
                         </div>
-                        <div className={`w-12 h-12 shrink-0 rounded-lg flex items-center justify-center ${isActive ? 'bg-blue-50 text-[#009DE0] dark:bg-blue-900/20 dark:text-sky-400' : 'bg-slate-200 text-slate-400'}`}>
+                        <div className={`w-12 h-12 shrink-0 rounded-lg flex items-center justify-center ${isActive ? 'bg-blue-50 text-[#009DE0]' : 'bg-slate-200 text-slate-400'}`}>
                             <IconComp size={24} />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -411,10 +411,10 @@ export default function AdminPortal() {
                                 <span className={`text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border ${catConfig.color}`}>{catConfig.label}</span>
                                 {!isActive && <span className="text-[9px] font-bold bg-slate-200 text-slate-500 px-2 py-0.5 rounded">INATIVO</span>}
                             </div>
-                            <h4 className={`font-bold truncate ${isActive ? 'text-[#021D34] dark:text-white' : 'text-slate-500 line-through'}`}>{link.name}</h4>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{link.description}</p>
+                            <h4 className={`font-bold truncate ${isActive ? 'text-[#021D34]' : 'text-slate-500 line-through'}`}>{link.name}</h4>
+                            <p className="text-xs text-slate-500 truncate">{link.description}</p>
                         </div>
-                        <div className="flex items-center gap-2 border-l pl-4 border-slate-100 dark:border-slate-700">
+                        <div className="flex items-center gap-2 border-l pl-4 border-slate-100">
                             <button onClick={() => setStatsLink(link)} className="p-2 text-[#009DE0] bg-blue-50 hover:bg-[#009DE0] hover:text-white rounded-lg transition-colors flex items-center gap-2"><BarChart2 size={18}/> <span className="text-xs font-bold">{link.clicks || 0}</span></button>
                             <button onClick={() => handleToggleActive(link)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg">{isActive ? <Eye size={18}/> : <EyeOff size={18}/>}</button>
                             <button onClick={() => handleEdit(link)} className="p-2 text-blue-400 hover:bg-blue-50 rounded-lg"><Edit2 size={18}/> </button>

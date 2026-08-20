@@ -28,7 +28,6 @@ import { LOGOS } from "../constants";
 import { useToast } from "../contexts/ToastContext";
 import { logEvent } from "../utils/logger";
 import { translateFirebaseError } from "../utils/formatters";
-import ThemeToggle from "../components/ThemeToggle";
 
 // Credenciais da conta compartilhada de substituto (role: tech, gerenciada internamente)
 const SUBSTITUTO_EMAIL = "substituto@unilavras.edu.br";
@@ -179,12 +178,12 @@ export default function LoginScreen({ globalError }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#021D34] flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-500">
+    <div className="min-h-screen bg-slate-50] flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-500">
       {/* Botão de Voltar (ADICIONADO) */}
       <div className="absolute top-4 left-4 z-50">
         <Link
           to="/"
-          className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[#009DE0] dark:hover:text-sky-400 transition-all font-bold text-sm group"
+          className="flex items-center gap-2 px-4 py-2 bg-white text-slate-600 rounded-xl shadow-sm border border-slate-200 hover:bg-slate-50 hover:text-[#009DE0] transition-all font-bold text-sm group"
         >
           <ArrowLeft
             size={18}
@@ -194,51 +193,46 @@ export default function LoginScreen({ globalError }) {
         </Link>
       </div>
 
-      {/* Botão de Tema (Absoluto) */}
-      <div className="absolute top-4 right-4 z-50">
-        <ThemeToggle />
-      </div>
-
       {/* Background Effects */}
-      <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-blue-200 dark:bg-[#009DE0] rounded-full blur-[100px] md:blur-[150px] opacity-40 dark:opacity-20 transition-all duration-500" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-200 dark:bg-blue-900 rounded-full blur-[100px] opacity-40 dark:opacity-20 transition-all duration-500" />
+      <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-blue-200] rounded-full blur-[100px] md:blur-[150px] opacity-40 transition-all duration-500" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-200 rounded-full blur-[100px] opacity-40 transition-all duration-500" />
 
       {/* Login Card */}
-      <div className="bg-white dark:bg-slate-900 p-8 rounded-2xl w-full max-w-md shadow-2xl shadow-blue-900/10 dark:shadow-black/50 relative z-10 transition-all duration-300 border border-white/50 dark:border-slate-800">
+      <div className="bg-white p-8 rounded-2xl w-full max-w-md shadow-2xl shadow-blue-900/10 relative z-10 transition-all duration-300 border border-white/50">
         <div className="text-center mb-8">
           {/* LOGO DINÂMICO (Branco no Dark / Colorido no Light) */}
           <div className="h-16 mx-auto mb-6 flex items-center justify-center">
             <img
               src={LOGOS.color}
-              className="h-full w-auto block dark:hidden"
+              className="h-full w-auto block"
               alt="Logo Unilavras"
             />
             <img
               src={LOGOS.white}
-              className="h-full w-auto hidden dark:block"
+              className="h-full w-auto hidden"
               alt="Logo Unilavras White"
             />
           </div>
 
-          <h1 className="text-2xl font-bold text-[#021D34] dark:text-white transition-colors">
+          <h1 className="text-2xl font-bold text-[#021D34] transition-colors">
             {mode === "forgot" ? "Recuperar Senha" : "Portal de Esterilização"}
           </h1>
         </div>
 
         {/* Seletor de modo (apenas quando não está em "recuperar senha") */}
         {mode !== "forgot" && (
-          <div className="flex bg-slate-100 dark:bg-slate-800 rounded-xl p-1 mb-6">
+          <div className="flex bg-slate-100 rounded-xl p-1 mb-6">
             <button
               type="button"
               onClick={() => setMode("login")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold rounded-lg transition-all ${mode === "login" ? "bg-white dark:bg-slate-700 text-[#009DE0] shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold rounded-lg transition-all ${mode === "login" ? "bg-white text-[#009DE0] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
             >
               <KeyRound size={14} /> Login
             </button>
             <button
               type="button"
               onClick={() => setMode("substitute")}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold rounded-lg transition-all ${mode === "substitute" ? "bg-white dark:bg-slate-700 text-[#009DE0] shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"}`}
+              className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-bold rounded-lg transition-all ${mode === "substitute" ? "bg-white text-[#009DE0] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
             >
               <ShieldCheck size={14} /> Acesso Temporário
             </button>
@@ -246,7 +240,7 @@ export default function LoginScreen({ globalError }) {
         )}
 
         {globalError && (
-          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50 rounded-lg flex gap-3 text-red-700 dark:text-red-300 text-sm items-start animate-in fade-in slide-in-from-top-2">
+          <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-lg flex gap-3 text-red-700 text-sm items-start animate-in fade-in slide-in-from-top-2">
             <ShieldAlert className="w-5 h-5 flex-shrink-0 mt-0.5" />
             <span>{globalError}</span>
           </div>
@@ -255,14 +249,14 @@ export default function LoginScreen({ globalError }) {
         {mode === "substitute" && (
           <form onSubmit={handleSubstituteLogin} className="space-y-4">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">
                 Código de Acesso
               </label>
               <input
                 type="text"
                 placeholder="Ex: AB3K7X"
                 maxLength={8}
-                className="w-full p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:border-[#009DE0] dark:focus:border-[#009DE0] outline-none transition-all text-2xl font-mono font-bold tracking-[0.3em] text-center uppercase placeholder:text-base placeholder:tracking-normal placeholder:font-normal"
+                className="w-full p-3 bg-white border border-slate-200 text-slate-900 rounded-lg focus:border-[#009DE0]] outline-none transition-all text-2xl font-mono font-bold tracking-[0.3em] text-center uppercase placeholder:text-base placeholder:tracking-normal placeholder:font-normal"
                 value={substituteCode}
                 onChange={(e) =>
                   setSubstituteCode(
@@ -273,13 +267,13 @@ export default function LoginScreen({ globalError }) {
                 disabled={isSubmitting}
                 autoComplete="off"
               />
-              <p className="text-xs text-slate-400 dark:text-slate-500 text-center pt-1">
+              <p className="text-xs text-slate-400 text-center pt-1">
                 Não possui um código? Solicite ao administrador do sistema.
               </p>
             </div>
             <button
               disabled={isSubmitting}
-              className="w-full bg-[#009DE0] hover:bg-[#008bc5] text-white p-3.5 rounded-lg font-bold shadow-lg shadow-blue-500/30 dark:shadow-blue-900/20 transition-all active:scale-[0.98] flex justify-center items-center gap-2"
+              className="w-full bg-[#009DE0] hover:bg-[#008bc5] text-white p-3.5 rounded-lg font-bold shadow-lg shadow-blue-500/30 transition-all active:scale-[0.98] flex justify-center items-center gap-2"
             >
               {isSubmitting ? (
                 <Loader2 className="animate-spin w-5 h-5" />
@@ -295,12 +289,12 @@ export default function LoginScreen({ globalError }) {
         {mode === "login" && (
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">
                 Email
               </label>
               <input
                 type="email"
-                className="w-full p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:border-[#009DE0] dark:focus:border-[#009DE0] outline-none transition-all"
+                className="w-full p-3 bg-white border border-slate-200 text-slate-900 rounded-lg focus:border-[#009DE0]] outline-none transition-all"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -308,12 +302,12 @@ export default function LoginScreen({ globalError }) {
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">
                 Senha
               </label>
               <input
                 type="password"
-                className="w-full p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:border-[#009DE0] dark:focus:border-[#009DE0] outline-none transition-all"
+                className="w-full p-3 bg-white border border-slate-200 text-slate-900 rounded-lg focus:border-[#009DE0]] outline-none transition-all"
                 value={pass}
                 onChange={(e) => setPass(e.target.value)}
                 required
@@ -327,17 +321,17 @@ export default function LoginScreen({ globalError }) {
                   type="checkbox"
                   checked={keepSigned}
                   onChange={(e) => setKeepSigned(e.target.checked)}
-                  className="rounded text-[#009DE0] focus:ring-[#009DE0] dark:bg-slate-800 dark:border-slate-600"
+                  className="rounded text-[#009DE0] focus:ring-[#009DE0]"
                   disabled={isSubmitting}
                 />
-                <span className="text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200 transition-colors">
+                <span className="text-slate-600 group-hover:text-slate-800 transition-colors">
                   Manter conectado
                 </span>
               </label>
               <button
                 type="button"
                 onClick={() => setMode("forgot")}
-                className="text-[#009DE0] dark:text-[#38bdf8] hover:underline font-medium transition-colors"
+                className="text-[#009DE0]] hover:underline font-medium transition-colors"
                 disabled={isSubmitting}
               >
                 Esqueceu a senha?
@@ -346,7 +340,7 @@ export default function LoginScreen({ globalError }) {
 
             <button
               disabled={isSubmitting}
-              className="w-full bg-[#009DE0] hover:bg-[#008bc5] text-white p-3.5 rounded-lg font-bold shadow-lg shadow-blue-500/30 dark:shadow-blue-900/20 transition-all active:scale-[0.98] flex justify-center items-center gap-2"
+              className="w-full bg-[#009DE0] hover:bg-[#008bc5] text-white p-3.5 rounded-lg font-bold shadow-lg shadow-blue-500/30 transition-all active:scale-[0.98] flex justify-center items-center gap-2"
             >
               {isSubmitting ? (
                 <Loader2 className="animate-spin w-5 h-5" />
@@ -360,13 +354,13 @@ export default function LoginScreen({ globalError }) {
         {mode === "forgot" && (
           <form onSubmit={handleForgot} className="space-y-4">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wide">
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">
                 Email de Recuperação
               </label>
               <input
                 type="email"
                 placeholder="exemplo@unilavras.edu.br"
-                className="w-full p-3 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white rounded-lg focus:border-[#009DE0] outline-none transition-all placeholder:text-slate-400 dark:placeholder:text-slate-600"
+                className="w-full p-3 bg-white border border-slate-200 text-slate-900 rounded-lg focus:border-[#009DE0] outline-none transition-all placeholder:text-slate-400"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -375,14 +369,14 @@ export default function LoginScreen({ globalError }) {
             </div>
             <button
               disabled={isSubmitting}
-              className="w-full bg-[#021D34] dark:bg-slate-800 hover:bg-[#032b4b] dark:hover:bg-slate-700 text-white p-3.5 rounded-lg font-bold transition-all shadow-lg"
+              className="w-full bg-[#021D34] hover:bg-[#032b4b] text-white p-3.5 rounded-lg font-bold transition-all shadow-lg"
             >
               Enviar Link
             </button>
             <button
               type="button"
               onClick={() => setMode("login")}
-              className="w-full text-center text-sm text-slate-500 dark:text-slate-400 hover:text-[#009DE0] dark:hover:text-[#38bdf8] mt-2 transition-colors"
+              className="w-full text-center text-sm text-slate-500 hover:text-[#009DE0]] mt-2 transition-colors"
             >
               Voltar para Login
             </button>
@@ -390,7 +384,7 @@ export default function LoginScreen({ globalError }) {
         )}
       </div>
 
-      <div className="absolute bottom-4 text-center w-full text-[10px] text-slate-400 dark:text-slate-600 uppercase tracking-widest font-bold">
+      <div className="absolute bottom-4 text-center w-full text-[10px] text-slate-400 uppercase tracking-widest font-bold">
         © {new Date().getFullYear()} Centro Universitario de Lavras - Unilavras
       </div>
     </div>

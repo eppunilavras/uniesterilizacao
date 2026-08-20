@@ -78,11 +78,11 @@ export default function AdminMaterials() {
                     message: (
                         <div className="space-y-3">
                             {/* CORREÇÃO AQUI: Classes de cor para Dark Mode */}
-                            <p className="text-slate-700 dark:text-slate-300">
-                                Não é possível remover o tipo <strong className="text-slate-900 dark:text-white">"{materialName}"</strong>.
+                            <p className="text-slate-700">
+                                Não é possível remover o tipo <strong className="text-slate-900">"{materialName}"</strong>.
                             </p>
                             
-                            <div className="bg-amber-50 dark:bg-amber-900/20 p-3 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200 text-xs flex gap-2 items-start transition-colors">
+                            <div className="bg-amber-50 p-3 rounded-lg border border-amber-200 text-amber-800 text-xs flex gap-2 items-start transition-colors">
                                 <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                                 <span>Existem itens registrados usando este material!</span>
                             </div>
@@ -99,8 +99,8 @@ export default function AdminMaterials() {
             const confirmed = await confirm({ 
                 title: 'Remover Tipo', 
                 message: (
-                    <span className="text-slate-700 dark:text-slate-300">
-                        Deseja remover <strong className="text-slate-900 dark:text-white">"{materialName}"</strong>?
+                    <span className="text-slate-700">
+                        Deseja remover <strong className="text-slate-900">"{materialName}"</strong>?
                     </span>
                 ), 
                 isDestructive: true 
@@ -131,8 +131,8 @@ export default function AdminMaterials() {
             
             {/* Overlay de carregamento */}
             {verifying && (
-                <div className="absolute inset-0 z-50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm rounded-xl flex items-center justify-center transition-colors">
-                    <div className="bg-white dark:bg-slate-800 px-4 py-2 rounded-full shadow-lg text-xs font-bold text-slate-600 dark:text-slate-300 animate-pulse border border-slate-200 dark:border-slate-700">
+                <div className="absolute inset-0 z-50 bg-white/50 backdrop-blur-sm rounded-xl flex items-center justify-center transition-colors">
+                    <div className="bg-white px-4 py-2 rounded-full shadow-lg text-xs font-bold text-slate-600 animate-pulse border border-slate-200">
                         Verificando registros...
                     </div>
                 </div>
@@ -141,9 +141,9 @@ export default function AdminMaterials() {
             {/* Barra de Pesquisa */}
             <div className="flex flex-col md:flex-row gap-4">
                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-3 w-5 h-5 text-slate-400 dark:text-slate-500"/>
+                    <Search className="absolute left-3 top-3 w-5 h-5 text-slate-400"/>
                     <input 
-                        className="w-full pl-10 p-3 border rounded-lg text-sm outline-none focus:border-[#009DE0] focus:ring-1 focus:ring-[#009DE0] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500" 
+                        className="w-full pl-10 p-3 border rounded-lg text-sm outline-none focus:border-[#009DE0] focus:ring-1 focus:ring-[#009DE0] bg-white border-slate-200 text-slate-900 transition-colors placeholder:text-slate-400" 
                         placeholder="Pesquisar material..." 
                         value={search} 
                         onChange={e => setSearch(e.target.value)}
@@ -154,7 +154,7 @@ export default function AdminMaterials() {
             {/* Adicionar Novo */}
             <div className="flex flex-col md:flex-row gap-2">
                 <input 
-                    className="flex-1 p-3 border rounded-lg outline-none focus:border-[#009DE0] focus:ring-1 focus:ring-[#009DE0] bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500" 
+                    className="flex-1 p-3 border rounded-lg outline-none focus:border-[#009DE0] focus:ring-1 focus:ring-[#009DE0] bg-white border-slate-200 text-slate-900 transition-colors placeholder:text-slate-400" 
                     placeholder="Nome do Novo Material (ex: Kit Ortodontia)" 
                     value={name} 
                     onChange={e => setName(e.target.value)}
@@ -162,7 +162,7 @@ export default function AdminMaterials() {
                 />
                 <button 
                     onClick={add} 
-                    className="bg-[#021D34] text-white px-6 py-3 rounded-lg font-bold w-full md:w-auto hover:bg-[#009DE0] dark:bg-sky-600 dark:hover:bg-sky-500 transition-colors shadow-lg active:scale-95 disabled:opacity-50"
+                    className="bg-[#021D34] text-white px-6 py-3 rounded-lg font-bold w-full md:w-auto hover:bg-[#009DE0] transition-colors shadow-lg active:scale-95 disabled:opacity-50"
                     disabled={verifying || !name}
                 >
                     Adicionar
@@ -173,11 +173,11 @@ export default function AdminMaterials() {
                 columns={[{ key: 'name', label: 'Nome do Material', sortable: true }]}
                 data={filteredAndSortedMats} 
                 emptyMsg="Nenhum material encontrado."
-                mobileRender={(m) => <div className="font-medium text-[#021D34] dark:text-white">{m.name}</div>}
+                mobileRender={(m) => <div className="font-medium text-[#021D34]">{m.name}</div>}
                 actions={(m) => (
                     <button 
                         onClick={() => remove(m.id, m.name)} 
-                        className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                        className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded transition-colors"
                         title="Remover"
                         disabled={verifying}
                     >

@@ -36,18 +36,18 @@ const LoadingScreen = () => (
 );
 
 const InitialLoader = () => (
-  <div className="h-screen flex flex-col items-center justify-center bg-white dark:bg-[#020617] no-print">
+  <div className="h-screen flex flex-col items-center justify-center bg-white] no-print">
     {/* Logo Colorida: Aparece no modo claro, some no escuro */}
     <img
       src={LOGOS.color}
-      className="h-24 w-auto animate-bounce mb-4 dark:hidden"
+      className="h-24 w-auto animate-bounce mb-4"
       alt="Carregando"
     />
 
     {/* Logo Branca: Aparece apenas no modo escuro */}
     <img
       src={LOGOS.white}
-      className="h-24 w-auto animate-bounce mb-4 hidden dark:block"
+      className="h-24 w-auto animate-bounce mb-4 hidden"
       alt="Carregando"
     />
 

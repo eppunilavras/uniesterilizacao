@@ -16,7 +16,6 @@ import { useDialog } from '../contexts/DialogContext';
 import { useToast } from '../contexts/ToastContext';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import OfflineNotice from './OfflineNotice';
-import ThemeToggle from './ThemeToggle'; // <--- IMPORTANTE: Botão de Tema
 
 // --- CACHE INTELIGENTE: Hooks ---
 import { useStudentsDirectory } from '../hooks/useStudentsDirectory';
@@ -201,12 +200,12 @@ export default function MainLayout({ user, userProfile }) {
 
     if (!isOnline && isMobile) {
         return (
-            <div className="flex flex-col h-screen items-center justify-center bg-[#F8FAFC] dark:bg-[#0b1120] p-8 text-center animate-in fade-in duration-500 transition-colors">
-                <div className="bg-red-50 dark:bg-red-900/20 p-6 rounded-full mb-6 border border-red-100 dark:border-red-900 shadow-sm animate-pulse">
-                    <WifiOff className="w-16 h-16 text-red-500 dark:text-red-400" />
+            <div className="flex flex-col h-screen items-center justify-center bg-[#F8FAFC]] p-8 text-center animate-in fade-in duration-500 transition-colors">
+                <div className="bg-red-50 p-6 rounded-full mb-6 border border-red-100 shadow-sm animate-pulse">
+                    <WifiOff className="w-16 h-16 text-red-500" />
                 </div>
-                <h2 className="text-2xl font-bold text-[#021D34] dark:text-white mb-3">Sem Conexão</h2>
-                <p className="text-slate-500 dark:text-slate-400 max-w-xs mx-auto text-sm leading-relaxed">
+                <h2 className="text-2xl font-bold text-[#021D34] mb-3">Sem Conexão</h2>
+                <p className="text-slate-500 max-w-xs mx-auto text-sm leading-relaxed">
                     O modo offline não está disponível na versão mobile. 
                     <br/><br/>
                     Por favor, reconecte-se à internet para visualizar seus dados.
@@ -216,23 +215,23 @@ export default function MainLayout({ user, userProfile }) {
     }
 
     return (
-        <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0b1120] overflow-hidden font-sans text-slate-800 dark:text-slate-200 transition-colors duration-300"> 
+        <div className="flex h-screen bg-[#F8FAFC]] overflow-hidden font-sans text-slate-800 transition-colors duration-300"> 
             
             <OfflineNotice />
 
             {showTimeoutWarning && (
                 <div className="fixed inset-0 z-[10001] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
-                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center animate-in zoom-in-95">
+                    <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-sm w-full text-center animate-in zoom-in-95">
                         <Timer className="w-12 h-12 text-orange-500 mx-auto mb-4 animate-pulse"/>
-                        <h3 className="text-xl font-bold text-[#021D34] dark:text-white">Sessão Expirando</h3>
-                        <p className="text-slate-600 dark:text-slate-300 mt-2">Você está inativo há algum tempo. Sua sessão será encerrada em breve para sua segurança.</p>
+                        <h3 className="text-xl font-bold text-[#021D34]">Sessão Expirando</h3>
+                        <p className="text-slate-600 mt-2">Você está inativo há algum tempo. Sua sessão será encerrada em breve para sua segurança.</p>
                         <button onClick={resetInactivity} className="mt-6 w-full bg-[#009DE0] text-white py-3 rounded-lg font-bold hover:bg-[#008bc5] transition-colors">Continuar Logado</button>
                     </div>
                 </div>
             )}
 
             {/* SIDEBAR DESKTOP */}
-            <aside className="hidden md:flex flex-col w-72 bg-[#021D34] shadow-xl z-20 dark:border-r dark:border-white/5">
+            <aside className="hidden md:flex flex-col w-72 bg-[#021D34] shadow-xl z-20">
                 <div className="p-6 border-b border-white/10 flex flex-col items-center">
                     <img src={LOGOS.white} className="h-12 w-auto mb-3 opacity-90" alt="Logo White" />
                     <span className="text-[10px] text-[#009DE0] uppercase tracking-[0.2em] font-bold">Controle de Esterilização</span>
@@ -258,12 +257,7 @@ export default function MainLayout({ user, userProfile }) {
                 </nav>
                 <div className="p-4 border-t border-white/10 bg-[#011526]">
                     
-                    {/* Botão de Tema na Sidebar */}
-                    <div className="mb-4 flex justify-center">
-                        <ThemeToggle />
-                    </div>
-
-                    <div 
+<div 
                         onClick={() => handleNavigation('profile')} 
                         className={`flex items-center gap-3 mb-4 cursor-pointer p-2 rounded-lg transition-colors group ${!isOnline ? 'opacity-50 pointer-events-none' : 'hover:bg-white/5'}`}
                     >
@@ -285,19 +279,19 @@ export default function MainLayout({ user, userProfile }) {
             <main className="flex-1 flex flex-col h-screen relative">
                 
                 {/* Header Mobile: Fundo adaptável (Branco no claro, Escuro no noturno) */}
-                <header className="md:hidden flex items-center justify-between p-4 bg-white dark:bg-slate-900 border-b dark:border-slate-800 z-10 shadow-sm transition-colors">
-                    <button onClick={() => setMenuOpen(true)} className="p-2 -ml-2 text-[#021D34] dark:text-white"><Menu/></button>
+                <header className="md:hidden flex items-center justify-between p-4 bg-white border-b z-10 shadow-sm transition-colors">
+                    <button onClick={() => setMenuOpen(true)} className="p-2 -ml-2 text-[#021D34]"><Menu/></button>
                     
                     {/* LOGO: Colorida no Light Mode, Branca Exata no Dark Mode */}
                     <div className="h-8 w-auto">
                         <img 
                             src={LOGOS.color} 
-                            className="h-full w-auto block dark:hidden" 
+                            className="h-full w-auto block" 
                             alt="Logo Color" 
                         />
                         <img 
                             src={LOGOS.white} 
-                            className="h-full w-auto hidden dark:block" 
+                            className="h-full w-auto hidden" 
                             alt="Logo White" 
                         />
                     </div>
@@ -315,12 +309,7 @@ export default function MainLayout({ user, userProfile }) {
                             <button onClick={() => setMenuOpen(false)} className="self-end text-white/50 p-2"><X/></button>
                             <nav className="space-y-2 mt-4 overflow-y-auto">
                                 
-                                {/* Botão de Tema no Mobile */}
-                                <div className="mb-4 pl-3">
-                                    <ThemeToggle />
-                                </div>
-
-                                <button 
+<button 
                                     onClick={() => handleNavigation('profile')} 
                                     className={`w-full flex items-center gap-3 p-3 rounded-lg text-sm font-medium ${isActive('profile') ? 'bg-[#009DE0] text-white' : 'text-slate-400'} ${!isOnline ? 'opacity-50' : ''}`}
                                 >
@@ -351,7 +340,7 @@ export default function MainLayout({ user, userProfile }) {
                 )}
                 
                 {/* Área de Conteúdo */}
-                <div className="flex-1 overflow-auto p-4 md:p-8 custom-scrollbar bg-[#F8FAFC] dark:bg-[#0b1120] transition-colors">
+                <div className="flex-1 overflow-auto p-4 md:p-8 custom-scrollbar bg-[#F8FAFC]] transition-colors">
                     <div className="max-w-7xl mx-auto space-y-6 pb-20 md:pb-0">
                         <Outlet />
                     </div>

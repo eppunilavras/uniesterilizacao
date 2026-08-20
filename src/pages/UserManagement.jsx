@@ -706,14 +706,14 @@ export default function UserManagement({ userProfile }) {
         message: (
           <div className="space-y-4">
             <div className="flex gap-4">
-              <div className="flex items-center gap-2 text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg border border-green-100 dark:border-green-900 flex-1 justify-center">
+              <div className="flex items-center gap-2 text-green-700 bg-green-50 px-3 py-2 rounded-lg border border-green-100 flex-1 justify-center">
                 <CheckCircle2 size={18} />
                 <div className="flex flex-col leading-none text-left">
                   <span className="font-bold text-lg">{success}</span>
                   <span className="text-[10px] uppercase">Sucessos</span>
                 </div>
               </div>
-              <div className="flex items-center gap-2 text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg border border-red-100 dark:border-red-900 flex-1 justify-center">
+              <div className="flex items-center gap-2 text-red-700 bg-red-50 px-3 py-2 rounded-lg border border-red-100 flex-1 justify-center">
                 <XCircle size={18} />
                 <div className="flex flex-col leading-none text-left">
                   <span className="font-bold text-lg">{errors}</span>
@@ -724,20 +724,20 @@ export default function UserManagement({ userProfile }) {
 
             {/* Seção de Usuários já cadastrados (Conflitos) */}
             {conflicts.length > 0 && (
-              <div className="bg-orange-50 dark:bg-orange-900/10 border border-orange-200 dark:border-orange-900 rounded-lg overflow-hidden">
-                <div className="bg-orange-100 dark:bg-orange-900/30 px-3 py-2 border-b border-orange-200 dark:border-orange-900 text-[10px] font-bold text-orange-700 dark:text-orange-400 uppercase flex items-center gap-2">
+              <div className="bg-orange-50 border border-orange-200 rounded-lg overflow-hidden">
+                <div className="bg-orange-100 px-3 py-2 border-b border-orange-200 text-[10px] font-bold text-orange-700 uppercase flex items-center gap-2">
                   <AlertTriangle size={14} /> Utilizadores já existentes
                 </div>
                 <div className="max-h-32 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                   {conflicts.map((c, i) => (
                     <div
                       key={i}
-                      className="text-xs flex flex-col border-b border-orange-100 dark:border-orange-900 last:border-0 pb-1 mb-1 last:mb-0"
+                      className="text-xs flex flex-col border-b border-orange-100 last:border-0 pb-1 mb-1 last:mb-0"
                     >
-                      <span className="font-bold text-orange-900 dark:text-orange-200">
+                      <span className="font-bold text-orange-900">
                         {c.name}
                       </span>
-                      <span className="text-orange-700 dark:text-orange-400 opacity-80">
+                      <span className="text-orange-700 opacity-80">
                         {c.reason}
                       </span>
                     </div>
@@ -748,17 +748,17 @@ export default function UserManagement({ userProfile }) {
 
             {/* Seção de Erros Diversos */}
             {systemFailures.length > 0 && (
-              <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-                <div className="bg-slate-100 dark:bg-slate-800 px-3 py-2 border-b border-slate-200 dark:border-slate-700 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">
+              <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
+                <div className="bg-slate-100 px-3 py-2 border-b border-slate-200 text-[10px] font-bold text-slate-500 uppercase">
                   Outras Falhas de Registo
                 </div>
                 <div className="max-h-32 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                   {systemFailures.map((f, i) => (
                     <div
                       key={i}
-                      className="text-xs flex justify-between gap-2 border-b border-slate-100 dark:border-slate-800 last:border-0 pb-1 mb-1 last:mb-0"
+                      className="text-xs flex justify-between gap-2 border-b border-slate-100 last:border-0 pb-1 mb-1 last:mb-0"
                     >
-                      <span className="font-medium text-slate-700 dark:text-slate-200">
+                      <span className="font-medium text-slate-700">
                         {f.name}:
                       </span>
                       <span className="text-red-500">{f.reason}</span>
@@ -976,24 +976,24 @@ export default function UserManagement({ userProfile }) {
         message: (
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
-              <div className="flex flex-col items-center bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900 rounded-lg p-3 text-green-700 dark:text-green-400">
+              <div className="flex flex-col items-center bg-green-50 border border-green-100 rounded-lg p-3 text-green-700">
                 <CheckCircle2 size={20} className="mb-1" />
                 <span className="font-bold text-xl">{created}</span>
                 <span className="text-[10px] uppercase font-bold">Criados</span>
               </div>
-              <div className="flex flex-col items-center bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900 rounded-lg p-3 text-blue-700 dark:text-blue-400">
+              <div className="flex flex-col items-center bg-blue-50 border border-blue-100 rounded-lg p-3 text-blue-700">
                 <RefreshCw size={20} className="mb-1" />
                 <span className="font-bold text-xl">{updated}</span>
                 <span className="text-[10px] uppercase font-bold">Atualizados</span>
               </div>
-              <div className="flex flex-col items-center bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-3 text-slate-500 dark:text-slate-400">
+              <div className="flex flex-col items-center bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-500">
                 <MinusCircle size={20} className="mb-1" />
                 <span className="font-bold text-xl">{ignored}</span>
                 <span className="text-[10px] uppercase font-bold">Ignorados</span>
               </div>
             </div>
             {errors > 0 && (
-              <p className="text-xs text-red-600 dark:text-red-400">
+              <p className="text-xs text-red-600">
                 {errors} erro(s) durante o processamento. Verifique o console.
               </p>
             )}
@@ -1024,7 +1024,7 @@ export default function UserManagement({ userProfile }) {
   return (
     <div className="space-y-6 transition-colors">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-        <h2 className="font-bold text-[#021D34] dark:text-white text-2xl flex items-center gap-2 w-full md:w-auto transition-colors">
+        <h2 className="font-bold text-[#021D34] text-2xl flex items-center gap-2 w-full md:w-auto transition-colors">
           <Users className="text-[#009DE0]" /> Gestão de Utilizadores
         </h2>
 
@@ -1071,14 +1071,14 @@ export default function UserManagement({ userProfile }) {
                 setEditing(null);
                 reset();
               }}
-              className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === "list" ? "bg-[#021D34] text-white shadow-sm" : "bg-white dark:bg-slate-800 dark:text-slate-200 border dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
+              className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === "list" ? "bg-[#021D34] text-white shadow-sm" : "bg-white border hover:bg-slate-50"}`}
             >
               Listar
             </button>
             {userProfile.role === "admin" && (
               <button
                 onClick={handleNewClick}
-                className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === "form" ? "bg-[#021D34] text-white shadow-sm" : "bg-white dark:bg-slate-800 dark:text-slate-200 border dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700"}`}
+                className={`flex-1 px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === "form" ? "bg-[#021D34] text-white shadow-sm" : "bg-white border hover:bg-slate-50"}`}
               >
                 Novo
               </button>
@@ -1088,7 +1088,7 @@ export default function UserManagement({ userProfile }) {
       </div>
 
       {view === "list" && (
-        <div className="text-xs text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900 p-2 rounded border border-slate-200 dark:border-slate-700 mb-2 flex items-center gap-2 transition-colors">
+        <div className="text-xs text-slate-500 bg-slate-50 p-2 rounded border border-slate-200 mb-2 flex items-center gap-2 transition-colors">
           <Upload size={12} /> Formato CSV:{" "}
           <strong>Nome, Email, CPF, Perfil (Aluno/Técnico/Admin), Senha</strong>
         </div>
@@ -1096,16 +1096,16 @@ export default function UserManagement({ userProfile }) {
 
       {/* Modal: Importação de Alunos por Planilha */}
       {showStudentImportModal && (
-        <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 border dark:border-slate-700 transition-colors">
+        <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col animate-in zoom-in-95 border transition-colors">
             {/* Header */}
-            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-start">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-start">
               <div>
-                <h3 className="text-xl font-bold text-[#021D34] dark:text-white flex items-center gap-2">
+                <h3 className="text-xl font-bold text-[#021D34] flex items-center gap-2">
                   <GraduationCap size={22} className="text-[#009DE0]" />
                   Importar Alunos
                 </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-sm text-slate-500 mt-1">
                   {studentImportPreview.length} aluno(s) encontrado(s) na planilha.
                   Novos CPFs serão criados; CPFs existentes com nome diferente terão o nome atualizado.
                 </p>
@@ -1113,32 +1113,32 @@ export default function UserManagement({ userProfile }) {
               <button
                 onClick={() => { setShowStudentImportModal(false); setStudentImportPreview([]); }}
                 disabled={importingStudents}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-500 dark:text-slate-300 disabled:opacity-50"
+                className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500 disabled:opacity-50"
               >
                 <X size={20} />
               </button>
             </div>
 
             {/* Preview */}
-            <div className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-900">
+            <div className="flex-1 overflow-auto bg-slate-50">
               <table className="w-full text-sm text-left">
-                <thead className="bg-white dark:bg-slate-800 sticky top-0 z-10 shadow-sm text-slate-600 dark:text-slate-300">
+                <thead className="bg-white sticky top-0 z-10 shadow-sm text-slate-600">
                   <tr>
                     <th className="p-4 font-bold">#</th>
                     <th className="p-4 font-bold">Nome Completo</th>
                     <th className="p-4 font-bold">CPF</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                <tbody className="divide-y divide-slate-200">
                   {studentImportPreview.map((item, idx) => (
-                    <tr key={item.id} className="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                      <td className="p-4 text-slate-400 dark:text-slate-500 text-xs font-mono">
+                    <tr key={item.id} className="bg-white hover:bg-slate-50 transition-colors">
+                      <td className="p-4 text-slate-400 text-xs font-mono">
                         {idx + 1}
                       </td>
-                      <td className="p-4 font-medium text-[#021D34] dark:text-white">
+                      <td className="p-4 font-medium text-[#021D34]">
                         {item.name}
                       </td>
-                      <td className="p-4 text-slate-500 dark:text-slate-400 font-mono text-xs">
+                      <td className="p-4 text-slate-500 font-mono text-xs">
                         {maskCPF(item.cpf)}
                       </td>
                     </tr>
@@ -1149,11 +1149,11 @@ export default function UserManagement({ userProfile }) {
 
             {/* Barra de progresso (visível durante processamento) */}
             {importingStudents && (
-              <div className="px-6 py-2 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700">
-                <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+              <div className="px-6 py-2 bg-white border-t border-slate-100">
+                <div className="flex items-center gap-3 text-xs text-slate-500">
                   <Loader2 size={14} className="animate-spin shrink-0" />
                   <span>Processando... {studentImportProgress}%</span>
-                  <div className="flex-1 bg-slate-200 dark:bg-slate-700 rounded-full h-1.5">
+                  <div className="flex-1 bg-slate-200 rounded-full h-1.5">
                     <div
                       className="bg-[#009DE0] h-1.5 rounded-full transition-all duration-300"
                       style={{ width: `${studentImportProgress}%` }}
@@ -1164,11 +1164,11 @@ export default function UserManagement({ userProfile }) {
             )}
 
             {/* Footer */}
-            <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 flex justify-end gap-3 rounded-b-2xl transition-colors">
+            <div className="p-4 border-t border-slate-100 bg-white flex justify-end gap-3 rounded-b-2xl transition-colors">
               <button
                 onClick={() => { setShowStudentImportModal(false); setStudentImportPreview([]); }}
                 disabled={importingStudents}
-                className="px-6 py-3 border border-slate-200 dark:border-slate-600 rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                className="px-6 py-3 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-50"
               >
                 Cancelar
               </button>
@@ -1190,27 +1190,27 @@ export default function UserManagement({ userProfile }) {
       )}
 
       {showImportModal && (
-        <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col animate-in zoom-in-95 border dark:border-slate-700 transition-colors">
-            <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+        <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col animate-in zoom-in-95 border transition-colors">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
               <div>
-                <h3 className="text-xl font-bold text-[#021D34] dark:text-white">
+                <h3 className="text-xl font-bold text-[#021D34]">
                   Confirmar Importação
                 </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
+                <p className="text-sm text-slate-500">
                   Selecione os utilizadores que deseja registar.
                 </p>
               </div>
               <button
                 onClick={() => setShowImportModal(false)}
-                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors text-slate-500 dark:text-slate-300"
+                className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-500"
               >
                 <X size={20} />
               </button>
             </div>
-            <div className="flex-1 overflow-auto p-0 bg-slate-50 dark:bg-slate-900">
+            <div className="flex-1 overflow-auto p-0 bg-slate-50">
               <table className="w-full text-sm text-left">
-                <thead className="bg-white dark:bg-slate-800 sticky top-0 z-10 shadow-sm text-slate-600 dark:text-slate-300">
+                <thead className="bg-white sticky top-0 z-10 shadow-sm text-slate-600">
                   <tr>
                     <th className="p-4 w-12 text-center">
                       <button onClick={toggleAll} className="text-[#009DE0]">
@@ -1227,16 +1227,16 @@ export default function UserManagement({ userProfile }) {
                     <th className="p-4 font-bold">CPF</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                <tbody className="divide-y divide-slate-200">
                   {csvPreview.map((item) => (
                     <tr
                       key={item.id}
-                      className={`transition-colors ${selectedImportIndices.has(item.id) ? "bg-white dark:bg-slate-800" : "bg-slate-100 dark:bg-slate-900 opacity-60"}`}
+                      className={`transition-colors ${selectedImportIndices.has(item.id) ? "bg-white" : "bg-slate-100 opacity-60"}`}
                     >
                       <td className="p-4 text-center">
                         <button
                           onClick={() => toggleSelect(item.id)}
-                          className={`${selectedImportIndices.has(item.id) ? "text-[#009DE0]" : "text-slate-400 dark:text-slate-500"}`}
+                          className={`${selectedImportIndices.has(item.id) ? "text-[#009DE0]" : "text-slate-400"}`}
                         >
                           {selectedImportIndices.has(item.id) ? (
                             <CheckSquare size={20} />
@@ -1245,20 +1245,20 @@ export default function UserManagement({ userProfile }) {
                           )}
                         </button>
                       </td>
-                      <td className="p-4 font-medium text-[#021D34] dark:text-white">
+                      <td className="p-4 font-medium text-[#021D34]">
                         {item.name}
                       </td>
-                      <td className="p-4 text-slate-600 dark:text-slate-300">
+                      <td className="p-4 text-slate-600">
                         {item.email}
                       </td>
                       <td className="p-4">
                         <span
-                          className={`px-2 py-1 rounded text-[10px] uppercase font-bold ${item.role === "admin" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" : item.role === "tech" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"}`}
+                          className={`px-2 py-1 rounded text-[10px] uppercase font-bold ${item.role === "admin" ? "bg-purple-100 text-purple-700" : item.role === "tech" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"}`}
                         >
                           {ROLE_LABELS[item.role] || item.role}
                         </span>
                       </td>
-                      <td className="p-4 text-slate-500 dark:text-slate-400 font-mono text-xs">
+                      <td className="p-4 text-slate-500 font-mono text-xs">
                         {maskCPF(item.cpf)}
                       </td>
                     </tr>
@@ -1266,15 +1266,15 @@ export default function UserManagement({ userProfile }) {
                 </tbody>
               </table>
             </div>
-            <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col md:flex-row justify-between items-center gap-4 rounded-b-2xl transition-colors">
-              <div className="text-sm dark:text-slate-300">
+            <div className="p-4 border-t border-slate-100 bg-white flex flex-col md:flex-row justify-between items-center gap-4 rounded-b-2xl transition-colors">
+              <div className="text-sm">
                 <span className="font-bold text-[#009DE0]">
                   {selectedImportIndices.size}
                 </span>{" "}
                 selecionados de{" "}
                 <span className="font-bold">{csvPreview.length}</span>.
                 {importStats.ignored > 0 && (
-                  <span className="ml-2 text-orange-600 dark:text-orange-400 text-xs flex items-center gap-1 inline-flex">
+                  <span className="ml-2 text-orange-600 text-xs flex items-center gap-1 inline-flex">
                     <AlertTriangle size={12} /> {importStats.ignored} ignorados
                     (permissão).
                   </span>
@@ -1283,7 +1283,7 @@ export default function UserManagement({ userProfile }) {
               <div className="flex gap-3 w-full md:w-auto">
                 <button
                   onClick={() => setShowImportModal(false)}
-                  className="flex-1 md:flex-none px-6 py-3 border border-slate-200 dark:border-slate-600 rounded-xl font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                  className="flex-1 md:flex-none px-6 py-3 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                   disabled={importing}
                 >
                   Cancelar
@@ -1306,12 +1306,12 @@ export default function UserManagement({ userProfile }) {
       )}
 
       {view === "list" ? (
-        <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm transition-colors">
           <div className="flex flex-col md:flex-row gap-4 mb-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
               <input
-                className="w-full pl-10 p-2 border dark:border-slate-600 rounded-lg outline-none focus:border-[#009DE0] bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition-colors"
+                className="w-full pl-10 p-2 border rounded-lg outline-none focus:border-[#009DE0] bg-white text-slate-900 transition-colors"
                 placeholder="Buscar por nome ou CPF..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -1322,7 +1322,7 @@ export default function UserManagement({ userProfile }) {
             </div>
             <div className="flex gap-2">
               <select
-                className="p-2 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white w-full md:w-auto transition-colors"
+                className="p-2 border rounded-lg bg-white text-slate-900 w-full md:w-auto transition-colors"
                 value={filterRole}
                 onChange={(e) => setFilterRole(e.target.value)}
               >
@@ -1333,7 +1333,7 @@ export default function UserManagement({ userProfile }) {
               </select>
               <button
                 onClick={() => setShowInactive(!showInactive)}
-                className={`p-2 border rounded-lg transition-colors flex items-center gap-2 ${showInactive ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-900" : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
+                className={`p-2 border rounded-lg transition-colors flex items-center gap-2 ${showInactive ? "bg-red-50 text-red-600 border-red-200" : "bg-white text-slate-500 border-slate-200 hover:bg-slate-50"}`}
                 title={showInactive ? "Ocultar Inativos" : "Mostrar Inativos"}
               >
                 {showInactive ? <EyeOff size={20} /> : <Eye size={20} />}
@@ -1357,7 +1357,7 @@ export default function UserManagement({ userProfile }) {
                 sortable: true,
                 render: (u) => (
                   <div>
-                    <p className="font-medium text-[#021D34] dark:text-white">
+                    <p className="font-medium text-[#021D34]">
                       {u.name}
                     </p>
                     <p className="text-xs text-slate-400">{u.email}</p>
@@ -1371,7 +1371,7 @@ export default function UserManagement({ userProfile }) {
                 sortable: true,
                 render: (u) => (
                   <span
-                    className={`px-2 py-1 rounded text-[10px] uppercase font-bold ${u.role === "admin" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" : u.role === "tech" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"}`}
+                    className={`px-2 py-1 rounded text-[10px] uppercase font-bold ${u.role === "admin" ? "bg-purple-100 text-purple-700" : u.role === "tech" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"}`}
                   >
                     {ROLE_LABELS[u.role] || u.role}
                   </span>
@@ -1382,7 +1382,7 @@ export default function UserManagement({ userProfile }) {
                 label: "Status",
                 render: (u) => (
                   <span
-                    className={`text-xs font-bold px-2 py-1 rounded ${u.active !== false ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"}`}
+                    className={`text-xs font-bold px-2 py-1 rounded ${u.active !== false ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
                   >
                     {u.active !== false ? "Ativo" : "Inativo"}
                   </span>
@@ -1396,20 +1396,20 @@ export default function UserManagement({ userProfile }) {
             mobileRender={(u) => (
               <div className="flex justify-between items-center">
                 <div>
-                  <h4 className="font-bold text-[#021D34] dark:text-white">
+                  <h4 className="font-bold text-[#021D34]">
                     {u.name}
                   </h4>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">
+                  <p className="text-xs text-slate-500 mb-1">
                     {u.email}
                   </p>
                   <div className="flex gap-2">
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${u.role === "admin" ? "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" : u.role === "tech" ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"}`}
+                      className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${u.role === "admin" ? "bg-purple-100 text-purple-700" : u.role === "tech" ? "bg-orange-100 text-orange-700" : "bg-blue-100 text-blue-700"}`}
                     >
                       {ROLE_LABELS[u.role] || u.role}
                     </span>
                     <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded ${u.active !== false ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"}`}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded ${u.active !== false ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}
                     >
                       {u.active !== false ? "Ativo" : "Inativo"}
                     </span>
@@ -1427,7 +1427,7 @@ export default function UserManagement({ userProfile }) {
                 <div className="flex gap-2 justify-center">
                   <button
                     onClick={() => handleEditClick(u)}
-                    className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded bg-slate-50 dark:bg-slate-900 border border-blue-100 dark:border-blue-900"
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded bg-slate-50 border border-blue-100"
                     title="Editar"
                   >
                     <Edit2 size={16} />
@@ -1437,7 +1437,7 @@ export default function UserManagement({ userProfile }) {
                   {u.active !== false && (
                     <button
                       onClick={() => handleInactivate(u)}
-                      className="p-2 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded bg-slate-50 dark:bg-slate-900 border border-orange-100 dark:border-orange-900"
+                      className="p-2 text-orange-600 hover:bg-orange-50 rounded bg-slate-50 border border-orange-100"
                       title="Inativar/Bloquear Acesso"
                     >
                       <Ban size={16} />
@@ -1452,7 +1452,7 @@ export default function UserManagement({ userProfile }) {
               <button
                 onClick={loadMore}
                 disabled={loadingMore}
-                className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 px-6 py-2 rounded-full text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[#009DE0] hover:border-[#009DE0] transition-all flex items-center gap-2 disabled:opacity-50"
+                className="bg-white border border-slate-300 text-slate-600 px-6 py-2 rounded-full text-sm font-bold hover:bg-slate-50 hover:text-[#009DE0] hover:border-[#009DE0] transition-all flex items-center gap-2 disabled:opacity-50"
               >
                 {loadingMore ? (
                   <Loader2 className="animate-spin w-4 h-4" />
@@ -1465,19 +1465,19 @@ export default function UserManagement({ userProfile }) {
           )}
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-800 p-8 rounded-xl border border-slate-200 dark:border-slate-700 max-w-2xl mx-auto shadow-sm transition-colors">
-          <h3 className="font-bold text-lg mb-6 border-b border-slate-100 dark:border-slate-700 pb-2 text-[#021D34] dark:text-white">
+        <div className="bg-white p-8 rounded-xl border border-slate-200 max-w-2xl mx-auto shadow-sm transition-colors">
+          <h3 className="font-bold text-lg mb-6 border-b border-slate-100 pb-2 text-[#021D34]">
             {editing ? "Editar Utilizador" : "Registar Novo"}
           </h3>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">
+                <label className="text-xs font-bold text-slate-500 mb-1 block">
                   Nome
                 </label>
                 <input
-                  className={`w-full p-3 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${errors.name ? "border-red-500" : ""}`}
+                  className={`w-full p-3 border rounded-lg bg-white text-slate-900 ${errors.name ? "border-red-500" : ""}`}
                   {...register("name")}
                 />
                 {errors.name && (
@@ -1487,11 +1487,11 @@ export default function UserManagement({ userProfile }) {
                 )}
               </div>
               <div>
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">
+                <label className="text-xs font-bold text-slate-500 mb-1 block">
                   CPF
                 </label>
                 <input
-                  className={`w-full p-3 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${errors.cpf ? "border-red-500" : ""}`}
+                  className={`w-full p-3 border rounded-lg bg-white text-slate-900 ${errors.cpf ? "border-red-500" : ""}`}
                   {...register("cpf")}
                   onChange={(e) => {
                     const masked = maskCPF(e.target.value);
@@ -1508,12 +1508,12 @@ export default function UserManagement({ userProfile }) {
             </div>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">
+                <label className="text-xs font-bold text-slate-500 mb-1 block">
                   Email
                 </label>
                 <input
                   type="email"
-                  className={`w-full p-3 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${errors.email ? "border-red-500" : ""}`}
+                  className={`w-full p-3 border rounded-lg bg-white text-slate-900 ${errors.email ? "border-red-500" : ""}`}
                   {...register("email")}
                 />
                 {errors.email && (
@@ -1525,12 +1525,12 @@ export default function UserManagement({ userProfile }) {
 
               {!editing ? (
                 <div>
-                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">
+                  <label className="text-xs font-bold text-slate-500 mb-1 block">
                     Senha Inicial
                   </label>
                   <input
                     type="password"
-                    className={`w-full p-3 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white ${errors.password ? "border-red-500" : ""}`}
+                    className={`w-full p-3 border rounded-lg bg-white text-slate-900 ${errors.password ? "border-red-500" : ""}`}
                     {...register("password")}
                   />
                   {errors.password && (
@@ -1540,7 +1540,7 @@ export default function UserManagement({ userProfile }) {
                   )}
                 </div>
               ) : (
-                <div className="flex items-center text-xs text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
+                <div className="flex items-center text-xs text-slate-400 bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <span className="italic">
                     Para alterar a senha, utilize a função "Esqueci a Senha" na
                     tela de login.
@@ -1548,13 +1548,13 @@ export default function UserManagement({ userProfile }) {
                 </div>
               )}
             </div>
-            <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-lg flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6 border border-slate-100 dark:border-slate-700">
+            <div className="bg-slate-50 p-4 rounded-lg flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6 border border-slate-100">
               <div className="flex-1 w-full">
-                <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block">
+                <label className="text-xs font-bold text-slate-500 mb-1 block">
                   Função
                 </label>
                 <select
-                  className="w-full p-2 border dark:border-slate-600 rounded bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full p-2 border rounded bg-white text-slate-900"
                   {...register("role")}
                 >
                   <option value="student">Aluno</option>
@@ -1569,10 +1569,10 @@ export default function UserManagement({ userProfile }) {
               <label className="flex items-center gap-2 cursor-pointer mt-0 md:mt-5">
                 <input
                   type="checkbox"
-                  className="rounded text-[#009DE0] focus:ring-[#009DE0] bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600"
+                  className="rounded text-[#009DE0] focus:ring-[#009DE0] bg-white border-slate-300"
                   {...register("active")}
                 />
-                <span className="font-bold text-sm text-[#021D34] dark:text-white">
+                <span className="font-bold text-sm text-[#021D34]">
                   Conta Ativa
                 </span>
               </label>
@@ -1584,7 +1584,7 @@ export default function UserManagement({ userProfile }) {
                   setView("list");
                   reset();
                 }}
-                className="flex-1 border dark:border-slate-600 p-4 rounded-lg font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                className="flex-1 border p-4 rounded-lg font-bold text-slate-600 hover:bg-slate-50 transition-colors"
               >
                 Cancelar
               </button>
