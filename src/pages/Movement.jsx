@@ -399,16 +399,16 @@ export default function Movement({ userProfile }) {
     <div className="space-y-6 transition-colors">
       {/* MODAL DE INCIDENTES (Inalterado) */}
       {incidentModal.isOpen && (
-        <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 border dark:border-slate-700">
+        <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 border">
             <div className="flex justify-between items-center mb-4">
               <h3
-                className={`text-lg font-bold flex items-center gap-2 ${incidentModal.type === "resolve" ? "text-green-700 dark:text-green-400" : "text-[#021D34] dark:text-white"}`}
+                className={`text-lg font-bold flex items-center gap-2 ${incidentModal.type === "resolve" ? "text-green-700" : "text-[#021D34]"}`}
               >
                 {incidentModal.type === "resolve" ? (
-                  <CheckCircle2 className="text-green-600 dark:text-green-400" />
+                  <CheckCircle2 className="text-green-600" />
                 ) : (
-                  <AlertTriangle className="text-red-500 dark:text-red-400" />
+                  <AlertTriangle className="text-red-500" />
                 )}
                 {incidentModal.type === "resolve"
                   ? "Resolver Ocorrência"
@@ -418,20 +418,20 @@ export default function Movement({ userProfile }) {
                 onClick={() =>
                   setIncidentModal({ ...incidentModal, isOpen: false })
                 }
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-2 rounded-full"
+                className="text-slate-400 hover:text-slate-600 p-2 rounded-full"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+            <p className="text-sm text-slate-500 mb-4">
               {incidentModal.type === "resolve"
                 ? `Descreva a solução. O item retornará ao status anterior.`
                 : `Descreva o problema com o item ${incidentModal.item?.code}.`}
             </p>
 
             <textarea
-              className="w-full p-4 border border-slate-200 dark:border-slate-600 rounded-xl outline-none text-sm min-h-[120px] bg-slate-50 dark:bg-slate-900 dark:text-white focus:border-[#009DE0] transition-colors"
+              className="w-full p-4 border border-slate-200 rounded-xl outline-none text-sm min-h-[120px] bg-slate-50 focus:border-[#009DE0] transition-colors"
               placeholder={
                 incidentModal.type === "resolve"
                   ? "Ex: Material re-lavado, Item consertado..."
@@ -449,13 +449,13 @@ export default function Movement({ userProfile }) {
                 onClick={() =>
                   setIncidentModal({ ...incidentModal, isOpen: false })
                 }
-                className="px-4 py-2 text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm transition-colors"
+                className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg text-sm transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={confirmIncident}
-                className={`px-6 py-2 text-white font-bold rounded-lg hover:brightness-90 text-sm transition-colors ${incidentModal.type === "resolve" ? "bg-green-600 dark:bg-green-700" : "bg-red-600 dark:bg-red-700"}`}
+                className={`px-6 py-2 text-white font-bold rounded-lg hover:brightness-90 text-sm transition-colors ${incidentModal.type === "resolve" ? "bg-green-600" : "bg-red-600"}`}
               >
                 {incidentModal.type === "resolve"
                   ? "Resolver & Retornar"
@@ -480,22 +480,22 @@ export default function Movement({ userProfile }) {
 
           return (
             <div
-              className="fixed inset-0 z-[10004] flex items-center justify-center p-4 bg-[#021D34]/50 dark:bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+              className="fixed inset-0 z-[10004] flex items-center justify-center p-4 bg-[#021D34]/50 backdrop-blur-sm animate-in fade-in duration-200"
               onClick={() => setQuickViewStudentId(null)}
             >
               <div
-                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200 border dark:border-slate-700"
+                className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200 border"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="flex justify-between items-start p-6 pb-4 border-b border-slate-100 dark:border-slate-700">
+                <div className="flex justify-between items-start p-6 pb-4 border-b border-slate-100">
                   <div>
-                    <p className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 mb-1">
+                    <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">
                       Quick View — Aluno
                     </p>
-                    <h3 className="text-xl font-bold text-[#021D34] dark:text-white break-words">
+                    <h3 className="text-xl font-bold text-[#021D34] break-words">
                       {studentName}
                     </h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    <p className="text-sm text-slate-500 mt-1">
                       {studentItems.length} requisiç
                       {studentItems.length === 1 ? "ão" : "ões"} ativa
                       {studentItems.length === 1 ? "" : "s"}
@@ -503,7 +503,7 @@ export default function Movement({ userProfile }) {
                   </div>
                   <button
                     onClick={() => setQuickViewStudentId(null)}
-                    className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
                     title="Fechar"
                   >
                     <X size={20} />
@@ -520,17 +520,17 @@ export default function Movement({ userProfile }) {
                     return (
                       <div
                         key={it.id}
-                        className="border border-slate-200 dark:border-slate-700 rounded-xl p-4 bg-slate-50 dark:bg-slate-900/50"
+                        className="border border-slate-200 rounded-xl p-4 bg-slate-50"
                       >
                         <div className="flex justify-between items-start mb-3 gap-2">
                           <div className="min-w-0 flex-1">
                             <p className="font-mono font-bold text-[#009DE0] text-base tracking-wider">
                               {it.code}
                             </p>
-                            <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm break-words">
+                            <p className="font-semibold text-slate-800 text-sm break-words">
                               {it.type}
                             </p>
-                            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+                            <p className="text-xs text-slate-400 mt-1">
                               Entrada: {formatDate(it.createdAt)}
                             </p>
                           </div>
@@ -544,7 +544,7 @@ export default function Movement({ userProfile }) {
                         <div className="grid grid-cols-2 gap-2">
                           <button
                             onClick={() => printItems(it)}
-                            className="p-2 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors flex items-center justify-center gap-1"
+                            className="p-2 bg-white text-slate-700 rounded-lg text-xs font-bold border border-slate-200 hover:bg-slate-100 transition-colors flex items-center justify-center gap-1"
                           >
                             <Printer size={14} /> Imprimir
                           </button>
@@ -588,7 +588,7 @@ export default function Movement({ userProfile }) {
                                   handleIncidentClick(it);
                                   setQuickViewStudentId(null);
                                 }}
-                                className="col-span-2 p-2 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 rounded-lg text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/40 flex items-center justify-center gap-1 transition-colors"
+                                className="col-span-2 p-2 text-red-600 border border-red-200 bg-red-50 rounded-lg text-xs font-bold hover:bg-red-100 flex items-center justify-center gap-1 transition-colors"
                               >
                                 <AlertTriangle size={14} /> Registrar Ocorrência
                               </button>
@@ -604,10 +604,10 @@ export default function Movement({ userProfile }) {
         })()}
 
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-        <h2 className="font-bold text-[#021D34] dark:text-white text-2xl flex items-center gap-2 w-full md:w-auto transition-colors">
+        <h2 className="font-bold text-[#021D34] text-2xl flex items-center gap-2 w-full md:w-auto transition-colors">
           <ScanBarcode className="text-[#009DE0]" /> Movimentação
         </h2>
-        <div className="flex gap-1 bg-slate-200 dark:bg-slate-700 p-1 rounded-lg w-full md:w-fit overflow-x-auto transition-colors">
+        <div className="flex gap-1 bg-slate-200 p-1 rounded-lg w-full md:w-fit overflow-x-auto transition-colors">
           <button
             onClick={() => {
               setMode("list");
@@ -615,13 +615,13 @@ export default function Movement({ userProfile }) {
               setSingleItem(null);
               setShowCamera(false);
             }}
-            className={`flex-1 md:flex-none px-4 py-2 text-sm font-bold rounded-md whitespace-nowrap transition-all ${mode === "list" ? "bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm" : "text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white"}`}
+            className={`flex-1 md:flex-none px-4 py-2 text-sm font-bold rounded-md whitespace-nowrap transition-all ${mode === "list" ? "bg-white text-[#009DE0] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
           >
             Lista / Lote
           </button>
           <button
             onClick={() => setMode("single")}
-            className={`flex-1 md:flex-none px-4 py-2 text-sm font-bold rounded-md whitespace-nowrap transition-all ${mode === "single" ? "bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm" : "text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white"}`}
+            className={`flex-1 md:flex-none px-4 py-2 text-sm font-bold rounded-md whitespace-nowrap transition-all ${mode === "single" ? "bg-white text-[#009DE0] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
           >
             Leitura Individual
           </button>
@@ -630,20 +630,20 @@ export default function Movement({ userProfile }) {
 
       {mode === "single" ? (
         <div className="max-w-xl mx-auto space-y-6 py-8 animate-in zoom-in-95 duration-300">
-          <div className="bg-white dark:bg-slate-800 p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-lg text-center relative overflow-hidden transition-colors">
+          <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-lg text-center relative overflow-hidden transition-colors">
             {!showCamera ? (
               <>
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#009DE0] via-purple-500 to-[#009DE0] animate-pulse" />
                 <ScanBarcode className="w-16 h-16 text-[#009DE0] mx-auto mb-6" />
-                <h2 className="text-2xl font-bold text-[#021D34] dark:text-white mb-2">
+                <h2 className="text-2xl font-bold text-[#021D34] mb-2">
                   Movimentação de Item
                 </h2>
-                <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm">
+                <p className="text-slate-500 mb-8 text-sm">
                   Bipe o código, digite abaixo ou use a câmera.
                 </p>
                 <input
                   ref={inputRef}
-                  className="w-full text-center font-mono text-3xl uppercase tracking-[0.2em] p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:border-[#009DE0] outline-none mb-4 bg-white dark:bg-slate-900 text-black dark:text-white transition-colors"
+                  className="w-full text-center font-mono text-3xl uppercase tracking-[0.2em] p-4 border-2 border-slate-200 rounded-xl focus:border-[#009DE0] outline-none mb-4 bg-white text-black transition-colors"
                   placeholder="CÓDIGO"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
@@ -675,16 +675,16 @@ export default function Movement({ userProfile }) {
           </div>
 
           {singleItem && (
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-md animate-in slide-in-from-bottom-4 transition-colors">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-md animate-in slide-in-from-bottom-4 transition-colors">
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h3 className="text-xl font-bold text-[#021D34] dark:text-white">
+                  <h3 className="text-xl font-bold text-[#021D34]">
                     {singleItem.studentName}
                   </h3>
                   <p className="text-lg font-mono font-bold text-[#009DE0] mt-1 tracking-wider">
                     {singleItem.code}
                   </p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                  <p className="text-sm text-slate-500">
                     {singleItem.type}
                   </p>
                 </div>
@@ -695,7 +695,7 @@ export default function Movement({ userProfile }) {
                       setCode("");
                       if (inputRef.current) inputRef.current.focus();
                     }}
-                    className="p-2 -mr-2 -mt-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+                    className="p-2 -mr-2 -mt-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
                     title="Fechar e Ler Novo"
                   >
                     <X size={20} />
@@ -743,7 +743,7 @@ export default function Movement({ userProfile }) {
                     ) : (
                       <button
                         onClick={() => handleIncidentClick(singleItem)}
-                        className="mt-2 p-3 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-900/20 rounded-xl font-bold hover:bg-red-100 flex items-center justify-center gap-2 transition-colors"
+                        className="mt-2 p-3 text-red-600 border border-red-200 bg-red-50 rounded-xl font-bold hover:bg-red-100 flex items-center justify-center gap-2 transition-colors"
                       >
                         <AlertTriangle size={18} /> Registrar Ocorrência
                       </button>
@@ -756,12 +756,12 @@ export default function Movement({ userProfile }) {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="flex flex-col md:flex-row justify-between gap-4 bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm transition-colors">
+          <div className="flex flex-col md:flex-row justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm transition-colors">
             <div className="flex flex-col md:flex-row gap-4 flex-1">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
                 <input
-                  className="w-full pl-10 p-2 border dark:border-slate-600 rounded-lg text-sm outline-none focus:border-[#009DE0] bg-transparent dark:bg-slate-900 text-slate-900 dark:text-white transition-colors"
+                  className="w-full pl-10 p-2 border rounded-lg text-sm outline-none focus:border-[#009DE0] bg-transparent text-slate-900 transition-colors"
                   placeholder="Buscar por nome, código, material ou CPF..."
                   value={search}
                   onChange={(e) => {
@@ -804,15 +804,15 @@ export default function Movement({ userProfile }) {
 
                     if (students.length === 0) {
                       return (
-                        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-30 p-4 text-center text-slate-500 dark:text-slate-400 text-sm">
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-30 p-4 text-center text-slate-500 text-sm">
                           Nenhum aluno encontrado.
                         </div>
                       );
                     }
 
                     return (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-30 max-h-80 overflow-y-auto animate-in slide-in-from-top-2">
-                        <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900">
+                      <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-30 max-h-80 overflow-y-auto animate-in slide-in-from-top-2">
+                        <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-slate-400 border-b border-slate-100 sticky top-0 bg-white">
                           Quick View — {students.length} aluno
                           {students.length === 1 ? "" : "s"}
                         </div>
@@ -826,18 +826,18 @@ export default function Movement({ userProfile }) {
                               );
                               setShowQuickDropdown(false);
                             }}
-                            className="w-full text-left p-3 hover:bg-blue-50 dark:hover:bg-slate-800 border-b border-slate-100 dark:border-slate-800 last:border-0 transition-colors flex items-center justify-between gap-3"
+                            className="w-full text-left p-3 hover:bg-blue-50 border-b border-slate-100 last:border-0 transition-colors flex items-center justify-between gap-3"
                           >
-                            <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm break-words flex-1">
+                            <p className="font-semibold text-slate-800 text-sm break-words flex-1">
                               {s.studentName}
                             </p>
-                            <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-[#009DE0] dark:text-blue-300 whitespace-nowrap">
+                            <span className="text-[10px] font-bold uppercase px-2 py-1 rounded-full bg-blue-50 text-[#009DE0] whitespace-nowrap">
                               {s.count} {s.count === 1 ? "item" : "itens"}
                             </span>
                           </button>
                         ))}
                         {students.length > 10 && (
-                          <div className="px-3 py-2 text-[11px] text-center text-slate-400 dark:text-slate-500 border-t border-slate-100 dark:border-slate-800">
+                          <div className="px-3 py-2 text-[11px] text-center text-slate-400 border-t border-slate-100">
                             + {students.length - 10} aluno
                             {students.length - 10 === 1 ? "" : "s"} — refine a
                             busca
@@ -853,7 +853,7 @@ export default function Movement({ userProfile }) {
                 <Calendar className="absolute left-3 top-2.5 w-4 h-4 text-slate-400 pointer-events-none" />
                 <input
                   type="date"
-                  className="pl-10 p-2 border dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-[#009DE0] transition-colors"
+                  className="pl-10 p-2 border rounded-lg text-sm bg-white text-slate-900 outline-none focus:border-[#009DE0] transition-colors"
                   value={filterDate}
                   onChange={(e) => setFilterDate(e.target.value)}
                 />
@@ -868,7 +868,7 @@ export default function Movement({ userProfile }) {
               </div>
 
               <select
-                className="p-2 border dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:border-[#009DE0] transition-colors"
+                className="p-2 border rounded-lg text-sm bg-white text-slate-900 outline-none focus:border-[#009DE0] transition-colors"
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
               >
@@ -878,8 +878,8 @@ export default function Movement({ userProfile }) {
               </select>
             </div>
             {selectedIds.length > 0 && (
-              <div className="flex gap-2 items-center bg-slate-50 dark:bg-slate-900 p-2 rounded-lg transition-colors">
-                <span className="text-xs font-bold dark:text-slate-300">
+              <div className="flex gap-2 items-center bg-slate-50 p-2 rounded-lg transition-colors">
+                <span className="text-xs font-bold">
                   {selectedIds.length} sel.
                 </span>
                 <button
@@ -906,7 +906,7 @@ export default function Movement({ userProfile }) {
                     type="checkbox"
                     checked={isAllSelected}
                     onChange={toggleSelectAll}
-                    className="rounded text-[#009DE0] focus:ring-[#009DE0] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 cursor-pointer"
+                    className="rounded text-[#009DE0] focus:ring-[#009DE0] bg-white border-slate-300 cursor-pointer"
                   />
                 ),
                 render: (i) => (
@@ -920,7 +920,7 @@ export default function Movement({ userProfile }) {
                           : [...p, i.id],
                       )
                     }
-                    className="rounded text-[#009DE0] focus:ring-[#009DE0] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600"
+                    className="rounded text-[#009DE0] focus:ring-[#009DE0] bg-white border-slate-300"
                   />
                 ),
               },
@@ -939,7 +939,7 @@ export default function Movement({ userProfile }) {
                 label: "Aluno",
                 sortable: true,
                 className:
-                  "p-4 text-slate-700 dark:text-slate-300 whitespace-normal break-words",
+                  "p-4 text-slate-700 whitespace-normal break-words",
               },
               { key: "type", label: "Material", sortable: true },
               {
@@ -978,7 +978,7 @@ export default function Movement({ userProfile }) {
                         : [...p, i.id],
                     )
                   }
-                  className="w-5 h-5 rounded text-[#009DE0] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600"
+                  className="w-5 h-5 rounded text-[#009DE0] bg-white border-slate-300"
                 />
                 <div className="flex-1">
                   <div className="flex justify-between">
@@ -991,10 +991,10 @@ export default function Movement({ userProfile }) {
                       {STATUS_CONFIG[i.status]?.label}
                     </span>
                   </div>
-                  <p className="font-bold text-slate-800 dark:text-slate-200 break-words">
+                  <p className="font-bold text-slate-800 break-words">
                     {i.studentName}
                   </p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                  <p className="text-sm text-slate-500 truncate">
                     {i.type}
                   </p>
                 </div>
@@ -1004,7 +1004,7 @@ export default function Movement({ userProfile }) {
               <div className="flex gap-1 justify-center">
                 <button
                   onClick={() => printItems(item)}
-                  className="p-2 text-slate-400 hover:text-[#009DE0] bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded transition-colors"
+                  className="p-2 text-slate-400 hover:text-[#009DE0] bg-slate-50 border rounded transition-colors"
                 >
                   <Printer size={20} />
                 </button>
@@ -1013,7 +1013,7 @@ export default function Movement({ userProfile }) {
                     {item.status === "problema" ? (
                       <button
                         onClick={() => handleResolveClick(item)}
-                        className="p-2 text-green-600 hover:text-green-800 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded transition-colors"
+                        className="p-2 text-green-600 hover:text-green-800 bg-green-50 border border-green-200 rounded transition-colors"
                         title="Resolver"
                       >
                         <CheckCircle2 size={20} />
@@ -1021,7 +1021,7 @@ export default function Movement({ userProfile }) {
                     ) : (
                       <button
                         onClick={() => handleIncidentClick(item)}
-                        className="p-2 text-red-400 hover:text-red-600 dark:text-red-400 bg-slate-50 dark:bg-slate-900 border dark:border-slate-700 rounded transition-colors"
+                        className="p-2 text-red-400 hover:text-red-600 bg-slate-50 border rounded transition-colors"
                         title="Registrar Ocorrência"
                       >
                         <AlertTriangle size={20} />

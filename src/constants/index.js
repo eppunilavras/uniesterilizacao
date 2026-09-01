@@ -17,31 +17,31 @@ export const STATUS_CONFIG = {
   'recebido': { 
       label: 'Recebido', 
       // Adicionado suporte dark: fundo mais escuro e texto mais claro
-      color: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700', 
+      color: 'bg-slate-100 text-slate-800 border-slate-200', 
       icon: Clock 
   },
   'em_esterilizacao': { 
       label: 'Em Esterilização', 
       // Adicionado suporte dark: laranja suave
-      color: 'bg-orange-50 text-orange-800 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800', 
+      color: 'bg-orange-50 text-orange-800 border-orange-200', 
       icon: AlertCircle 
   },
   'pronto': { 
       label: 'Pronto p/ Retirada', 
       // Adicionado suporte dark: verde suave
-      color: 'bg-green-50 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800', 
+      color: 'bg-green-50 text-green-800 border-green-200', 
       icon: CheckCircle2 
   },
   'retirado': { 
       label: 'Retirado', 
       // CORREÇÃO: Trocado text-[#021D34] por azul claro (blue-300) no modo dark
-      color: 'bg-[#009DE0]/10 text-[#021D34] border-[#009DE0]/20 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800', 
+      color: 'bg-[#009DE0]/10 text-[#021D34] border-[#009DE0]/20', 
       icon: CheckSquare 
   },
   'problema': { 
       label: 'Com Ocorrência', 
       // Adicionado suporte dark: vermelho suave
-      color: 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800', 
+      color: 'bg-red-50 text-red-700 border-red-200', 
       icon: AlertTriangle 
   },
 };

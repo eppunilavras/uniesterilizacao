@@ -1,5 +1,18 @@
- import React from 'react';
+import React from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
+
+const CHUNK_ERROR_KEY = 'chunk_reload_attempted';
+
+function isChunkError(error) {
+  const msg = error?.message || error?.toString() || '';
+  return (
+    msg.includes('dynamically imported module') ||
+    msg.includes('Failed to fetch dynamically') ||
+    msg.includes('Importing a module script failed') ||
+    msg.includes('Loading chunk') ||
+    msg.includes('ChunkLoadError')
+  );
+}
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -8,13 +21,29 @@ class ErrorBoundary extends React.Component {
   }
 
   static getDerivedStateFromError(error) {
-    // Atualiza o estado para que a próxima renderização mostre a UI alternativa.
     return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
-    // Você pode registrar o erro no Firebase Logging aqui se quiser
     console.error("Uncaught error:", error, errorInfo);
+
+    // Chunk obsoleto por novo deploy: limpa cache SW e recarrega automaticamente (uma vez)
+    if (isChunkError(error)) {
+      const alreadyTried = sessionStorage.getItem(CHUNK_ERROR_KEY);
+      if (!alreadyTried) {
+        sessionStorage.setItem(CHUNK_ERROR_KEY, '1');
+        // Tenta invalidar cache do service worker antes de recarregar
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.getRegistrations().then((regs) => {
+            Promise.all(regs.map((r) => r.unregister())).then(() => {
+              window.location.reload();
+            });
+          });
+        } else {
+          window.location.reload();
+        }
+      }
+    }
   }
 
   render() {

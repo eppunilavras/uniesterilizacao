@@ -65,6 +65,8 @@ export default function HistoryView({ userProfile }) {
   const [reportStudent, setReportStudent] = useState(null);
   const [reportStart, setReportStart] = useState("");
   const [reportEnd, setReportEnd] = useState("");
+  const [studentItems, setStudentItems] = useState([]);
+  const [loadingStudentItems, setLoadingStudentItems] = useState(false);
 
   // --- ESTADOS DO RELATÓRIO TÉCNICO ---
   const [techSearch, setTechSearch] = useState("");
@@ -97,53 +99,63 @@ export default function HistoryView({ userProfile }) {
 
   // =================================================================================
   // 1. LÓGICA DE RELATÓRIO POR ALUNO
+  // Carrega TODOS os alunos do directory uma vez e filtra localmente.
+  // Resolve case-sensitivity, acentos e busca por qualquer parte do nome.
   // =================================================================================
+  const [allStudentsDir, setAllStudentsDir] = useState([]);
   useEffect(() => {
     if (mode !== "student_report") return;
-    const timer = setTimeout(async () => {
-      if (reportSearch.length < 3) {
-        setReportResults([]);
-        return;
-      }
+    if (allStudentsDir.length > 0) return;
+    const fetchAll = async () => {
       try {
-        const usersRef = collection(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "users_directory",
+        const snap = await getDocs(
+          query(
+            collection(db, "artifacts", appId, "public", "data", "users_directory"),
+            where("role", "==", "student"),
+          )
         );
-        const term = formatSearchTerm(reportSearch);
-        let q;
-
-        if (/^\d+$/.test(term)) {
-          q = query(
-            usersRef,
-            where("role", "==", "student"),
-            orderBy("cpf"),
-            startAt(term),
-            endAt(term + "\uf8ff"),
-            limit(5),
-          );
-        } else {
-          q = query(
-            usersRef,
-            where("role", "==", "student"),
-            orderBy("name"),
-            startAt(term),
-            endAt(term + "\uf8ff"),
-            limit(5),
-          );
-        }
-        const snap = await getDocs(q);
-        setReportResults(snap.docs.map((d) => ({ uid: d.id, ...d.data() })));
+        setAllStudentsDir(snap.docs.map((d) => ({ uid: d.id, ...d.data() })));
       } catch (e) {
-        console.error(e);
+        console.error("Erro ao carregar diretório:", e);
       }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [reportSearch, mode]);
+    };
+    fetchAll();
+  }, [mode]);
+
+  useEffect(() => {
+    if (reportSearch.length < 2) { setReportResults([]); return; }
+    const normalize = (s) => (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const term = normalize(reportSearch);
+    const results = allStudentsDir.filter((s) => {
+      const name = normalize(s.name);
+      const cpf = (s.cpf || "").replace(/\D/g, "");
+      return name.includes(term) || cpf.includes(term);
+    }).slice(0, 8);
+    setReportResults(results);
+  }, [reportSearch, allStudentsDir]);
+
+  // Carrega TODOS os itens do aluno selecionado (sem limit — busca por UID)
+  useEffect(() => {
+    if (!reportStudent) { setStudentItems([]); return; }
+    setLoadingStudentItems(true);
+    const fetchItems = async () => {
+      try {
+        const q = query(
+          collection(db, "artifacts", appId, "public", "data", "items"),
+          where("studentId", "==", reportStudent.uid),
+          orderBy("createdAt", "desc"),
+        );
+        const snap = await getDocs(q);
+        setStudentItems(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      } catch (e) {
+        console.error("Erro ao buscar itens do aluno:", e);
+        addToast("Erro ao carregar itens do aluno.", "error");
+      } finally {
+        setLoadingStudentItems(false);
+      }
+    };
+    fetchItems();
+  }, [reportStudent]);
 
   const generateStudentPDF = async () => {
     if (!reportStudent || !reportStart || !reportEnd) {
@@ -462,14 +474,23 @@ export default function HistoryView({ userProfile }) {
       } catch (error) {
         console.error("Erro lista:", error);
         if (error.code === "failed-precondition") {
-          const c = [orderBy("createdAt", "desc"), limit(50)];
-          if (isStudent) c.unshift(where("studentId", "==", userProfile.uid));
-          const q = query(
-            collection(db, "artifacts", appId, "public", "data", "items"),
-            ...c,
-          );
-          const s = await getDocs(q);
-          setHistory(s.docs.map((d) => ({ id: d.id, ...d.data() })));
+          try {
+            const c = [orderBy("createdAt", "desc"), limit(50)];
+            if (isStudent) c.unshift(where("studentId", "==", userProfile.uid));
+            const q = query(
+              collection(db, "artifacts", appId, "public", "data", "items"),
+              ...c,
+            );
+            const s = await getDocs(q);
+            setHistory(s.docs.map((d) => ({ id: d.id, ...d.data() })));
+          } catch (e2) {
+            console.error("Erro fallback:", e2);
+            addToast("Erro ao carregar histórico. Índice ausente.", "error");
+          }
+        } else if (error.code === "permission-denied") {
+          addToast("Sem permissão para acessar o histórico.", "error");
+        } else {
+          addToast("Erro ao carregar histórico: " + (error.message || error.code), "error");
         }
       } finally {
         setLoading(false);
@@ -589,18 +610,18 @@ export default function HistoryView({ userProfile }) {
   return (
     <div className="space-y-6 w-full max-w-full overflow-hidden transition-colors">
       <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-        <h2 className="font-bold text-[#021D34] dark:text-white text-2xl flex items-center gap-2 w-full md:w-auto transition-colors">
+        <h2 className="font-bold text-[#021D34] text-2xl flex items-center gap-2 w-full md:w-auto transition-colors">
           <History className="text-[#009DE0]" /> Histórico
         </h2>
 
         {/* Botões de Navegação Desktop */}
-        <div className="hidden md:flex bg-slate-200 dark:bg-slate-700 p-1 rounded-lg w-fit gap-1 transition-colors">
+        <div className="hidden md:flex bg-slate-200 p-1 rounded-lg w-fit gap-1 transition-colors">
           <button
             onClick={() => {
               setMode("list");
               setScanCode("");
             }}
-            className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${mode === "list" ? "bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm" : "text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white"}`}
+            className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${mode === "list" ? "bg-white text-[#009DE0] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
           >
             Lista Geral
           </button>
@@ -613,7 +634,7 @@ export default function HistoryView({ userProfile }) {
                 setSearch("");
                 setShowCamera(false);
               }}
-              className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${mode === "scan" ? "bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm" : "text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white"}`}
+              className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap ${mode === "scan" ? "bg-white text-[#009DE0] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
             >
               Rastrear Item
             </button>
@@ -625,7 +646,7 @@ export default function HistoryView({ userProfile }) {
                 setMode("student_report");
                 setSearch("");
               }}
-              className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap flex items-center gap-2 ${mode === "student_report" ? "bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm" : "text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white"}`}
+              className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap flex items-center gap-2 ${mode === "student_report" ? "bg-white text-[#009DE0] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
             >
               <GraduationCap size={16} /> Relatório Aluno
             </button>
@@ -637,7 +658,7 @@ export default function HistoryView({ userProfile }) {
                 setTechSearch("");
                 setReportTech(null);
               }}
-              className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap flex items-center gap-2 ${mode === "tech_report" ? "bg-white dark:bg-slate-800 text-[#009DE0] shadow-sm" : "text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white"}`}
+              className={`px-4 py-2 text-sm font-bold rounded-md transition-all whitespace-nowrap flex items-center gap-2 ${mode === "tech_report" ? "bg-white text-[#009DE0] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
             >
               <UserCog size={16} /> Relatório Técnico
             </button>
@@ -649,7 +670,7 @@ export default function HistoryView({ userProfile }) {
           <select
             value={mode}
             onChange={handleMobileModeChange}
-            className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-700 dark:text-slate-200 font-bold shadow-sm focus:border-[#009DE0] outline-none transition-colors"
+            className="w-full p-3 bg-white border border-slate-300 rounded-lg text-slate-700 font-bold shadow-sm focus:border-[#009DE0] outline-none transition-colors"
           >
             <option value="list">Lista Geral</option>
 
@@ -669,8 +690,8 @@ export default function HistoryView({ userProfile }) {
       {/* ABA 1: RELATÓRIOS */}
       {(mode === "tech_report" || mode === "student_report") && (
         <div className="max-w-2xl mx-auto space-y-6 py-4 animate-in zoom-in-95 duration-300">
-          <div className="bg-white dark:bg-slate-800 p-4 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-lg relative transition-colors">
-            <h3 className="text-xl font-bold text-[#021D34] dark:text-white mb-6 flex items-center gap-2">
+          <div className="bg-white p-4 md:p-8 rounded-2xl border border-slate-200 shadow-lg relative transition-colors">
+            <h3 className="text-xl font-bold text-[#021D34] mb-6 flex items-center gap-2">
               {mode === "tech_report" ? (
                 <UserCog className="text-[#009DE0]" />
               ) : (
@@ -683,16 +704,16 @@ export default function HistoryView({ userProfile }) {
             {mode === "tech_report" && (
               <div className="space-y-4">
                 <div className="relative">
-                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block uppercase">
+                  <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">
                     1. Selecione o Técnico
                   </label>
                   {reportTech ? (
-                    <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
+                    <div className="flex items-center justify-between bg-blue-50 p-3 rounded-lg border border-blue-100">
                       <div>
-                        <p className="font-bold text-[#021D34] dark:text-blue-100">
+                        <p className="font-bold text-[#021D34]">
                           {reportTech.name}
                         </p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                        <p className="text-xs text-slate-600">
                           {reportTech.email}
                         </p>
                       </div>
@@ -701,7 +722,7 @@ export default function HistoryView({ userProfile }) {
                           setReportTech(null);
                           setTechSearch("");
                         }}
-                        className="text-red-500 hover:bg-white dark:hover:bg-slate-700 p-2 rounded-full transition-colors"
+                        className="text-red-500 hover:bg-white p-2 rounded-full transition-colors"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -710,13 +731,13 @@ export default function HistoryView({ userProfile }) {
                     <div className="relative">
                       <Search className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
                       <input
-                        className="w-full pl-10 p-3 border dark:border-slate-600 rounded-lg outline-none focus:border-[#009DE0] text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition-colors"
+                        className="w-full pl-10 p-3 border rounded-lg outline-none focus:border-[#009DE0] text-sm bg-white text-slate-900 transition-colors"
                         placeholder="Buscar por nome ou CPF..."
                         value={techSearch}
                         onChange={(e) => setTechSearch(e.target.value)}
                       />
                       {techResults.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 bg-white dark:bg-slate-800 border dark:border-slate-600 mt-1 rounded-lg shadow-xl z-20 overflow-hidden max-h-48 overflow-y-auto">
+                        <div className="absolute top-full left-0 right-0 bg-white border mt-1 rounded-lg shadow-xl z-20 overflow-hidden max-h-48 overflow-y-auto">
                           {techResults.map((t) => (
                             <button
                               key={t.uid}
@@ -724,12 +745,12 @@ export default function HistoryView({ userProfile }) {
                                 setReportTech(t);
                                 setTechResults([]);
                               }}
-                              className="w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-slate-700 border-b dark:border-slate-700 last:border-0"
+                              className="w-full text-left p-3 hover:bg-slate-50 border-b last:border-0"
                             >
-                              <p className="font-bold text-sm text-[#021D34] dark:text-white">
+                              <p className="font-bold text-sm text-[#021D34]">
                                 {t.name}
                               </p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400 uppercase font-bold">
+                              <p className="text-xs text-slate-500 uppercase font-bold">
                                 {t.role === "admin"
                                   ? "Administrador"
                                   : "Técnico"}
@@ -745,23 +766,23 @@ export default function HistoryView({ userProfile }) {
                   className={`grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity ${!reportTech ? "opacity-50 pointer-events-none" : "opacity-100"}`}
                 >
                   <div>
-                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block uppercase">
+                    <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">
                       2. Data Inicial
                     </label>
                     <input
                       type="date"
-                      className="w-full p-3 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                      className="w-full p-3 border rounded-lg bg-white text-slate-900"
                       value={reportStart}
                       onChange={(e) => setReportStart(e.target.value)}
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block uppercase">
+                    <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">
                       3. Data Final
                     </label>
                     <input
                       type="date"
-                      className="w-full p-3 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                      className="w-full p-3 border rounded-lg bg-white text-slate-900"
                       value={reportEnd}
                       onChange={(e) => setReportEnd(e.target.value)}
                     />
@@ -789,16 +810,16 @@ export default function HistoryView({ userProfile }) {
             {mode === "student_report" && (
               <div className="space-y-4">
                 <div className="relative">
-                  <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block uppercase">
+                  <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">
                     1. Selecione o Aluno
                   </label>
                   {reportStudent ? (
-                    <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
+                    <div className="flex items-center justify-between bg-blue-50 p-3 rounded-lg border border-blue-100">
                       <div>
-                        <p className="font-bold text-[#021D34] dark:text-blue-100">
+                        <p className="font-bold text-[#021D34]">
                           {reportStudent.name}
                         </p>
-                        <p className="text-xs text-slate-600 dark:text-slate-400">
+                        <p className="text-xs text-slate-600">
                           {reportStudent.email}
                         </p>
                       </div>
@@ -807,7 +828,7 @@ export default function HistoryView({ userProfile }) {
                           setReportStudent(null);
                           setReportSearch("");
                         }}
-                        className="text-red-500 hover:bg-white dark:hover:bg-slate-700 p-2 rounded-full transition-colors"
+                        className="text-red-500 hover:bg-white p-2 rounded-full transition-colors"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -816,13 +837,13 @@ export default function HistoryView({ userProfile }) {
                     <div className="relative">
                       <Search className="absolute left-3 top-3 w-5 h-5 text-slate-400" />
                       <input
-                        className="w-full pl-10 p-3 border dark:border-slate-600 rounded-lg outline-none focus:border-[#009DE0] text-sm bg-white dark:bg-slate-900 text-slate-900 dark:text-white transition-colors"
+                        className="w-full pl-10 p-3 border rounded-lg outline-none focus:border-[#009DE0] text-sm bg-white text-slate-900 transition-colors"
                         placeholder="Buscar por nome ou CPF..."
                         value={reportSearch}
                         onChange={(e) => setReportSearch(e.target.value)}
                       />
                       {reportResults.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 bg-white dark:bg-slate-800 border dark:border-slate-600 mt-1 rounded-lg shadow-xl z-20 overflow-hidden max-h-48 overflow-y-auto">
+                        <div className="absolute top-full left-0 right-0 bg-white border mt-1 rounded-lg shadow-xl z-20 overflow-hidden max-h-48 overflow-y-auto">
                           {reportResults.map((s) => (
                             <button
                               key={s.uid}
@@ -830,12 +851,12 @@ export default function HistoryView({ userProfile }) {
                                 setReportStudent(s);
                                 setReportResults([]);
                               }}
-                              className="w-full text-left p-3 hover:bg-slate-50 dark:hover:bg-slate-700 border-b dark:border-slate-700 last:border-0"
+                              className="w-full text-left p-3 hover:bg-slate-50 border-b last:border-0"
                             >
-                              <p className="font-bold text-sm text-[#021D34] dark:text-white">
+                              <p className="font-bold text-sm text-[#021D34]">
                                 {s.name}
                               </p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">
+                              <p className="text-xs text-slate-500">
                                 {maskCPF(s.cpf)}
                               </p>
                             </button>
@@ -849,23 +870,23 @@ export default function HistoryView({ userProfile }) {
                   className={`grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity ${!reportStudent ? "opacity-50 pointer-events-none" : "opacity-100"}`}
                 >
                   <div>
-                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block uppercase">
+                    <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">
                       2. Data Inicial
                     </label>
                     <input
                       type="date"
-                      className="w-full p-3 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                      className="w-full p-3 border rounded-lg bg-white text-slate-900"
                       value={reportStart}
                       onChange={(e) => setReportStart(e.target.value)}
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 block uppercase">
+                    <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">
                       3. Data Final
                     </label>
                     <input
                       type="date"
-                      className="w-full p-3 border dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                      className="w-full p-3 border rounded-lg bg-white text-slate-900"
                       value={reportEnd}
                       onChange={(e) => setReportEnd(e.target.value)}
                     />
@@ -888,6 +909,55 @@ export default function HistoryView({ userProfile }) {
                   )}{" "}
                   {generatingReport ? "Gerando PDF..." : "Gerar Relatório"}
                 </button>
+
+                {/* Lista interativa de todos os itens do aluno */}
+                {reportStudent && (
+                  <div className="mt-6 border-t border-slate-100 pt-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-bold text-sm text-slate-700 uppercase tracking-wide flex items-center gap-2">
+                        <History size={14} className="text-[#009DE0]" />
+                        Todos os Itens — {reportStudent.name}
+                      </h4>
+                      {!loadingStudentItems && (
+                        <span className="text-xs text-slate-400 font-bold">{studentItems.length} registro{studentItems.length !== 1 ? "s" : ""}</span>
+                      )}
+                    </div>
+
+                    {loadingStudentItems ? (
+                      <div className="flex items-center justify-center py-8 gap-2 text-slate-400 text-sm">
+                        <Loader2 className="animate-spin w-4 h-4" /> Carregando todos os itens...
+                      </div>
+                    ) : studentItems.length === 0 ? (
+                      <p className="text-center text-slate-400 text-sm py-6">Nenhum item encontrado para este aluno.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-[480px] overflow-y-auto pr-1">
+                        {studentItems.map((item) => {
+                          const cfg = STATUS_CONFIG[item.status];
+                          return (
+                            <button
+                              key={item.id}
+                              onClick={() => { setSelectedItem(item); setMode("details"); }}
+                              className="w-full text-left p-3 rounded-xl border border-slate-100 bg-slate-50 hover:border-[#009DE0] hover:bg-blue-50 transition-all group"
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-mono font-bold text-[#009DE0] text-sm">{item.code}</span>
+                                {cfg ? (
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${cfg.color} shrink-0`}>{cfg.label}</span>
+                                ) : (
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded border bg-slate-100 text-slate-600 border-slate-200 shrink-0">{item.status}</span>
+                                )}
+                              </div>
+                              <div className="flex items-center justify-between mt-1">
+                                <span className="text-xs text-slate-600 font-medium">{item.type}</span>
+                                <span className="text-xs text-slate-400">{formatDate(item.createdAt)}</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -897,19 +967,19 @@ export default function HistoryView({ userProfile }) {
       {/* ABA 2: RASTREAMENTO */}
       {mode === "scan" && (
         <div className="max-w-xl mx-auto space-y-6 py-8 animate-in zoom-in-95 duration-300">
-          <div className="bg-white dark:bg-slate-800 p-4 md:p-8 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-lg text-center relative overflow-hidden transition-colors">
+          <div className="bg-white p-4 md:p-8 rounded-2xl border border-slate-200 shadow-lg text-center relative overflow-hidden transition-colors">
             {!showCamera ? (
               <>
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#009DE0] via-purple-500 to-[#009DE0] animate-pulse" />
                 <ScanBarcode className="w-16 h-16 text-[#009DE0] mx-auto mb-6" />
-                <h3 className="text-2xl font-bold text-[#021D34] dark:text-white mb-2">
+                <h3 className="text-2xl font-bold text-[#021D34] mb-2">
                   Rastreamento
                 </h3>
-                <p className="text-slate-500 dark:text-slate-400 mb-8 text-sm">
+                <p className="text-slate-500 mb-8 text-sm">
                   Bipe o código ou digite abaixo.
                 </p>
                 <input
-                  className="w-full text-center font-mono text-3xl uppercase tracking-[0.2em] p-4 border-2 border-slate-200 dark:border-slate-600 rounded-xl focus:border-[#009DE0] focus:ring-4 focus:ring-blue-50 dark:focus:ring-blue-900/30 outline-none transition-all placeholder:tracking-normal mb-4 bg-white dark:bg-slate-900 text-black dark:text-white"
+                  className="w-full text-center font-mono text-3xl uppercase tracking-[0.2em] p-4 border-2 border-slate-200 rounded-xl focus:border-[#009DE0] focus:ring-4 focus:ring-blue-50 outline-none transition-all placeholder:tracking-normal mb-4 bg-white text-black"
                   placeholder="CÓDIGO"
                   value={scanCode}
                   onChange={(e) => setScanCode(e.target.value)}
@@ -945,12 +1015,12 @@ export default function HistoryView({ userProfile }) {
       {/* ABA 3: LISTA GERAL */}
       {mode === "list" && (
         <div className="space-y-4 animate-in fade-in duration-300 w-full max-w-full">
-          <div className="bg-white dark:bg-slate-800 p-4 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col md:flex-row gap-4 justify-between transition-colors">
+          <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 justify-between transition-colors">
             <div className="flex flex-col md:flex-row gap-4 w-full flex-1 min-w-0">
               <div className="relative flex-1 w-full min-w-0">
                 <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
                 <input
-                  className="w-full pl-10 p-2 border dark:border-slate-600 rounded-lg text-sm outline-none focus:border-[#009DE0] bg-transparent dark:bg-slate-900 text-slate-900 dark:text-white transition-colors"
+                  className="w-full pl-10 p-2 border rounded-lg text-sm outline-none focus:border-[#009DE0] bg-transparent text-slate-900 transition-colors"
                   placeholder={
                     isStudent
                       ? "Buscar Material..."
@@ -967,6 +1037,7 @@ export default function HistoryView({ userProfile }) {
           </div>
 
           <DataTable
+            loading={loading}
             columns={[
               {
                 key: "code",
@@ -990,17 +1061,24 @@ export default function HistoryView({ userProfile }) {
                 key: "status",
                 label: "Status Atual",
                 sortable: true,
-                render: (i) => (
-                  <span
-                    className={`text-[10px] uppercase font-bold px-2 py-1 rounded border ${STATUS_CONFIG[i.status].color}`}
-                  >
-                    {STATUS_CONFIG[i.status].label}
-                  </span>
-                ),
+                render: (i) => {
+                  const cfg = STATUS_CONFIG[i.status];
+                  return cfg ? (
+                    <span
+                      className={`text-[10px] uppercase font-bold px-2 py-1 rounded border ${cfg.color}`}
+                    >
+                      {cfg.label}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] uppercase font-bold px-2 py-1 rounded border bg-slate-100 text-slate-600 border-slate-200">
+                      {i.status || "—"}
+                    </span>
+                  );
+                },
               },
             ]}
             data={history}
-            emptyMsg={loading ? "Carregando..." : "Nenhum registro encontrado."}
+            emptyMsg="Nenhum registro encontrado."
             mobileRender={(i) => (
               <div className="flex items-center gap-3">
                 <div
@@ -1015,15 +1093,15 @@ export default function HistoryView({ userProfile }) {
                       {i.code}
                     </span>
                     <span
-                      className={`text-[10px] font-bold px-2 py-1 rounded uppercase border h-fit ${STATUS_CONFIG[i.status].color} shrink-0`}
+                      className={`text-[10px] font-bold px-2 py-1 rounded uppercase border h-fit ${STATUS_CONFIG[i.status]?.color || "bg-slate-100 text-slate-600 border-slate-200"} shrink-0`}
                     >
-                      {STATUS_CONFIG[i.status].label}
+                      {STATUS_CONFIG[i.status]?.label || i.status || "—"}
                     </span>
                   </div>
-                  <p className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                  <p className="font-bold text-slate-800 truncate">
                     {i.studentName}
                   </p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                  <p className="text-sm text-slate-500 truncate">
                     {i.type}
                   </p>
                   <p className="text-xs text-slate-400 mt-1">
@@ -1038,7 +1116,7 @@ export default function HistoryView({ userProfile }) {
                   setSelectedItem(item);
                   setMode("details");
                 }}
-                className="p-2 text-slate-500 dark:text-slate-400 hover:text-[#009DE0] hover:bg-blue-50 dark:hover:bg-slate-700 rounded bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 transition-colors"
+                className="p-2 text-slate-500 hover:text-[#009DE0] hover:bg-blue-50 rounded bg-slate-50 border border-slate-200 transition-colors"
               >
                 <Eye size={20} />
               </button>
@@ -1050,7 +1128,7 @@ export default function HistoryView({ userProfile }) {
               <button
                 onClick={loadMore}
                 disabled={loadingMore}
-                className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 px-6 py-2 rounded-full text-sm font-bold hover:bg-slate-50 dark:hover:bg-slate-700 hover:text-[#009DE0] hover:border-[#009DE0] transition-all flex items-center gap-2 disabled:opacity-50"
+                className="bg-white border border-slate-300 text-slate-600 px-6 py-2 rounded-full text-sm font-bold hover:bg-slate-50 hover:text-[#009DE0] hover:border-[#009DE0] transition-all flex items-center gap-2 disabled:opacity-50"
               >
                 {loadingMore ? (
                   <Loader2 className="animate-spin w-4 h-4" />
@@ -1072,11 +1150,11 @@ export default function HistoryView({ userProfile }) {
               setMode("list");
               setSelectedItem(null);
             }}
-            className="flex items-center gap-2 text-slate-500 dark:text-slate-400 hover:text-[#009DE0] font-bold transition-colors"
+            className="flex items-center gap-2 text-slate-500 hover:text-[#009DE0] font-bold transition-colors"
           >
             <ArrowLeft size={20} /> Voltar para Lista
           </button>
-          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden transition-colors">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-colors">
             <div className="bg-[#021D34] p-6 text-white flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
               <div>
                 <div className="flex items-center gap-3 mb-1">
@@ -1084,7 +1162,7 @@ export default function HistoryView({ userProfile }) {
                     {selectedItem.code}
                   </h2>
                   <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-white text-slate-900 border border-slate-300 shadow-sm shrink-0">
-                    {STATUS_CONFIG[selectedItem.status].label}
+                    {STATUS_CONFIG[selectedItem.status]?.label || selectedItem.status}
                   </span>
                 </div>
                 <p className="opacity-80">{selectedItem.type}</p>
@@ -1097,10 +1175,10 @@ export default function HistoryView({ userProfile }) {
               </div>
             </div>
             <div className="p-4 md:p-8">
-              <h3 className="font-bold text-[#021D34] dark:text-white mb-6 flex items-center gap-2">
+              <h3 className="font-bold text-[#021D34] mb-6 flex items-center gap-2">
                 <History className="text-[#009DE0]" /> Rastreabilidade Detalhada
               </h3>
-              <div className="relative border-l-2 border-slate-200 dark:border-slate-700 ml-2 md:ml-6 space-y-8 pb-4 transition-colors">
+              <div className="relative border-l-2 border-slate-200 ml-2 md:ml-6 space-y-8 pb-4 transition-colors">
                 {(selectedItem.history
                   ? [...selectedItem.history].reverse()
                   : []
@@ -1110,9 +1188,9 @@ export default function HistoryView({ userProfile }) {
                   return (
                     <div key={index} className="relative pl-6 md:pl-10">
                       <div
-                        className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white dark:border-slate-800 shadow-sm ${index === 0 ? "bg-[#009DE0] ring-4 ring-blue-50 dark:ring-blue-900/30" : "bg-slate-300 dark:bg-slate-600"}`}
+                        className={`absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white shadow-sm ${index === 0 ? "bg-[#009DE0] ring-4 ring-blue-50" : "bg-slate-300"}`}
                       />
-                      <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-3 md:p-4 border border-slate-100 dark:border-slate-700 shadow-sm flex flex-col gap-2 hover:border-blue-100 dark:hover:border-slate-600 transition-colors">
+                      <div className="bg-slate-50 rounded-xl p-3 md:p-4 border border-slate-100 shadow-sm flex flex-col gap-2 hover:border-blue-100 transition-colors">
                         <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-start md:items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div
@@ -1121,21 +1199,21 @@ export default function HistoryView({ userProfile }) {
                               <Config.icon size={20} />
                             </div>
                             <div>
-                              <p className="font-bold text-[#021D34] dark:text-slate-200 text-sm md:text-base">
+                              <p className="font-bold text-[#021D34] text-sm md:text-base">
                                 {Config.label}
                               </p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                              <p className="text-xs text-slate-500 flex items-center gap-1">
                                 <User size={10} /> Por: {event.by || "Sistema"}
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 text-xs font-bold text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800 px-3 py-1 rounded border border-slate-200 dark:border-slate-700">
+                          <div className="flex items-center gap-2 text-xs font-bold text-slate-400 bg-white px-3 py-1 rounded border border-slate-200">
                             <CalendarClock size={14} />
                             {formatDate(event.timestamp)}
                           </div>
                         </div>
                         {event.reason && (
-                          <div className="mt-2 p-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-600 dark:text-slate-300 italic border-l-4 border-l-slate-400 flex items-start gap-2">
+                          <div className="mt-2 p-3 bg-white border border-slate-200 rounded-lg text-sm text-slate-600 italic border-l-4 border-l-slate-400 flex items-start gap-2">
                             <MessageSquare
                               size={16}
                               className="shrink-0 mt-0.5 text-slate-400"
@@ -1149,7 +1227,7 @@ export default function HistoryView({ userProfile }) {
                 })}
               </div>
             </div>
-            <div className="bg-slate-50 dark:bg-slate-900 p-4 border-t border-slate-200 dark:border-slate-700 flex flex-col md:flex-row justify-end gap-3 transition-colors">
+            <div className="bg-slate-50 p-4 border-t border-slate-200 flex flex-col md:flex-row justify-end gap-3 transition-colors">
               <button
                 onClick={generateTraceReport}
                 className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-[#021D34] text-white rounded-xl font-bold hover:bg-[#009DE0] transition-colors shadow-lg shadow-blue-900/20"
