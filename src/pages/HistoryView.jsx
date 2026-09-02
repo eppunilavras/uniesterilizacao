@@ -244,11 +244,20 @@ export default function HistoryView({ userProfile }) {
       };
 
       let usouDerivado = false;
+      // Data e hora em duas linhas: a coluna fica com a largura de
+      // "00/00/0000" em vez de "00/00/0000 00:00", o que permite as seis
+      // colunas caberem em A4 retrato.
       const celulaData = (info) => {
         const d = info && paraData(info.valor);
         if (!d) return '<span class="ausente">—</span>';
         if (info.derivado) usouDerivado = true;
-        return dataHora(d) + (info.derivado ? '<sup class="nota">*</sup>' : "");
+        const hora = d.toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        return `${d.toLocaleDateString("pt-BR")}<br/><span class="hora">${hora}${
+          info.derivado ? '<sup class="nota">*</sup>' : ""
+        }</span>`;
       };
 
       const crescente = reportOrder === "asc";
@@ -323,7 +332,7 @@ export default function HistoryView({ userProfile }) {
 <html lang="pt-BR"><head><meta charset="utf-8"/>
 <title>Relatório de Movimentação de Materiais - ${esc(reportStudent.name)}</title>
 <style>
-  @page { size: A4 landscape; margin: 14mm 12mm 16mm 12mm; }
+  @page { size: A4; margin: 15mm 12mm 16mm 12mm; }
   * { box-sizing: border-box; }
   body {
     font-family: Arial, Helvetica, sans-serif;
@@ -352,16 +361,28 @@ export default function HistoryView({ userProfile }) {
   .resumo td { border: .75pt solid #b8c2cc; padding: 6pt 8pt; text-align: center; }
   .resumo .r-rotulo { font-size: 8pt; text-transform: uppercase; color: #555; letter-spacing: .3pt; }
   .resumo .r-valor { font-size: 13pt; font-weight: bold; color: #021D34; }
-  .registros { border: .75pt solid #8c99a6; margin-top: 4pt; }
+  .registros {
+    table-layout: fixed; margin-top: 4pt;
+    border: 1pt solid #021D34; /* moldura externa contínua */
+  }
   .registros thead { display: table-header-group; }
   .registros th {
-    background: #021D34; color: #fff; font-size: 8pt; text-transform: uppercase;
-    letter-spacing: .4pt; padding: 7pt 6pt; text-align: left; border: .75pt solid #021D34;
+    background: #021D34; color: #fff; font-size: 7.5pt; text-transform: uppercase;
+    letter-spacing: .3pt; padding: 6pt 5pt; text-align: left; vertical-align: bottom;
+    border: none; border-right: .5pt solid #33506b; white-space: normal; line-height: 1.2;
   }
-  .registros td { padding: 6pt; border: .75pt solid #b8c2cc; font-size: 9.5pt; vertical-align: top; }
+  .registros th:last-child { border-right: none; }
+  .registros td {
+    padding: 5pt; border: .5pt solid #ccd4dc; font-size: 9pt; vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+  .registros td:first-child { border-left: none; }
+  .registros td:last-child { border-right: none; }
+  .registros tbody tr:last-child td { border-bottom: none; }
   .registros tr { page-break-inside: avoid; }
   .registros tbody tr:nth-child(even) { background: #f4f6f8; }
-  td.data { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  td.data { white-space: nowrap; font-variant-numeric: tabular-nums; text-align: center; }
+  .hora { color: #555; font-size: 8pt; }
   td.codigo { font-family: "Courier New", monospace; font-weight: bold; letter-spacing: .5pt; }
   .ausente { color: #8c99a6; }
   .nota { color: #021D34; font-weight: bold; }
@@ -407,6 +428,10 @@ export default function HistoryView({ userProfile }) {
 ${
   linhas.length > 0
     ? `<table class="registros">
+  <colgroup>
+    <col style="width:26%"/><col style="width:12%"/><col style="width:14%"/>
+    <col style="width:14%"/><col style="width:14%"/><col style="width:20%"/>
+  </colgroup>
   <thead>
     <tr>
       <th>Material</th>
