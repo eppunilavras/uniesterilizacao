@@ -36,6 +36,7 @@ import { useDialog } from "../contexts/DialogContext";
 import { useToast } from "../contexts/ToastContext";
 import { usePrint } from "../contexts/PrintContext";
 import { logEvent } from "../utils/logger";
+import { useMaterialTypes } from "../hooks/useMaterialTypes";
 import { formatDate, maskCPF } from "../utils/formatters";
 import { STATUS_CONFIG, LOGOS, LOG_TYPES } from "../constants";
 import { playSound } from "../utils/audio";
@@ -63,6 +64,7 @@ export default function HistoryView({ userProfile }) {
   const [reportSearch, setReportSearch] = useState("");
   const [reportResults, setReportResults] = useState([]);
   const [reportStudent, setReportStudent] = useState(null);
+  const [reportMaterial, setReportMaterial] = useState(""); // "" = todos
   const [reportStart, setReportStart] = useState("");
   const [reportEnd, setReportEnd] = useState("");
   const [studentItems, setStudentItems] = useState([]);
@@ -75,6 +77,7 @@ export default function HistoryView({ userProfile }) {
 
   const [generatingReport, setGeneratingReport] = useState(false);
 
+  const { data: materialTypes = [] } = useMaterialTypes();
   const { confirm } = useDialog();
   const { addToast } = useToast();
   const { printItems } = usePrint();
@@ -179,7 +182,12 @@ export default function HistoryView({ userProfile }) {
       );
 
       const snap = await getDocs(q);
-      const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const todosItens = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      // Filtro opcional por tipo de material. Quando aplicado, o documento
+      // declara a restrição para não ser lido como histórico completo.
+      const items = reportMaterial
+        ? todosItens.filter((i) => i.type === reportMaterial)
+        : todosItens;
 
       // =============================================================
       // LINHAS DO RELATÓRIO
@@ -371,6 +379,7 @@ export default function HistoryView({ userProfile }) {
   <tr><td class="rotulo">Aluno</td><td>${esc(reportStudent.name)}</td></tr>
   <tr><td class="rotulo">CPF</td><td>${esc(maskCPF(reportStudent.cpf))}</td></tr>
   <tr><td class="rotulo">E-mail</td><td>${esc(reportStudent.email) || "—"}</td></tr>
+  <tr><td class="rotulo">Material</td><td>${reportMaterial ? esc(reportMaterial) : "Todos os materiais"}</td></tr>
   <tr><td class="rotulo">Emitido em</td><td>${dataHora(emitidoEm)} (${esc(fusoHorario)})</td></tr>
   <tr><td class="rotulo">Emitido por</td><td>${esc(userProfile.name)}</td></tr>
 </table>
@@ -395,7 +404,7 @@ ${
   </thead>
   <tbody>${corpo}</tbody>
 </table>`
-    : `<div class="vazio">Nenhum registro localizado para o aluno no período apurado.</div>`
+    : `<div class="vazio">Nenhum registro localizado para o aluno no período apurado${reportMaterial ? ` para o material "${esc(reportMaterial)}"` : ""}.</div>`
 }
 
 <div class="observacoes">
@@ -404,6 +413,7 @@ ${
     <li>Cada linha corresponde a um evento registrado no sistema, em ordem cronológica decrescente — o acontecimento mais recente aparece primeiro. Leitura: no dia e hora indicados, o material da linha, identificado pelo código, passou à situação registrada.</li>
     <li>"Entregue" corresponde à retirada do material pelo aluno.</li>
     ${usouDerivado ? `<li>(*) Data obtida do registro do material, e não de um evento no histórico. Ocorre em materiais anteriores à adoção do histórico de eventos.</li>` : ""}
+    ${reportMaterial ? `<li>Este relatório está restrito ao material "${esc(reportMaterial)}". Demais materiais do aluno no período não constam.</li>` : ""}
     <li>A seleção considera os materiais recebidos dentro do período apurado; eventos posteriores ao fim do período, referentes a esses mesmos materiais, também constam.</li>
   </ul>
 </div>
@@ -1019,6 +1029,7 @@ ${
                         onClick={() => {
                           setReportStudent(null);
                           setReportSearch("");
+                          setReportMaterial("");
                         }}
                         className="text-red-500 hover:bg-white p-2 rounded-full transition-colors"
                       >
@@ -1061,9 +1072,26 @@ ${
                 <div
                   className={`grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity ${!reportStudent ? "opacity-50 pointer-events-none" : "opacity-100"}`}
                 >
+                  <div className="md:col-span-2">
+                    <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">
+                      2. Material (opcional)
+                    </label>
+                    <select
+                      className="w-full p-3 border rounded-lg bg-white text-slate-900"
+                      value={reportMaterial}
+                      onChange={(e) => setReportMaterial(e.target.value)}
+                    >
+                      <option value="">Todos os materiais</option>
+                      {materialTypes.map((t) => (
+                        <option key={t.id} value={t.name}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <div>
                     <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">
-                      2. Data Inicial
+                      3. Data Inicial
                     </label>
                     <input
                       type="date"
@@ -1074,7 +1102,7 @@ ${
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">
-                      3. Data Final
+                      4. Data Final
                     </label>
                     <input
                       type="date"
