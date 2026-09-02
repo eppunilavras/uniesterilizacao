@@ -6,10 +6,17 @@ import {
   AlertTriangle // <--- NOVO IMPORT
 } from 'lucide-react';
 
-// URLs dos Logos
+// Logos servidos pela propria aplicacao (public/logos).
+// Antes vinham de um host externo (i.ibb.co) em 7016x4961 px, o que deixava
+// o carregamento lento e punha a identidade visual do relatorio na dependencia
+// de um servico de terceiros.
+// URL absoluta porque a janela de impressao e um documento about:blank, sem
+// base para resolver caminho relativo.
+const ORIGEM = typeof window !== 'undefined' ? window.location.origin : '';
+
 export const LOGOS = {
-  color: 'https://i.ibb.co/MxXMmxS0/Logo-Unilavras-Oficial-2019.png',
-  white: 'https://i.ibb.co/bMqtX9Ln/Logo-Unilavras-Oficial-2019-mono-full-white.png',
+  color: `${ORIGEM}/logos/unilavras-color.png`,
+  white: `${ORIGEM}/logos/unilavras-white.png`,
 };
 
 // Configuração de Status dos Materiais (Cores, Ícones e Labels)

@@ -45,8 +45,8 @@ import DataTable from "../components/DataTable";
 // Dispara a impressão sem depender do window.onload. A aba criada por
 // window.open("") pode já ter disparado o load antes de o document.write
 // terminar; nesse caso o handler registrado no HTML nunca é chamado e o
-// relatório abre sem o diálogo de impressão. O timeout cobre o caso do logo
-// remoto (i.ibb.co) demorar ou não responder, que também segura o load.
+// relatório abre sem o diálogo de impressão. O timeout é a rede de segurança
+// para qualquer recurso que segure o load, como a imagem do logo.
 const SCRIPT_IMPRESSAO = `<script>(function(){var feito=false;function imprimir(){if(feito)return;feito=true;window.focus();window.print();}if(document.readyState==="complete"){imprimir();}else{window.addEventListener("load",imprimir);}setTimeout(imprimir,3000);})();</` + `script>`;
 
 export default function HistoryView({ userProfile }) {
