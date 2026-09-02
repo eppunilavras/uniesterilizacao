@@ -181,38 +181,116 @@ export default function HistoryView({ userProfile }) {
       const snap = await getDocs(q);
       const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-      // Entrada = primeiro evento "recebido" do histórico (fallback: createdAt)
-      const entryEvent = (i) =>
-        (i.history || []).find((h) => h.status === "recebido") || null;
-      const entryDate = (i) => entryEvent(i)?.timestamp || i.createdAt;
-
-      // Retirada = último evento "retirado" do histórico (fallback: lastUpdated)
-      const exitDate = (i) => {
-        const outs = (i.history || []).filter((h) => h.status === "retirado");
-        if (outs.length > 0) return outs[outs.length - 1].timestamp;
-        return i.status === "retirado" ? i.lastUpdated : null;
+      // =============================================================
+      // EXTRAÇÃO DOS EVENTOS
+      // Cada data vem do history[] do próprio item. Quando o evento não foi
+      // registrado, cai para o timestamp do documento e a célula recebe (*).
+      // Nenhuma data é preenchida por estimativa ou interpolação.
+      // =============================================================
+      const primeiroEvento = (i, status) =>
+        (i.history || []).find((h) => h.status === status) || null;
+      const ultimoEvento = (i, status) => {
+        const todos = (i.history || []).filter((h) => h.status === status);
+        return todos.length ? todos[todos.length - 1] : null;
       };
 
-      const toDate = (val) => {
+      const recebidoEm = (i) => {
+        const ev = primeiroEvento(i, "recebido");
+        if (ev) return { valor: ev.timestamp, derivado: false };
+        // Sem evento no histórico: usa a criação do registro, que é o momento
+        // em que a recepção gravou o material.
+        return { valor: i.createdAt, derivado: true };
+      };
+      const prontoEm = (i) => {
+        const ev = primeiroEvento(i, "pronto");
+        return ev ? { valor: ev.timestamp, derivado: false } : null;
+      };
+      const entregueEm = (i) => {
+        const ev = ultimoEvento(i, "retirado");
+        if (ev) return { valor: ev.timestamp, derivado: false };
+        if (i.status === "retirado")
+          return { valor: i.lastUpdated, derivado: true };
+        return null;
+      };
+
+      const paraData = (val) => {
         if (!val) return null;
         const d = val.toDate ? val.toDate() : new Date(val);
         return isNaN(d.getTime()) ? null : d;
       };
-      const entryDates = items
-        .map((i) => toDate(entryDate(i)))
-        .filter(Boolean)
-        .sort((a, b) => a - b);
-      const firstEntry = entryDates[0] || null;
-      const lastEntry = entryDates[entryDates.length - 1] || null;
+      const dataHora = (d) =>
+        d.toLocaleString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        });
 
-      const stats = {
-        total: items.length,
-        retirados: items.filter((i) => i.status === "retirado").length,
-        prontos: items.filter((i) => i.status === "pronto").length,
-        processo: items.filter((i) =>
-          ["recebido", "em_esterilizacao"].includes(i.status),
-        ).length,
+      let usouDerivado = false;
+      const celulaData = (info) => {
+        const d = info && paraData(info.valor);
+        if (!d) return '<span class="ausente">—</span>';
+        if (info.derivado) usouDerivado = true;
+        return dataHora(d) + (info.derivado ? '<sup class="nota">*</sup>' : "");
       };
+
+      // Escapa conteúdo vindo do banco para não corromper o documento.
+      const esc = (v) =>
+        String(v ?? "").replace(
+          /[&<>"]/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+        );
+
+      const SITUACAO = {
+        recebido: "Recebido",
+        em_esterilizacao: "Em Esterilização",
+        pronto: "Pronto p/ Retirada",
+        retirado: "Entregue",
+        problema: "Com Ocorrência",
+      };
+
+      // Ordem cronológica pelo recebimento: um documento de registro é lido
+      // do fato mais antigo para o mais recente.
+      const linhas = [...items]
+        .map((i) => ({
+          item: i,
+          recebido: recebidoEm(i),
+          pronto: prontoEm(i),
+          entregue: entregueEm(i),
+        }))
+        .sort((a, b) => {
+          const da = paraData(a.recebido?.valor);
+          const dbb = paraData(b.recebido?.valor);
+          return (da ? da.getTime() : 0) - (dbb ? dbb.getTime() : 0);
+        });
+
+      const contar = (st) => items.filter((i) => i.status === st).length;
+      const resumo = [
+        ["Total de materiais", items.length],
+        ["Recebido", contar("recebido")],
+        ["Em Esterilização", contar("em_esterilizacao")],
+        ["Pronto p/ Retirada", contar("pronto")],
+        ["Entregue", contar("retirado")],
+        ["Com Ocorrência", contar("problema")],
+      ].filter(([rotulo, valor]) => valor > 0 || rotulo === "Total de materiais");
+
+      const emitidoEm = new Date();
+      const fusoHorario =
+        Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
+
+      const corpo = linhas
+        .map(
+          (l) => `<tr>
+              <td class="data">${celulaData(l.recebido)}</td>
+              <td class="data">${celulaData(l.pronto)}</td>
+              <td class="data">${celulaData(l.entregue)}</td>
+              <td class="codigo">${esc(l.item.code)}</td>
+              <td>${esc(l.item.type)}</td>
+              <td>${esc(SITUACAO[l.item.status] || l.item.status)}</td>
+            </tr>`,
+        )
+        .join("");
 
       const printWindow = window.open("", "_blank");
       if (!printWindow) {
@@ -220,9 +298,124 @@ export default function HistoryView({ userProfile }) {
         return;
       }
 
-      const htmlContent = `
-                <!DOCTYPE html><html><head><title>Relatório - ${reportStudent.name}</title>
-                <style>body{font-family:'Segoe UI',sans-serif;padding:40px;color:#333}.header{border-bottom:2px solid #009DE0;padding-bottom:20px;margin-bottom:30px;display:flex;justify-content:space-between}.logo{height:50px}.title{font-size:24px;font-weight:bold;color:#021D34}.subtitle{font-size:14px;color:#64748b;margin-top:5px}.stats-container{display:flex;gap:15px;margin-bottom:30px}.stat-card{flex:1;padding:15px;border-radius:8px;border:1px solid #e2e8f0;text-align:center}.stat-val{font-size:24px;font-weight:bold;display:block;margin-bottom:5px}.student-card{background:#f8fafc;padding:20px;border-radius:8px;border:1px solid #e2e8f0;margin-bottom:30px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.label{font-size:11px;font-weight:bold;color:#64748b;text-transform:uppercase;display:block}.value{font-size:16px;font-weight:600;color:#0f172a}table{width:100%;border-collapse:collapse;margin-top:10px}th{background:#021D34;color:white;padding:10px;text-align:left;font-size:12px;text-transform:uppercase}td{padding:10px;border-bottom:1px solid #e2e8f0;font-size:13px}tr:nth-child(even){background-color:#f1f5f9}.status{font-weight:bold;font-size:11px;text-transform:uppercase;padding:3px 8px;border-radius:4px;background:#e2e8f0;display:inline-block}.footer{margin-top:50px;font-size:10px;text-align:center;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px}</style></head><body><div class="header"><div><div class="title">Relatório de Movimentações</div><div class="subtitle">Período: ${start.toLocaleDateString()} a ${end.toLocaleDateString()}</div></div><img src="${LOGOS.color}" class="logo"/></div><div class="student-card"><div class="grid"><div><span class="label">Aluno</span><span class="value">${reportStudent.name}</span></div><div><span class="label">CPF</span><span class="value">${maskCPF(reportStudent.cpf)}</span></div><div><span class="label">Email</span><span class="value">${reportStudent.email}</span></div><div><span class="label">Primeira Entrada</span><span class="value">${formatDate(firstEntry)}</span></div><div><span class="label">Última Entrada</span><span class="value">${formatDate(lastEntry)}</span></div></div></div><div class="stats-container"><div class="stat-card" style="background:#f0f9ff;border-color:#bae6fd"><span class="stat-val" style="color:#0369a1">${stats.total}</span><span class="stat-label">Total</span></div><div class="stat-card" style="background:#f0fdf4;border-color:#bbf7d0"><span class="stat-val" style="color:#15803d">${stats.retirados}</span><span class="stat-label">Concluídos</span></div><div class="stat-card" style="background:#ecfccb;border-color:#d9f99d"><span class="stat-val" style="color:#4d7c0f">${stats.prontos}</span><span class="stat-label">Prontos</span></div><div class="stat-card" style="background:#fff7ed;border-color:#fed7aa"><span class="stat-val" style="color:#c2410c">${stats.processo}</span><span class="stat-label">Em Processo</span></div></div><h3>Histórico Detalhado</h3>${items.length > 0 ? `<table><thead><tr><th>Entrada</th><th>Código</th><th>Material</th><th>Retirada</th><th>Status</th></tr></thead><tbody>${items.map((i) => `<tr><td style="white-space:nowrap">${formatDate(entryDate(i))}</td><td style="font-family:monospace;font-weight:bold">${i.code}</td><td>${i.type}</td><td style="white-space:nowrap">${formatDate(exitDate(i))}</td><td><span class="status">${STATUS_CONFIG[i.status]?.label || i.status}</span></td></tr>`).join("")}</tbody></table>` : `<div style="text-align:center;padding:40px;color:#94a3b8;border:2px dashed #e2e8f0;border-radius:8px">Nenhum registro encontrado.</div>`}<div class="footer">Gerado em ${new Date().toLocaleString()}</div><script>window.onload=function(){window.print()}</script></body></html>`;
+      const htmlContent = `<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="utf-8"/>
+<title>Relatório de Movimentação de Materiais - ${esc(reportStudent.name)}</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm 18mm 14mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10.5pt; line-height: 1.45; color: #1a1a1a; margin: 0;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .cabecalho {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    border-bottom: 2.5pt solid #021D34; padding-bottom: 10pt; margin-bottom: 16pt;
+  }
+  .cabecalho .titulo { font-size: 15pt; font-weight: bold; color: #021D34; letter-spacing: .3pt; }
+  .cabecalho .sub { font-size: 9pt; color: #444; margin-top: 3pt; }
+  .cabecalho img { height: 42px; }
+  h2 {
+    font-size: 10pt; text-transform: uppercase; letter-spacing: .6pt;
+    color: #021D34; margin: 18pt 0 6pt; padding-bottom: 3pt;
+    border-bottom: .75pt solid #b8c2cc;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  .identificacao td { padding: 4pt 8pt 4pt 0; vertical-align: top; font-size: 10pt; }
+  .identificacao td.rotulo {
+    width: 130pt; color: #555; font-size: 8.5pt; text-transform: uppercase;
+    letter-spacing: .4pt; padding-top: 6pt; white-space: nowrap;
+  }
+  .resumo { border: .75pt solid #b8c2cc; }
+  .resumo td { border: .75pt solid #b8c2cc; padding: 6pt 8pt; text-align: center; }
+  .resumo .r-rotulo { font-size: 8pt; text-transform: uppercase; color: #555; letter-spacing: .3pt; }
+  .resumo .r-valor { font-size: 13pt; font-weight: bold; color: #021D34; }
+  .registros { border: .75pt solid #8c99a6; margin-top: 4pt; }
+  .registros thead { display: table-header-group; }
+  .registros th {
+    background: #021D34; color: #fff; font-size: 8pt; text-transform: uppercase;
+    letter-spacing: .4pt; padding: 7pt 6pt; text-align: left; border: .75pt solid #021D34;
+  }
+  .registros td { padding: 6pt; border: .75pt solid #b8c2cc; font-size: 9.5pt; vertical-align: top; }
+  .registros tr { page-break-inside: avoid; }
+  .registros tbody tr:nth-child(even) { background: #f4f6f8; }
+  td.data { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  td.codigo { font-family: "Courier New", monospace; font-weight: bold; letter-spacing: .5pt; }
+  .ausente { color: #8c99a6; }
+  .nota { color: #021D34; font-weight: bold; }
+  .vazio {
+    border: .75pt dashed #b8c2cc; padding: 24pt; text-align: center;
+    color: #555; font-size: 10pt; margin-top: 4pt;
+  }
+  .observacoes { margin-top: 14pt; font-size: 8.5pt; color: #444; }
+  .observacoes li { margin-bottom: 3pt; }
+  .rodape {
+    margin-top: 20pt; padding-top: 8pt; border-top: .75pt solid #b8c2cc;
+    font-size: 8pt; color: #555; text-align: justify;
+  }
+</style></head><body>
+
+<div class="cabecalho">
+  <div>
+    <div class="titulo">Relatório de Movimentação de Materiais</div>
+    <div class="sub">Central de Esterilização — Clínica Odontológica Unilavras</div>
+    <div class="sub">Período apurado: ${start.toLocaleDateString("pt-BR")} a ${end.toLocaleDateString("pt-BR")}</div>
+  </div>
+  <img src="${LOGOS.color}" alt="Unilavras"/>
+</div>
+
+<h2>Identificação</h2>
+<table class="identificacao">
+  <tr><td class="rotulo">Aluno</td><td>${esc(reportStudent.name)}</td></tr>
+  <tr><td class="rotulo">CPF</td><td>${esc(maskCPF(reportStudent.cpf))}</td></tr>
+  <tr><td class="rotulo">E-mail</td><td>${esc(reportStudent.email) || "—"}</td></tr>
+  <tr><td class="rotulo">Emitido em</td><td>${dataHora(emitidoEm)} (${esc(fusoHorario)})</td></tr>
+  <tr><td class="rotulo">Emitido por</td><td>${esc(userProfile.name)}</td></tr>
+</table>
+
+<h2>Resumo</h2>
+<table class="resumo">
+  <tr>${resumo.map(([rotulo]) => `<td class="r-rotulo">${rotulo}</td>`).join("")}</tr>
+  <tr>${resumo.map(([, valor]) => `<td class="r-valor">${valor}</td>`).join("")}</tr>
+</table>
+
+<h2>Registros</h2>
+${
+  linhas.length > 0
+    ? `<table class="registros">
+  <thead>
+    <tr>
+      <th>Recebido em</th>
+      <th>Pronto em</th>
+      <th>Entregue em</th>
+      <th>Código</th>
+      <th>Material</th>
+      <th>Situação atual</th>
+    </tr>
+  </thead>
+  <tbody>${corpo}</tbody>
+</table>`
+    : `<div class="vazio">Nenhum registro localizado para o aluno no período apurado.</div>`
+}
+
+<div class="observacoes">
+  <strong>Observações</strong>
+  <ul>
+    <li>O travessão (—) indica evento não registrado no sistema até a emissão deste relatório. Nenhuma data foi estimada.</li>
+    ${usouDerivado ? `<li>(*) Data obtida do registro do material, e não do evento correspondente no histórico. Ocorre em materiais anteriores à adoção do histórico de eventos.</li>` : ""}
+    <li>"Situação atual" reflete o estado do material no momento da emissão, e não necessariamente o último evento listado.</li>
+  </ul>
+</div>
+
+<div class="rodape">
+  Documento gerado eletronicamente pelo sistema UniEsterilização em ${dataHora(emitidoEm)}, a partir dos registros
+  existentes na base de dados nesta data. Reproduz integralmente os lançamentos do período apurado, sem edição manual.
+  Este documento não possui assinatura digital; sua conferência deve ser feita junto à Central de Esterilização.
+</div>
+
+<script>window.onload=function(){window.print()}</script>
+</body></html>`;
       printWindow.document.write(htmlContent);
       printWindow.document.close();
     } catch (error) {
