@@ -246,7 +246,7 @@ export default function HistoryView({ userProfile }) {
         .flatMap(eventosDoItem)
         .map((e) => ({ ...e, data: paraData(e.quando) }))
         .filter((e) => e.data)
-        .sort((a, b) => a.data - b.data);
+        .sort((a, b) => b.data - a.data); // mais recente primeiro
       linhas.forEach((l) => {
         if (l.derivado) usouDerivado = true;
       });
@@ -275,8 +275,13 @@ export default function HistoryView({ userProfile }) {
       );
 
       const emitidoEm = new Date();
+      // Rotula "horário de Brasília" apenas quando o fuso resolvido for de
+      // fato o de Brasília; caso contrário mostra o fuso real da máquina.
+      const fusoResolvido = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const fusoHorario =
-        Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
+        fusoResolvido === "America/Sao_Paulo"
+          ? "horário de Brasília"
+          : fusoResolvido || "fuso local";
 
       const corpo = linhas
         .map(
@@ -396,7 +401,7 @@ ${
 <div class="observacoes">
   <strong>Observações</strong>
   <ul>
-    <li>Cada linha corresponde a um evento registrado no sistema, em ordem cronológica. Leitura: no dia e hora indicados, o material da linha, identificado pelo código, passou à situação registrada.</li>
+    <li>Cada linha corresponde a um evento registrado no sistema, em ordem cronológica decrescente — o acontecimento mais recente aparece primeiro. Leitura: no dia e hora indicados, o material da linha, identificado pelo código, passou à situação registrada.</li>
     <li>"Entregue" corresponde à retirada do material pelo aluno.</li>
     ${usouDerivado ? `<li>(*) Data obtida do registro do material, e não de um evento no histórico. Ocorre em materiais anteriores à adoção do histórico de eventos.</li>` : ""}
     <li>A seleção considera os materiais recebidos dentro do período apurado; eventos posteriores ao fim do período, referentes a esses mesmos materiais, também constam.</li>
