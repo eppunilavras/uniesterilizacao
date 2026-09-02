@@ -182,35 +182,18 @@ export default function HistoryView({ userProfile }) {
       const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
       // =============================================================
-      // EXTRAÇÃO DOS EVENTOS
-      // Cada data vem do history[] do próprio item. Quando o evento não foi
-      // registrado, cai para o timestamp do documento e a célula recebe (*).
-      // Nenhuma data é preenchida por estimativa ou interpolação.
+      // LINHAS DO RELATÓRIO
+      // Uma linha por EVENTO ocorrido com o material, e não por material.
+      // Cada evento vem do history[] do item. Quando o evento não foi
+      // registrado, a data sai do próprio documento e recebe (*).
+      // Nenhuma data é estimada ou interpolada.
       // =============================================================
-      const primeiroEvento = (i, status) =>
-        (i.history || []).find((h) => h.status === status) || null;
-      const ultimoEvento = (i, status) => {
-        const todos = (i.history || []).filter((h) => h.status === status);
-        return todos.length ? todos[todos.length - 1] : null;
-      };
-
-      const recebidoEm = (i) => {
-        const ev = primeiroEvento(i, "recebido");
-        if (ev) return { valor: ev.timestamp, derivado: false };
-        // Sem evento no histórico: usa a criação do registro, que é o momento
-        // em que a recepção gravou o material.
-        return { valor: i.createdAt, derivado: true };
-      };
-      const prontoEm = (i) => {
-        const ev = primeiroEvento(i, "pronto");
-        return ev ? { valor: ev.timestamp, derivado: false } : null;
-      };
-      const entregueEm = (i) => {
-        const ev = ultimoEvento(i, "retirado");
-        if (ev) return { valor: ev.timestamp, derivado: false };
-        if (i.status === "retirado")
-          return { valor: i.lastUpdated, derivado: true };
-        return null;
+      const SITUACAO = {
+        recebido: "Recebido",
+        em_esterilizacao: "Em Esterilização",
+        pronto: "Pronto p/ Retirada",
+        retirado: "Entregue",
+        problema: "Com Ocorrência",
       };
 
       const paraData = (val) => {
@@ -227,13 +210,46 @@ export default function HistoryView({ userProfile }) {
           minute: "2-digit",
         });
 
-      let usouDerivado = false;
-      const celulaData = (info) => {
-        const d = info && paraData(info.valor);
-        if (!d) return '<span class="ausente">—</span>';
-        if (info.derivado) usouDerivado = true;
-        return dataHora(d) + (info.derivado ? '<sup class="nota">*</sup>' : "");
+      const eventosDoItem = (i) => {
+        const hist = (i.history || []).filter((h) => h && h.status && h.timestamp);
+        const eventos = hist.map((h) => ({
+          quando: h.timestamp,
+          status: h.status,
+          derivado: false,
+        }));
+
+        // Item sem o evento de recebimento no histórico: a criação do registro
+        // é o momento em que a recepção gravou o material.
+        if (!eventos.some((e) => e.status === "recebido")) {
+          eventos.unshift({
+            quando: i.createdAt,
+            status: "recebido",
+            derivado: true,
+          });
+        }
+
+        // Item legado, sem histórico algum: lastUpdated é a última alteração,
+        // ou seja, quando ele chegou à situação em que está hoje.
+        if (hist.length === 0 && i.status && i.status !== "recebido") {
+          eventos.push({
+            quando: i.lastUpdated,
+            status: i.status,
+            derivado: true,
+          });
+        }
+
+        return eventos.map((e) => ({ ...e, item: i }));
       };
+
+      let usouDerivado = false;
+      const linhas = items
+        .flatMap(eventosDoItem)
+        .map((e) => ({ ...e, data: paraData(e.quando) }))
+        .filter((e) => e.data)
+        .sort((a, b) => a.data - b.data);
+      linhas.forEach((l) => {
+        if (l.derivado) usouDerivado = true;
+      });
 
       // Escapa conteúdo vindo do banco para não corromper o documento.
       const esc = (v) =>
@@ -242,38 +258,21 @@ export default function HistoryView({ userProfile }) {
           (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
         );
 
-      const SITUACAO = {
-        recebido: "Recebido",
-        em_esterilizacao: "Em Esterilização",
-        pronto: "Pronto p/ Retirada",
-        retirado: "Entregue",
-        problema: "Com Ocorrência",
-      };
-
-      // Ordem cronológica pelo recebimento: um documento de registro é lido
-      // do fato mais antigo para o mais recente.
-      const linhas = [...items]
-        .map((i) => ({
-          item: i,
-          recebido: recebidoEm(i),
-          pronto: prontoEm(i),
-          entregue: entregueEm(i),
-        }))
-        .sort((a, b) => {
-          const da = paraData(a.recebido?.valor);
-          const dbb = paraData(b.recebido?.valor);
-          return (da ? da.getTime() : 0) - (dbb ? dbb.getTime() : 0);
-        });
-
       const contar = (st) => items.filter((i) => i.status === st).length;
       const resumo = [
-        ["Total de materiais", items.length],
+        ["Materiais no período", items.length],
+        ["Registros listados", linhas.length],
         ["Recebido", contar("recebido")],
         ["Em Esterilização", contar("em_esterilizacao")],
         ["Pronto p/ Retirada", contar("pronto")],
         ["Entregue", contar("retirado")],
         ["Com Ocorrência", contar("problema")],
-      ].filter(([rotulo, valor]) => valor > 0 || rotulo === "Total de materiais");
+      ].filter(
+        ([rotulo, valor]) =>
+          valor > 0 ||
+          rotulo === "Materiais no período" ||
+          rotulo === "Registros listados",
+      );
 
       const emitidoEm = new Date();
       const fusoHorario =
@@ -282,12 +281,10 @@ export default function HistoryView({ userProfile }) {
       const corpo = linhas
         .map(
           (l) => `<tr>
-              <td class="data">${celulaData(l.recebido)}</td>
-              <td class="data">${celulaData(l.pronto)}</td>
-              <td class="data">${celulaData(l.entregue)}</td>
-              <td class="codigo">${esc(l.item.code)}</td>
+              <td class="data">${dataHora(l.data)}${l.derivado ? '<sup class="nota">*</sup>' : ""}</td>
+              <td>${esc(SITUACAO[l.status] || l.status)}</td>
               <td>${esc(l.item.type)}</td>
-              <td>${esc(SITUACAO[l.item.status] || l.item.status)}</td>
+              <td class="codigo">${esc(l.item.code)}</td>
             </tr>`,
         )
         .join("");
@@ -342,7 +339,6 @@ export default function HistoryView({ userProfile }) {
   .registros tbody tr:nth-child(even) { background: #f4f6f8; }
   td.data { white-space: nowrap; font-variant-numeric: tabular-nums; }
   td.codigo { font-family: "Courier New", monospace; font-weight: bold; letter-spacing: .5pt; }
-  .ausente { color: #8c99a6; }
   .nota { color: #021D34; font-weight: bold; }
   .vazio {
     border: .75pt dashed #b8c2cc; padding: 24pt; text-align: center;
@@ -386,12 +382,10 @@ ${
     ? `<table class="registros">
   <thead>
     <tr>
-      <th>Recebido em</th>
-      <th>Pronto em</th>
-      <th>Entregue em</th>
-      <th>Código</th>
+      <th>Data e hora</th>
+      <th>Situação registrada</th>
       <th>Material</th>
-      <th>Situação atual</th>
+      <th>Código</th>
     </tr>
   </thead>
   <tbody>${corpo}</tbody>
@@ -402,9 +396,10 @@ ${
 <div class="observacoes">
   <strong>Observações</strong>
   <ul>
-    <li>O travessão (—) indica evento não registrado no sistema até a emissão deste relatório. Nenhuma data foi estimada.</li>
-    ${usouDerivado ? `<li>(*) Data obtida do registro do material, e não do evento correspondente no histórico. Ocorre em materiais anteriores à adoção do histórico de eventos.</li>` : ""}
-    <li>"Situação atual" reflete o estado do material no momento da emissão, e não necessariamente o último evento listado.</li>
+    <li>Cada linha corresponde a um evento registrado no sistema, em ordem cronológica. Leitura: no dia e hora indicados, o material da linha, identificado pelo código, passou à situação registrada.</li>
+    <li>"Entregue" corresponde à retirada do material pelo aluno.</li>
+    ${usouDerivado ? `<li>(*) Data obtida do registro do material, e não de um evento no histórico. Ocorre em materiais anteriores à adoção do histórico de eventos.</li>` : ""}
+    <li>A seleção considera os materiais recebidos dentro do período apurado; eventos posteriores ao fim do período, referentes a esses mesmos materiais, também constam.</li>
   </ul>
 </div>
 
