@@ -253,18 +253,21 @@ export default function Reception({ userProfile }) {
           if (isOnline) {
             localStorage.removeItem("unilavras_offline_backup");
             localStorage.removeItem("unilavras_offline_count");
-            await logEvent(
-              "ITEM_ENTRY",
-              `Entrada de ${cart.length} itens para ${selectedStudent.name}`,
-              {
-                studentId: selectedStudent.uid,
-                studentName: selectedStudent.name,
-                quantity: cart.length,
-                itemTypes: cart.map((i) => i.name),
-              },
-              userProfile,
-            );
           }
+          // Fora da guarda de isOnline: entradas feitas offline resolvem este
+          // .then() só na sincronização, e o closure ainda carrega isOnline=false.
+          // Com a guarda, a entrada nunca gerava log de auditoria.
+          await logEvent(
+            "ITEM_ENTRY",
+            `Entrada de ${cart.length} itens para ${selectedStudent.name}`,
+            {
+              studentId: selectedStudent.uid,
+              studentName: selectedStudent.name,
+              quantity: cart.length,
+              itemTypes: cart.map((i) => i.name),
+            },
+            userProfile,
+          );
         })
         .catch((err) => console.error("Dados salvos localmente:", err));
 
