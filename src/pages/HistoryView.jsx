@@ -244,20 +244,11 @@ export default function HistoryView({ userProfile }) {
       };
 
       let usouDerivado = false;
-      // Data e hora em duas linhas: a coluna fica com a largura de
-      // "00/00/0000" em vez de "00/00/0000 00:00", o que permite as seis
-      // colunas caberem em A4 retrato.
       const celulaData = (info) => {
         const d = info && paraData(info.valor);
         if (!d) return '<span class="ausente">—</span>';
         if (info.derivado) usouDerivado = true;
-        const hora = d.toLocaleTimeString("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        return `${d.toLocaleDateString("pt-BR")}<br/><span class="hora">${hora}${
-          info.derivado ? '<sup class="nota">*</sup>' : ""
-        }</span>`;
+        return dataHora(d) + (info.derivado ? '<sup class="nota">*</sup>' : "");
       };
 
       const crescente = reportOrder === "asc";
@@ -312,12 +303,12 @@ export default function HistoryView({ userProfile }) {
       const corpo = linhas
         .map(
           (l) => `<tr>
-              <td>${esc(l.item.type)}</td>
+              <td class="material">${esc(l.item.type)}</td>
               <td class="codigo">${esc(l.item.code)}</td>
               <td class="data">${celulaData(l.recebido)}</td>
               <td class="data">${celulaData(l.pronto)}</td>
               <td class="data">${celulaData(l.entregue)}</td>
-              <td>${esc(SITUACAO[l.item.status] || l.item.status)}</td>
+              <td class="situacao">${esc(SITUACAO[l.item.status] || l.item.status)}</td>
             </tr>`,
         )
         .join("");
@@ -362,27 +353,34 @@ export default function HistoryView({ userProfile }) {
   .resumo .r-rotulo { font-size: 8pt; text-transform: uppercase; color: #555; letter-spacing: .3pt; }
   .resumo .r-valor { font-size: 13pt; font-weight: bold; color: #021D34; }
   .registros {
-    table-layout: fixed; margin-top: 4pt;
+    /* Largura pelo conteúdo, centralizada. Com width:100% a sobra de
+       espaço ia toda para a coluna Material, criando um vão até o código. */
+    width: auto; max-width: 100%; margin: 4pt auto 0;
     border: 1pt solid #021D34; /* moldura externa contínua */
   }
   .registros thead { display: table-header-group; }
   .registros th {
-    background: #021D34; color: #fff; font-size: 7.5pt; text-transform: uppercase;
-    letter-spacing: .3pt; padding: 6pt 5pt; text-align: left; vertical-align: bottom;
+    background: #021D34; color: #fff; font-size: 7pt; text-transform: uppercase;
+    letter-spacing: .2pt; padding: 5pt 6pt; text-align: left; vertical-align: bottom;
     border: none; border-right: .5pt solid #33506b; white-space: normal; line-height: 1.2;
   }
   .registros th:last-child { border-right: none; }
   .registros td {
-    padding: 5pt; border: .5pt solid #ccd4dc; font-size: 9pt; vertical-align: top;
+    /* 8.5pt e padding enxuto: com as tres datas em linha unica, e o que
+       faz as seis colunas caberem na largura util do A4 retrato. */
+    padding: 4pt 6pt; border: .5pt solid #ccd4dc; font-size: 8.5pt; vertical-align: top;
     overflow-wrap: anywhere;
   }
+  /* Colunas de data nao quebram; ao faltar espaco, o navegador estreita
+     estas duas, que quebram em duas linhas. */
+  .registros td.material { max-width: 45mm; }
+  .registros td.situacao { max-width: 26mm; }
   .registros td:first-child { border-left: none; }
   .registros td:last-child { border-right: none; }
   .registros tbody tr:last-child td { border-bottom: none; }
   .registros tr { page-break-inside: avoid; }
   .registros tbody tr:nth-child(even) { background: #f4f6f8; }
   td.data { white-space: nowrap; font-variant-numeric: tabular-nums; text-align: center; }
-  .hora { color: #555; font-size: 8pt; }
   td.codigo { font-family: "Courier New", monospace; font-weight: bold; letter-spacing: .5pt; }
   .ausente { color: #8c99a6; }
   .nota { color: #021D34; font-weight: bold; }
@@ -428,10 +426,6 @@ export default function HistoryView({ userProfile }) {
 ${
   linhas.length > 0
     ? `<table class="registros">
-  <colgroup>
-    <col style="width:26%"/><col style="width:12%"/><col style="width:14%"/>
-    <col style="width:14%"/><col style="width:14%"/><col style="width:20%"/>
-  </colgroup>
   <thead>
     <tr>
       <th>Material</th>
