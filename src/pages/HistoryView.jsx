@@ -65,6 +65,7 @@ export default function HistoryView({ userProfile }) {
   const [reportResults, setReportResults] = useState([]);
   const [reportStudent, setReportStudent] = useState(null);
   const [reportMaterial, setReportMaterial] = useState(""); // "" = todos
+  const [reportOrder, setReportOrder] = useState("desc"); // desc = mais recentes
   const [reportStart, setReportStart] = useState("");
   const [reportEnd, setReportEnd] = useState("");
   const [studentItems, setStudentItems] = useState([]);
@@ -191,9 +192,9 @@ export default function HistoryView({ userProfile }) {
 
       // =============================================================
       // LINHAS DO RELATÓRIO
-      // Uma linha por EVENTO ocorrido com o material, e não por material.
-      // Cada evento vem do history[] do item. Quando o evento não foi
-      // registrado, a data sai do próprio documento e recebe (*).
+      // Uma linha por material. Cada coluna de data vem de um evento
+      // distinto do history[] do item. Evento que não ocorreu imprime
+      // travessão; data obtida do documento em vez do evento recebe (*).
       // Nenhuma data é estimada ou interpolada.
       // =============================================================
       const SITUACAO = {
@@ -218,46 +219,57 @@ export default function HistoryView({ userProfile }) {
           minute: "2-digit",
         });
 
-      const eventosDoItem = (i) => {
-        const hist = (i.history || []).filter((h) => h && h.status && h.timestamp);
-        const eventos = hist.map((h) => ({
-          quando: h.timestamp,
-          status: h.status,
-          derivado: false,
-        }));
+      const primeiroEvento = (i, status) =>
+        (i.history || []).find((h) => h && h.status === status && h.timestamp) ||
+        null;
+      const ultimoEvento = (i, status) => {
+        const todos = (i.history || []).filter(
+          (h) => h && h.status === status && h.timestamp,
+        );
+        return todos.length ? todos[todos.length - 1] : null;
+      };
 
-        // Item sem o evento de recebimento no histórico: a criação do registro
-        // é o momento em que a recepção gravou o material.
-        if (!eventos.some((e) => e.status === "recebido")) {
-          eventos.unshift({
-            quando: i.createdAt,
-            status: "recebido",
-            derivado: true,
-          });
-        }
-
-        // Item legado, sem histórico algum: lastUpdated é a última alteração,
-        // ou seja, quando ele chegou à situação em que está hoje.
-        if (hist.length === 0 && i.status && i.status !== "recebido") {
-          eventos.push({
-            quando: i.lastUpdated,
-            status: i.status,
-            derivado: true,
-          });
-        }
-
-        return eventos.map((e) => ({ ...e, item: i }));
+      // Evento repetido: "pronto" usa a primeira ocorrência (quando ficou
+      // pronto), "retirado" usa a última (quando saiu definitivamente).
+      const marco = (i, status, usarUltimo = false) => {
+        const ev = usarUltimo
+          ? ultimoEvento(i, status)
+          : primeiroEvento(i, status);
+        if (ev) return { valor: ev.timestamp, derivado: false };
+        // Sem histórico algum: lastUpdated é a última alteração, ou seja,
+        // quando o item chegou à situação em que está hoje.
+        if ((i.history || []).length === 0 && i.status === status)
+          return { valor: i.lastUpdated, derivado: true };
+        return null;
       };
 
       let usouDerivado = false;
+      const celulaData = (info) => {
+        const d = info && paraData(info.valor);
+        if (!d) return '<span class="ausente">—</span>';
+        if (info.derivado) usouDerivado = true;
+        return dataHora(d) + (info.derivado ? '<sup class="nota">*</sup>' : "");
+      };
+
+      const crescente = reportOrder === "asc";
       const linhas = items
-        .flatMap(eventosDoItem)
-        .map((e) => ({ ...e, data: paraData(e.quando) }))
-        .filter((e) => e.data)
-        .sort((a, b) => b.data - a.data); // mais recente primeiro
-      linhas.forEach((l) => {
-        if (l.derivado) usouDerivado = true;
-      });
+        .map((i) => {
+          const recebido = primeiroEvento(i, "recebido")
+            ? { valor: primeiroEvento(i, "recebido").timestamp, derivado: false }
+            : { valor: i.createdAt, derivado: true };
+          return {
+            item: i,
+            recebido,
+            pronto: marco(i, "pronto"),
+            entregue: marco(i, "retirado", true),
+            ordenacao: paraData(recebido.valor),
+          };
+        })
+        .sort((a, b) => {
+          const ta = a.ordenacao ? a.ordenacao.getTime() : 0;
+          const tb = b.ordenacao ? b.ordenacao.getTime() : 0;
+          return crescente ? ta - tb : tb - ta;
+        });
 
       // Escapa conteúdo vindo do banco para não corromper o documento.
       const esc = (v) =>
@@ -269,18 +281,12 @@ export default function HistoryView({ userProfile }) {
       const contar = (st) => items.filter((i) => i.status === st).length;
       const resumo = [
         ["Materiais no período", items.length],
-        ["Registros listados", linhas.length],
         ["Recebido", contar("recebido")],
         ["Em Esterilização", contar("em_esterilizacao")],
         ["Pronto p/ Retirada", contar("pronto")],
         ["Entregue", contar("retirado")],
         ["Com Ocorrência", contar("problema")],
-      ].filter(
-        ([rotulo, valor]) =>
-          valor > 0 ||
-          rotulo === "Materiais no período" ||
-          rotulo === "Registros listados",
-      );
+      ].filter(([rotulo, valor]) => valor > 0 || rotulo === "Materiais no período");
 
       const emitidoEm = new Date();
       // Rotula "horário de Brasília" apenas quando o fuso resolvido for de
@@ -290,14 +296,19 @@ export default function HistoryView({ userProfile }) {
         fusoResolvido === "America/Sao_Paulo"
           ? "horário de Brasília"
           : fusoResolvido || "fuso local";
+      const rotuloOrdem = crescente
+        ? "Mais antigos primeiro (por data de recebimento)"
+        : "Mais recentes primeiro (por data de recebimento)";
 
       const corpo = linhas
         .map(
           (l) => `<tr>
-              <td class="data">${dataHora(l.data)}${l.derivado ? '<sup class="nota">*</sup>' : ""}</td>
-              <td>${esc(SITUACAO[l.status] || l.status)}</td>
               <td>${esc(l.item.type)}</td>
               <td class="codigo">${esc(l.item.code)}</td>
+              <td class="data">${celulaData(l.recebido)}</td>
+              <td class="data">${celulaData(l.pronto)}</td>
+              <td class="data">${celulaData(l.entregue)}</td>
+              <td>${esc(SITUACAO[l.item.status] || l.item.status)}</td>
             </tr>`,
         )
         .join("");
@@ -312,7 +323,7 @@ export default function HistoryView({ userProfile }) {
 <html lang="pt-BR"><head><meta charset="utf-8"/>
 <title>Relatório de Movimentação de Materiais - ${esc(reportStudent.name)}</title>
 <style>
-  @page { size: A4; margin: 16mm 14mm 18mm 14mm; }
+  @page { size: A4 landscape; margin: 14mm 12mm 16mm 12mm; }
   * { box-sizing: border-box; }
   body {
     font-family: Arial, Helvetica, sans-serif;
@@ -328,14 +339,14 @@ export default function HistoryView({ userProfile }) {
   .cabecalho img { height: 42px; }
   h2 {
     font-size: 10pt; text-transform: uppercase; letter-spacing: .6pt;
-    color: #021D34; margin: 18pt 0 6pt; padding-bottom: 3pt;
+    color: #021D34; margin: 16pt 0 6pt; padding-bottom: 3pt;
     border-bottom: .75pt solid #b8c2cc;
   }
   table { width: 100%; border-collapse: collapse; }
-  .identificacao td { padding: 4pt 8pt 4pt 0; vertical-align: top; font-size: 10pt; }
+  .identificacao td { padding: 3pt 8pt 3pt 0; vertical-align: top; font-size: 10pt; }
   .identificacao td.rotulo {
     width: 130pt; color: #555; font-size: 8.5pt; text-transform: uppercase;
-    letter-spacing: .4pt; padding-top: 6pt; white-space: nowrap;
+    letter-spacing: .4pt; padding-top: 5pt; white-space: nowrap;
   }
   .resumo { border: .75pt solid #b8c2cc; }
   .resumo td { border: .75pt solid #b8c2cc; padding: 6pt 8pt; text-align: center; }
@@ -352,6 +363,7 @@ export default function HistoryView({ userProfile }) {
   .registros tbody tr:nth-child(even) { background: #f4f6f8; }
   td.data { white-space: nowrap; font-variant-numeric: tabular-nums; }
   td.codigo { font-family: "Courier New", monospace; font-weight: bold; letter-spacing: .5pt; }
+  .ausente { color: #8c99a6; }
   .nota { color: #021D34; font-weight: bold; }
   .vazio {
     border: .75pt dashed #b8c2cc; padding: 24pt; text-align: center;
@@ -360,7 +372,7 @@ export default function HistoryView({ userProfile }) {
   .observacoes { margin-top: 14pt; font-size: 8.5pt; color: #444; }
   .observacoes li { margin-bottom: 3pt; }
   .rodape {
-    margin-top: 20pt; padding-top: 8pt; border-top: .75pt solid #b8c2cc;
+    margin-top: 18pt; padding-top: 8pt; border-top: .75pt solid #b8c2cc;
     font-size: 8pt; color: #555; text-align: justify;
   }
 </style></head><body>
@@ -380,6 +392,7 @@ export default function HistoryView({ userProfile }) {
   <tr><td class="rotulo">CPF</td><td>${esc(maskCPF(reportStudent.cpf))}</td></tr>
   <tr><td class="rotulo">E-mail</td><td>${esc(reportStudent.email) || "—"}</td></tr>
   <tr><td class="rotulo">Material</td><td>${reportMaterial ? esc(reportMaterial) : "Todos os materiais"}</td></tr>
+  <tr><td class="rotulo">Ordenação</td><td>${rotuloOrdem}</td></tr>
   <tr><td class="rotulo">Emitido em</td><td>${dataHora(emitidoEm)} (${esc(fusoHorario)})</td></tr>
   <tr><td class="rotulo">Emitido por</td><td>${esc(userProfile.name)}</td></tr>
 </table>
@@ -396,10 +409,12 @@ ${
     ? `<table class="registros">
   <thead>
     <tr>
-      <th>Data e hora</th>
-      <th>Situação registrada</th>
       <th>Material</th>
       <th>Código</th>
+      <th>Recebido</th>
+      <th>Pronto p/ Retirada</th>
+      <th>Entregue</th>
+      <th>Situação atual</th>
     </tr>
   </thead>
   <tbody>${corpo}</tbody>
@@ -410,11 +425,13 @@ ${
 <div class="observacoes">
   <strong>Observações</strong>
   <ul>
-    <li>Cada linha corresponde a um evento registrado no sistema, em ordem cronológica decrescente — o acontecimento mais recente aparece primeiro. Leitura: no dia e hora indicados, o material da linha, identificado pelo código, passou à situação registrada.</li>
+    <li>Cada linha corresponde a um material, identificado pelo seu código, com as datas em que atingiu cada etapa.</li>
     <li>"Entregue" corresponde à retirada do material pelo aluno.</li>
+    <li>O travessão (—) indica etapa não registrada no sistema até a emissão deste relatório. Nenhuma data foi estimada.</li>
     ${usouDerivado ? `<li>(*) Data obtida do registro do material, e não de um evento no histórico. Ocorre em materiais anteriores à adoção do histórico de eventos.</li>` : ""}
+    <li>As situações "Em Esterilização" e "Com Ocorrência" não possuem coluna de data própria; constam apenas na coluna de situação atual, quando for o caso.</li>
     ${reportMaterial ? `<li>Este relatório está restrito ao material "${esc(reportMaterial)}". Demais materiais do aluno no período não constam.</li>` : ""}
-    <li>A seleção considera os materiais recebidos dentro do período apurado; eventos posteriores ao fim do período, referentes a esses mesmos materiais, também constam.</li>
+    <li>A seleção considera os materiais recebidos dentro do período apurado; etapas concluídas após o fim do período, referentes a esses mesmos materiais, também constam.</li>
   </ul>
 </div>
 
@@ -1072,7 +1089,7 @@ ${
                 <div
                   className={`grid grid-cols-1 md:grid-cols-2 gap-4 transition-opacity ${!reportStudent ? "opacity-50 pointer-events-none" : "opacity-100"}`}
                 >
-                  <div className="md:col-span-2">
+                  <div>
                     <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">
                       2. Material (opcional)
                     </label>
@@ -1091,7 +1108,20 @@ ${
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">
-                      3. Data Inicial
+                      3. Ordenação
+                    </label>
+                    <select
+                      className="w-full p-3 border rounded-lg bg-white text-slate-900"
+                      value={reportOrder}
+                      onChange={(e) => setReportOrder(e.target.value)}
+                    >
+                      <option value="desc">Mais recentes primeiro</option>
+                      <option value="asc">Mais antigos primeiro</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">
+                      4. Data Inicial
                     </label>
                     <input
                       type="date"
@@ -1102,7 +1132,7 @@ ${
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">
-                      4. Data Final
+                      5. Data Final
                     </label>
                     <input
                       type="date"
