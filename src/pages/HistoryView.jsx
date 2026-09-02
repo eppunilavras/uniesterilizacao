@@ -64,7 +64,7 @@ export default function HistoryView({ userProfile }) {
   const [reportSearch, setReportSearch] = useState("");
   const [reportResults, setReportResults] = useState([]);
   const [reportStudent, setReportStudent] = useState(null);
-  const [reportMaterial, setReportMaterial] = useState(""); // "" = todos
+  const [reportMaterials, setReportMaterials] = useState([]); // [] = todos
   const [reportOrder, setReportOrder] = useState("desc"); // desc = mais recentes
   const [reportStart, setReportStart] = useState("");
   const [reportEnd, setReportEnd] = useState("");
@@ -186,8 +186,8 @@ export default function HistoryView({ userProfile }) {
       const todosItens = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       // Filtro opcional por tipo de material. Quando aplicado, o documento
       // declara a restrição para não ser lido como histórico completo.
-      const items = reportMaterial
-        ? todosItens.filter((i) => i.type === reportMaterial)
+      const items = reportMaterials.length
+        ? todosItens.filter((i) => reportMaterials.includes(i.type))
         : todosItens;
 
       // =============================================================
@@ -296,6 +296,9 @@ export default function HistoryView({ userProfile }) {
         fusoResolvido === "America/Sao_Paulo"
           ? "horário de Brasília"
           : fusoResolvido || "fuso local";
+      const materiaisRotulo = reportMaterials.length
+        ? reportMaterials.map((m) => `"${esc(m)}"`).join(", ")
+        : "Todos os materiais";
       const rotuloOrdem = crescente
         ? "Mais antigos primeiro (por data de recebimento)"
         : "Mais recentes primeiro (por data de recebimento)";
@@ -410,7 +413,7 @@ export default function HistoryView({ userProfile }) {
   <tr><td class="rotulo">Aluno</td><td>${esc(reportStudent.name)}</td></tr>
   <tr><td class="rotulo">CPF</td><td>${esc(maskCPF(reportStudent.cpf))}</td></tr>
   <tr><td class="rotulo">E-mail</td><td>${esc(reportStudent.email) || "—"}</td></tr>
-  <tr><td class="rotulo">Material</td><td>${reportMaterial ? esc(reportMaterial) : "Todos os materiais"}</td></tr>
+  <tr><td class="rotulo">${reportMaterials.length > 1 ? "Materiais" : "Material"}</td><td>${materiaisRotulo}</td></tr>
   <tr><td class="rotulo">Ordenação</td><td>${rotuloOrdem}</td></tr>
   <tr><td class="rotulo">Emitido em</td><td>${dataHora(emitidoEm)} (${esc(fusoHorario)})</td></tr>
   <tr><td class="rotulo">Emitido por</td><td>${esc(userProfile.name)}</td></tr>
@@ -438,7 +441,7 @@ ${
   </thead>
   <tbody>${corpo}</tbody>
 </table>`
-    : `<div class="vazio">Nenhum registro localizado para o aluno no período apurado${reportMaterial ? ` para o material "${esc(reportMaterial)}"` : ""}.</div>`
+    : `<div class="vazio">Nenhum registro localizado para o aluno no período apurado${reportMaterials.length ? ` para ${reportMaterials.length > 1 ? "os materiais" : "o material"} ${materiaisRotulo}` : ""}.</div>`
 }
 
 <div class="observacoes">
@@ -449,7 +452,7 @@ ${
     <li>O travessão (—) indica etapa não registrada no sistema até a emissão deste relatório. Nenhuma data foi estimada.</li>
     ${usouDerivado ? `<li>(*) Data obtida do registro do material, e não de um evento no histórico. Ocorre em materiais anteriores à adoção do histórico de eventos.</li>` : ""}
     <li>As situações "Em Esterilização" e "Com Ocorrência" não possuem coluna de data própria; constam apenas na coluna de situação atual, quando for o caso.</li>
-    ${reportMaterial ? `<li>Este relatório está restrito ao material "${esc(reportMaterial)}". Demais materiais do aluno no período não constam.</li>` : ""}
+    ${reportMaterials.length ? `<li>Este relatório está restrito ${reportMaterials.length > 1 ? "aos materiais" : "ao material"} ${materiaisRotulo}. Demais materiais do aluno no período não constam.</li>` : ""}
     <li>A seleção considera os materiais recebidos dentro do período apurado; etapas concluídas após o fim do período, referentes a esses mesmos materiais, também constam.</li>
   </ul>
 </div>
@@ -1065,7 +1068,7 @@ ${
                         onClick={() => {
                           setReportStudent(null);
                           setReportSearch("");
-                          setReportMaterial("");
+                          setReportMaterials([]);
                         }}
                         className="text-red-500 hover:bg-white p-2 rounded-full transition-colors"
                       >
@@ -1110,20 +1113,64 @@ ${
                 >
                   <div>
                     <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">
-                      2. Material (opcional)
+                      2. Materiais (opcional)
                     </label>
+                    {/* Seleciona um por vez e acumula em fichas removíveis:
+                        multiple nativo exige ctrl+clique e nao funciona bem
+                        no touch, e a Recepcao roda em tablet. */}
                     <select
                       className="w-full p-3 border rounded-lg bg-white text-slate-900"
-                      value={reportMaterial}
-                      onChange={(e) => setReportMaterial(e.target.value)}
+                      value=""
+                      onChange={(e) => {
+                        const nome = e.target.value;
+                        if (nome && !reportMaterials.includes(nome))
+                          setReportMaterials([...reportMaterials, nome]);
+                      }}
                     >
-                      <option value="">Todos os materiais</option>
-                      {materialTypes.map((t) => (
-                        <option key={t.id} value={t.name}>
-                          {t.name}
-                        </option>
-                      ))}
+                      <option value="">
+                        {reportMaterials.length
+                          ? "Adicionar outro material..."
+                          : "Todos os materiais"}
+                      </option>
+                      {materialTypes
+                        .filter((t) => !reportMaterials.includes(t.name))
+                        .map((t) => (
+                          <option key={t.id} value={t.name}>
+                            {t.name}
+                          </option>
+                        ))}
                     </select>
+                    {reportMaterials.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {reportMaterials.map((nome) => (
+                          <span
+                            key={nome}
+                            className="inline-flex items-center gap-1 bg-blue-50 text-[#021D34] border border-blue-100 rounded-full pl-3 pr-2 py-1 text-xs font-bold"
+                          >
+                            {nome}
+                            <button
+                              type="button"
+                              aria-label={`Remover ${nome}`}
+                              onClick={() =>
+                                setReportMaterials(
+                                  reportMaterials.filter((m) => m !== nome),
+                                )
+                              }
+                              className="text-slate-400 hover:text-red-500"
+                            >
+                              <XCircle size={14} />
+                            </button>
+                          </span>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setReportMaterials([])}
+                          className="text-xs text-slate-500 hover:text-red-500 underline self-center"
+                        >
+                          limpar
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="text-xs font-bold text-slate-500 mb-1 block uppercase">
