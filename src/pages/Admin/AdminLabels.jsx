@@ -5,7 +5,7 @@ import {
   AlignLeft, AlignCenter, AlignRight, 
   FlipHorizontal, ArrowLeftRight, ArrowUpDown, Smartphone,
   Image as ImageIcon, Heading, RotateCcw, Save,
-  Monitor 
+  Monitor, Printer 
 } from 'lucide-react';
 import { db, appId } from '../../config/firebase';
 import { useToast } from '../../contexts/ToastContext';
@@ -14,6 +14,8 @@ import { LOGOS } from '../../constants';
 import Barcode from '../../components/Barcode';
 import QRCodeComponent from '../../components/QRCodeComponent';
 import { logEvent } from '../../utils/logger'; 
+import { usePrint } from '../../contexts/PrintContext';
+import { formatStudentNameForLabel } from '../../utils/labelName';
 
 const DEFAULT_SETTINGS = {
     // Físico
@@ -49,6 +51,8 @@ const DEFAULT_SETTINGS = {
 export default function AdminLabels() {
     const [settings, setSettings] = useState(DEFAULT_SETTINGS);
     const [activeTab, setActiveTab] = useState('layout'); 
+    const [testName, setTestName] = useState('MARIA CLARA GOMES TEIXEIRA LIMA');
+    const { printItems } = usePrint();
     const [screenWidth, setScreenWidth] = useState(window.innerWidth);
     
     const { addToast } = useToast();
@@ -441,7 +445,7 @@ export default function AdminLabels() {
                             {/* FOOTER */}
                             {settings.showFooter && (
                                 <div className="border-t border-black pt-1 flex flex-col justify-center text-black" style={footerStyle}>
-                                    {settings.showStudent && <div className="leading-none" style={{fontSize: fontSizeBody}}><span className="font-bold">ALUNO:</span> <span className="font-bold truncate">JOAO CESAR</span></div>}
+                                    {settings.showStudent && <div className="leading-none" style={{fontSize: fontSizeBody}}><span className="font-bold">ALUNO:</span> <span className="font-bold truncate">{formatStudentNameForLabel(testName)}</span></div>}
                                     {settings.showType && <div className="leading-none mt-0.5" style={{fontSize: fontSizeBody}}><span className="font-bold">MAT:</span> <span className="font-bold truncate">KIT CLINICO</span></div>}
                                 </div>
                             )}
@@ -450,6 +454,27 @@ export default function AdminLabels() {
                 </div>
                 <div className="flex justify-center gap-4 mt-2">
                     <span className="text-[10px] text-slate-400 flex items-center gap-1"><Smartphone size={10}/> Visualização Adaptada</span>
+                </div>
+
+                {/* IMPRESSÃO DE TESTE: não cria aluno nem material, só registra log [TESTE] */}
+                <div className="mt-4 bg-white rounded-xl border border-slate-200 shadow-sm p-4 space-y-2 transition-colors">
+                    <label className="text-xs font-bold text-slate-500 block">Nome de teste (nome completo)</label>
+                    <input
+                        type="text"
+                        className="w-full p-2 border rounded text-sm bg-white border-slate-200 text-slate-900"
+                        value={testName}
+                        onChange={e => setTestName(e.target.value)}
+                    />
+                    <p className="text-[11px] text-slate-500">
+                        Na etiqueta: <span className="font-bold">{formatStudentNameForLabel(testName)}</span>
+                    </p>
+                    <button
+                        onClick={() => printItems({ id: 'teste', code: 'TESTE123', studentName: testName, type: 'KIT CLINICO' }, { test: true })}
+                        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-slate-800 text-white text-sm font-bold hover:bg-slate-700"
+                    >
+                        <Printer size={16}/> Imprimir teste
+                    </button>
+                    <p className="text-[10px] text-slate-400">Usa a configuração salva. Não cria aluno nem material.</p>
                 </div>
             </div>
         </div>

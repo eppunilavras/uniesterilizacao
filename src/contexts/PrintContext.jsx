@@ -8,16 +8,7 @@ import Barcode from '../components/Barcode';
 import QRCodeComponent from '../components/QRCodeComponent';
 
 import { logEvent } from '../utils/logger'; // <--- ADICIONAR
-
-const formatStudentNameForLabel = (fullName) => {
-    if (!fullName) return 'NOME';
-    const parts = fullName.trim().split(/\s+/).filter(Boolean);
-    if (parts.length <= 2) return parts.join(' ');
-    const first = parts[0];
-    const last = parts[parts.length - 1];
-    const middle = parts.slice(1, -1).map(n => `${n.charAt(0).toUpperCase()}.`).join(' ');
-    return `${first} ${middle} ${last}`;
-};
+import { formatStudentNameForLabel } from '../utils/labelName';
 
 const PrintContext = createContext();
 
@@ -59,7 +50,8 @@ export const PrintProvider = ({ children, user }) => {
         return () => unsub();
     }, [user]);
 
-	const printItems = (items) => {
+	// { test: true } = impressão de calibração (Admin → Etiquetas): não corresponde a material real
+	const printItems = (items, { test = false } = {}) => {
 		const itemsArray = Array.isArray(items) ? items : [items];
 		pendingPrint.current = true;
 		setPrintQueue(itemsArray);
@@ -67,7 +59,9 @@ export const PrintProvider = ({ children, user }) => {
 		if (user) {
 			logEvent(
 				'DATA_OP',
-				`Impressão de ${itemsArray.length} etiquetas`,
+				test
+					? `[TESTE] Impressão de etiqueta de calibração`
+					: `Impressão de ${itemsArray.length} etiquetas`,
 				{
 					codes: itemsArray.map(i => i.code || 'S/N'),
 					studentNames: itemsArray.map(i => i.studentName).filter((v, i, a) => a.indexOf(v) === i)
