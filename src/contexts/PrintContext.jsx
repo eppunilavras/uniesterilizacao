@@ -281,7 +281,7 @@ export const PrintProvider = ({ children, user }) => {
                                                 {(() => {
                                                     const name = formatStudentNameForLabel(item.studentName);
                                                     return (
-                                                        <span style={{display: 'inline-block', fontWeight: 700, textTransform: 'uppercase', transform: `scaleX(${labelNameScale(name)})`, transformOrigin: settings.footerAlign === 'center' ? 'center' : settings.footerAlign === 'right' ? 'right' : 'left'}}>
+                                                        <span style={{display: 'inline-block', fontSize: '0.9em', fontWeight: 700, textTransform: 'uppercase', transform: `scaleX(${labelNameScale(name)})`, transformOrigin: settings.footerAlign === 'center' ? 'center' : settings.footerAlign === 'right' ? 'right' : 'left'}}>
                                                             {name}
                                                         </span>
                                                     );
