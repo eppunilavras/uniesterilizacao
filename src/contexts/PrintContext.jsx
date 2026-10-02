@@ -8,7 +8,7 @@ import Barcode from '../components/Barcode';
 import QRCodeComponent from '../components/QRCodeComponent';
 
 import { logEvent } from '../utils/logger'; // <--- ADICIONAR
-import { formatStudentNameForLabel } from '../utils/labelName';
+import { formatStudentNameForLabel, labelNameScale } from '../utils/labelName';
 
 const PrintContext = createContext();
 
@@ -277,11 +277,15 @@ export const PrintProvider = ({ children, user }) => {
                                 {settings.showFooter && (
                                     <div style={footerBlockStyle}>
                                         {settings.showStudent && (
-                                            <div style={{whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%'}}>
-                                                <span style={{fontWeight: 800, marginRight: '3px'}}>ALUNO:</span>
-                                                <span style={{fontWeight: 600, textTransform: 'uppercase'}}>
-													{formatStudentNameForLabel(item.studentName)}
-												</span>
+                                            <div style={{whiteSpace: 'nowrap', overflow: 'hidden', width: '100%'}}>
+                                                {(() => {
+                                                    const name = formatStudentNameForLabel(item.studentName);
+                                                    return (
+                                                        <span style={{display: 'inline-block', fontWeight: 700, textTransform: 'uppercase', transform: `scaleX(${labelNameScale(name)})`, transformOrigin: settings.footerAlign === 'center' ? 'center' : settings.footerAlign === 'right' ? 'right' : 'left'}}>
+                                                            {name}
+                                                        </span>
+                                                    );
+                                                })()}
                                             </div>
                                         )}
                                         {settings.showType && (

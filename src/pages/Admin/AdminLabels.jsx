@@ -445,7 +445,7 @@ export default function AdminLabels() {
                             {/* FOOTER */}
                             {settings.showFooter && (
                                 <div className="border-t border-black pt-1 flex flex-col justify-center text-black" style={footerStyle}>
-                                    {settings.showStudent && <div className="leading-none" style={{fontSize: fontSizeBody}}><span className="font-bold">ALUNO:</span> <span className="font-bold truncate">{formatStudentNameForLabel(testName)}</span></div>}
+                                    {settings.showStudent && <div className="leading-none" style={{fontSize: fontSizeBody}}><span className="font-bold truncate">{formatStudentNameForLabel(testName)}</span></div>}
                                     {settings.showType && <div className="leading-none mt-0.5" style={{fontSize: fontSizeBody}}><span className="font-bold">MAT:</span> <span className="font-bold truncate">KIT CLINICO</span></div>}
                                 </div>
                             )}
