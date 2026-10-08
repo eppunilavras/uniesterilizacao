@@ -6,8 +6,8 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      // Mantém 'prompt' para usar seu componente de aviso de atualização
-      registerType: 'prompt', 
+      // Atualiza sozinho: nenhum técnico fica preso a uma versão antiga em cache.
+      registerType: 'autoUpdate',
       
       // Mantém as opções de desenvolvimento
       devOptions: {
