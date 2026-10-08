@@ -33,6 +33,7 @@ import { formatDate } from "../utils/formatters";
 import { playSound } from "../utils/audio";
 import { STATUS_CONFIG } from "../constants";
 import DataTable from "../components/DataTable";
+import WithdrawalDesk from "../components/WithdrawalDesk";
 
 import { useScanner } from "../hooks/useScanner";
 import { useStudentsDirectory } from "../hooks/useStudentsDirectory";
@@ -570,14 +571,6 @@ export default function Movement({ userProfile }) {
                                     Marcar Pronto
                                   </button>
                                 )}
-                                {it.status === "pronto" && (
-                                  <button
-                                    onClick={() => updateStatus(it, "retirado")}
-                                    className="p-2 bg-[#009DE0] text-white rounded-lg text-xs font-bold hover:bg-[#008bc5] transition-colors"
-                                  >
-                                    Confirmar Retirada
-                                  </button>
-                                )}
                               </>
                             ))}
 
@@ -620,6 +613,17 @@ export default function Movement({ userProfile }) {
             Lista / Lote
           </button>
           <button
+            onClick={() => {
+              setMode("withdrawal");
+              setCode("");
+              setSingleItem(null);
+              setShowCamera(false);
+            }}
+            className={`flex-1 md:flex-none px-4 py-2 text-sm font-bold rounded-md whitespace-nowrap transition-all ${mode === "withdrawal" ? "bg-white text-[#009DE0] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+          >
+            Retirada
+          </button>
+          <button
             onClick={() => setMode("single")}
             className={`flex-1 md:flex-none px-4 py-2 text-sm font-bold rounded-md whitespace-nowrap transition-all ${mode === "single" ? "bg-white text-[#009DE0] shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
           >
@@ -628,7 +632,9 @@ export default function Movement({ userProfile }) {
         </div>
       </div>
 
-      {mode === "single" ? (
+      {mode === "withdrawal" ? (
+        <WithdrawalDesk userProfile={userProfile} />
+      ) : mode === "single" ? (
         <div className="max-w-xl mx-auto space-y-6 py-8 animate-in zoom-in-95 duration-300">
           <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-lg text-center relative overflow-hidden transition-colors">
             {!showCamera ? (
@@ -721,12 +727,9 @@ export default function Movement({ userProfile }) {
                       </button>
                     )}
                     {singleItem.status === "pronto" && (
-                      <button
-                        onClick={() => updateStatus(singleItem, "retirado")}
-                        className="p-4 bg-[#009DE0] text-white rounded-xl font-bold hover:bg-[#008bc5] transition-colors"
-                      >
-                        Confirmar Retirada
-                      </button>
+                      <p className="p-4 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-sm text-center transition-colors">
+                        A retirada é feita na aba <strong>Retirada</strong>, pelo CPF do aluno.
+                      </p>
                     )}
                   </>
                 )}
@@ -887,12 +890,6 @@ export default function Movement({ userProfile }) {
                   className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 transition-colors"
                 >
                   Pronto
-                </button>
-                <button
-                  onClick={() => handleBatch("retirado")}
-                  className="bg-[#009DE0] text-white px-2 py-1 rounded text-xs hover:bg-[#008bc5] transition-colors"
-                >
-                  Retirado
                 </button>
               </div>
             )}
