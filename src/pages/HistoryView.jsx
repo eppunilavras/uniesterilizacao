@@ -268,7 +268,8 @@ export default function HistoryView({ userProfile }) {
             item: i,
             recebido,
             pronto: marco(i, "pronto"),
-            entregue: marco(i, "retirado", true),
+            // Item estornado e de volta ao setor não conta como entregue.
+            entregue: i.status === "retirado" ? marco(i, "retirado", true) : null,
             ordenacao: paraData(recebido.valor),
           };
         })

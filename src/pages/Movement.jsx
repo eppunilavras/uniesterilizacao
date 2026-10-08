@@ -8,6 +8,7 @@ import {
   onSnapshot,
   getDocs,
   writeBatch,
+  runTransaction,
   doc,
   serverTimestamp,
 } from "firebase/firestore";
@@ -22,6 +23,7 @@ import {
   X,
   CheckCircle2,
   Calendar, // Importado para o filtro de data
+  Undo2,
 } from "lucide-react";
 
 import { db, appId } from "../config/firebase";
@@ -62,6 +64,15 @@ export default function Movement({ userProfile }) {
     reason: "",
     type: "report",
   });
+
+  // Estorno de retirada (somente admin)
+  const [reverseModal, setReverseModal] = useState({
+    isOpen: false,
+    item: null,
+    reason: "",
+  });
+  const [reversing, setReversing] = useState(false);
+  const isAdmin = userProfile?.role === "admin";
 
   // Quick View: aluno selecionado via dropdown da busca (mostra todos os itens dele)
   const [quickViewStudentId, setQuickViewStudentId] = useState(null);
@@ -259,6 +270,85 @@ export default function Movement({ userProfile }) {
     setIncidentModal({ isOpen: true, item: item, reason: "", type: "resolve" });
   };
 
+  // --- ESTORNO DE RETIRADA (ADMIN) ---
+  // Devolve o item ao status que tinha antes de sair (normalmente "pronto").
+  // A retirada errada permanece no histórico; o estorno entra como novo evento.
+  const confirmReverse = async () => {
+    const reason = reverseModal.reason.trim();
+    if (!reason) {
+      addToast("Informe o motivo do estorno.", "error");
+      return;
+    }
+    if (!isAdmin) return;
+
+    const item = reverseModal.item;
+    const ref = doc(db, "artifacts", appId, "public", "data", "items", item.id);
+    setReversing(true);
+    try {
+      const newStatus = await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (!snap.exists()) throw new Error("Item não encontrado.");
+        const data = snap.data();
+        if (data.status !== "retirado") {
+          throw new Error("O item não está mais como Retirado.");
+        }
+
+        const history = data.history || [];
+        const previous = [...history]
+          .reverse()
+          .find((h) => h.status !== "retirado" && h.status !== "problema");
+        const target = previous ? previous.status : "pronto";
+
+        tx.update(ref, {
+          status: target,
+          history: [
+            ...history,
+            {
+              status: target,
+              timestamp: new Date().toISOString(),
+              by: userProfile.name,
+              reason: `Estorno de retirada: ${reason}`,
+            },
+          ],
+          lastUpdated: serverTimestamp(),
+        });
+
+        if (data.studentId) {
+          tx.set(
+            doc(collection(db, "artifacts", appId, "users", data.studentId, "notifications")),
+            {
+              title: "Retirada Estornada",
+              message: `A retirada do seu item ${data.code} (${data.type}) foi estornada. Ele voltou para: ${STATUS_CONFIG[target].label}.`,
+              read: false,
+              createdAt: serverTimestamp(),
+            },
+          );
+        }
+        return target;
+      });
+
+      await logEvent("ITEM_MOVE", `Retirada do item ${item.code} estornada`, {
+        itemId: item.id,
+        code: item.code,
+        studentName: item.studentName,
+        previousStatus: "retirado",
+        newStatus,
+        reason: `Estorno de retirada: ${reason}`,
+      });
+
+      addToast(`Retirada estornada. Item voltou para: ${STATUS_CONFIG[newStatus].label}.`, "success");
+      if (singleItem && singleItem.id === item.id) {
+        setSingleItem((prev) => ({ ...prev, status: newStatus }));
+      }
+      setReverseModal({ isOpen: false, item: null, reason: "" });
+    } catch (err) {
+      console.error(err);
+      addToast(err.message || "Erro ao estornar a retirada.", "error");
+    } finally {
+      setReversing(false);
+    }
+  };
+
   const confirmIncident = async () => {
     if (!incidentModal.reason.trim()) {
       addToast("Por favor, digite uma descrição.", "error");
@@ -398,6 +488,52 @@ export default function Movement({ userProfile }) {
 
   return (
     <div className="space-y-6 transition-colors">
+      {/* MODAL DE ESTORNO DE RETIRADA (ADMIN) */}
+      {reverseModal.isOpen && (
+        <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in-95 duration-200 border">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold flex items-center gap-2 text-amber-700">
+                <Undo2 className="text-amber-600" /> Estornar Retirada
+              </h3>
+              <button
+                onClick={() => setReverseModal({ isOpen: false, item: null, reason: "" })}
+                className="text-slate-400 hover:text-slate-600 p-2 rounded-full"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-sm text-slate-500 mb-4">
+              O item <strong>{reverseModal.item?.code}</strong> voltará ao status anterior à retirada.
+              A retirada original continua registrada no histórico.
+            </p>
+            <textarea
+              className="w-full p-4 border border-slate-200 rounded-xl outline-none text-sm min-h-[120px] bg-slate-50 focus:border-[#009DE0] transition-colors"
+              placeholder="Motivo do estorno (ex: retirada registrada por engano, material ainda no setor)"
+              value={reverseModal.reason}
+              onChange={(e) => setReverseModal({ ...reverseModal, reason: e.target.value })}
+              autoFocus
+            />
+            <div className="flex gap-3 justify-end mt-4">
+              <button
+                onClick={() => setReverseModal({ isOpen: false, item: null, reason: "" })}
+                className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-lg text-sm transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmReverse}
+                disabled={reversing}
+                className="px-6 py-2 text-white font-bold rounded-lg bg-amber-600 hover:brightness-90 text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {reversing && <Loader2 className="animate-spin" size={14} />}
+                Confirmar Estorno
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL DE INCIDENTES (Inalterado) */}
       {incidentModal.isOpen && (
         <div className="fixed inset-0 z-[10005] flex items-center justify-center p-4 bg-[#021D34]/50 backdrop-blur-sm animate-in fade-in duration-200">
@@ -733,6 +869,22 @@ export default function Movement({ userProfile }) {
                     )}
                   </>
                 )}
+
+                {singleItem.status === "retirado" &&
+                  (isAdmin ? (
+                    <button
+                      onClick={() =>
+                        setReverseModal({ isOpen: true, item: singleItem, reason: "" })
+                      }
+                      className="p-3 text-amber-700 border border-amber-200 bg-amber-50 rounded-xl font-bold hover:bg-amber-100 flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <Undo2 size={18} /> Estornar Retirada
+                    </button>
+                  ) : (
+                    <p className="p-4 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-sm text-center transition-colors">
+                      Item já retirado. Se foi por engano, peça a um administrador para estornar.
+                    </p>
+                  ))}
 
                 {singleItem.status !== "retirado" && (
                   <>
