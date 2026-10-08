@@ -2,6 +2,10 @@ import React, { useState, useMemo } from 'react';
 import {
   ArrowUp,
   ArrowDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from 'lucide-react';
 import Skeleton from './Skeleton';
 
@@ -13,10 +17,15 @@ import Skeleton from './Skeleton';
  * @param {string} emptyMsg - Mensagem para exibir quando não há dados
  * @param {Function} mobileRender - (Opcional) Função que retorna o layout de Card para mobile
  * @param {boolean} loading - Estado de carregamento
+ * @param {number} pageSize - Linhas por página (padrão 25)
  */
-const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) => {
+const PAGE_SIZES = [25, 50, 100];
+
+const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading, pageSize: initialPageSize = 25 }) => {
     const [sortCol, setSortCol] = useState(null);
     const [sortDir, setSortDir] = useState('asc');
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(initialPageSize);
 
     // --- LÓGICA DE ORDENAÇÃO ---
     const sortedData = useMemo(() => {
@@ -38,7 +47,16 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
     const handleSort = (key) => {
         if (sortCol === key) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
         else { setSortCol(key); setSortDir('asc'); }
+        setPage(1);
     };
+
+    // --- PAGINAÇÃO ---
+    // A página é limitada ao total atual: se um filtro reduzir a lista, cai na última página válida.
+    const totalPages = Math.max(1, Math.ceil(sortedData.length / pageSize));
+    const currentPage = Math.min(page, totalPages);
+    const firstIndex = (currentPage - 1) * pageSize;
+    const pageData = sortedData.slice(firstIndex, firstIndex + pageSize);
+    const goTo = (p) => setPage(Math.min(Math.max(1, p), totalPages));
 
     // --- RENDERIZAÇÃO DE LOADING (SKELETON) ---
     if (loading) {
@@ -131,7 +149,7 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {sortedData.map((row, i) => (
+                        {pageData.map((row, i) => (
                             <tr key={row.id || i} className="hover:bg-slate-50 transition-colors">
                                 {columns.map((col, idx) => (
                                     <td key={col.key || idx} className={`p-4 text-slate-700 ${col.className ? col.className : 'truncate max-w-[200px]'}`}>
@@ -149,7 +167,7 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
             <div className="md:hidden">
                 {mobileRender ? (
                     <div className="divide-y divide-slate-100">
-                        {sortedData.map((row, i) => (
+                        {pageData.map((row, i) => (
                             <div key={row.id || i} className="p-4 hover:bg-slate-50 transition-colors w-full max-w-full overflow-hidden">
                                 {mobileRender(row)}
                                 {actions && (
@@ -163,7 +181,7 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
                 ) : (
                     // Fallback Genérico Mobile
                     <div className="divide-y divide-slate-100">
-                        {sortedData.map((row, i) => (
+                        {pageData.map((row, i) => (
                             <div key={row.id || i} className="p-4 space-y-2 w-full max-w-full overflow-hidden">
                                 {columns.map((col, idx) => (
                                     <div key={idx} className="flex justify-between items-center text-sm gap-4">
@@ -184,8 +202,45 @@ const DataTable = ({ columns, data, actions, emptyMsg, mobileRender, loading }) 
                 )}
             </div>
 
+            {/* --- PAGINAÇÃO --- */}
+            {sortedData.length > PAGE_SIZES[0] && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-slate-200 bg-slate-50 text-sm text-slate-600 transition-colors">
+                    <div className="flex items-center gap-2">
+                        <span>
+                            {firstIndex + 1}–{firstIndex + pageData.length} de {sortedData.length}
+                        </span>
+                        <select
+                            value={pageSize}
+                            onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                            className="p-1 border border-slate-200 rounded-lg bg-white text-slate-700 text-xs outline-none focus:border-[#009DE0] transition-colors"
+                            title="Linhas por página"
+                        >
+                            {PAGE_SIZES.map((n) => <option key={n} value={n}>{n} por página</option>)}
+                        </select>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <PagerButton onClick={() => goTo(1)} disabled={currentPage === 1} title="Primeira página"><ChevronsLeft size={16} /></PagerButton>
+                        <PagerButton onClick={() => goTo(currentPage - 1)} disabled={currentPage === 1} title="Página anterior"><ChevronLeft size={16} /></PagerButton>
+                        <span className="px-3 font-semibold text-slate-700 whitespace-nowrap">
+                            Página {currentPage} de {totalPages}
+                        </span>
+                        <PagerButton onClick={() => goTo(currentPage + 1)} disabled={currentPage === totalPages} title="Próxima página"><ChevronRight size={16} /></PagerButton>
+                        <PagerButton onClick={() => goTo(totalPages)} disabled={currentPage === totalPages} title="Última página"><ChevronsRight size={16} /></PagerButton>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };
+
+const PagerButton = ({ children, ...props }) => (
+    <button
+        {...props}
+        className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:text-[#009DE0] hover:border-[#009DE0] disabled:opacity-40 disabled:pointer-events-none transition-colors"
+    >
+        {children}
+    </button>
+);
 
 export default DataTable;
