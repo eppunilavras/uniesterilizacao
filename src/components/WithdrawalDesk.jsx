@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Scanner } from "@yudiel/react-qr-scanner";
 import {
   collection,
@@ -159,6 +160,13 @@ export default function WithdrawalDesk({ userProfile }) {
     setBlocked({ code: scanned, message });
   };
 
+  const addToCart = (item) => {
+    if (cart.includes(item.id)) return;
+    playSound("success");
+    setCart((prev) => [...prev, item.id]);
+    scanRef.current?.focus();
+  };
+
   const processCode = async (raw) => {
     const scanned = (raw || "").toUpperCase();
     if (!scanned || checking) return;
@@ -177,8 +185,7 @@ export default function WithdrawalDesk({ userProfile }) {
         block(scanned, `Este material ainda não pode sair: ${label}.`);
         return;
       }
-      playSound("success");
-      setCart((prev) => [...prev, local.id]);
+      addToCart(local);
       return;
     }
 
@@ -417,22 +424,29 @@ export default function WithdrawalDesk({ userProfile }) {
 
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
-      {/* BLOQUEIO */}
-      {blocked && (
-        <div className="fixed inset-0 z-[10006] flex items-center justify-center p-4 bg-red-700/90 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 text-center border-4 border-red-600">
-            <ShieldAlert className="w-20 h-20 text-red-600 mx-auto mb-4" />
-            <p className="font-mono text-2xl font-bold text-red-700 tracking-wider mb-2">{blocked.code}</p>
-            <h3 className="text-xl font-bold text-[#021D34] mb-6">{blocked.message}</h3>
+      {/* BLOQUEIO — portal no body para cobrir a tela inteira, independente do scroll */}
+      {blocked &&
+        createPortal(
+          <div className="fixed inset-0 z-[10006] flex flex-col items-center justify-start bg-red-600 text-white px-6 pt-16 pb-8 overflow-y-auto">
+            <ShieldAlert className="w-24 h-24 mb-6 shrink-0" />
+            <p className="text-sm uppercase font-bold tracking-widest text-white/80 mb-2">
+              Material bloqueado
+            </p>
+            <p className="font-mono text-4xl font-bold tracking-wider mb-4 break-all text-center">
+              {blocked.code}
+            </p>
+            <h3 className="text-2xl md:text-3xl font-bold text-center max-w-3xl mb-10">
+              {blocked.message}
+            </h3>
             <button
               onClick={dismissBlock}
-              className="w-full py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition-colors"
+              className="px-10 py-4 bg-white text-red-700 text-lg font-bold rounded-xl hover:bg-red-50 transition-colors shadow-lg"
             >
               Entendi (Esc)
             </button>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
 
       {/* CABEÇALHO DA SESSÃO */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-[#021D34] text-white p-4 rounded-xl shadow-sm">
@@ -514,6 +528,7 @@ export default function WithdrawalDesk({ userProfile }) {
               <CardSection
                 title={`Prontos para retirada (${ready.length})`}
                 items={ready}
+                onSelect={addToCart}
                 empty={cart.length > 0 ? "Todos os itens prontos já estão no carrinho." : "Nenhum item pronto."}
               />
               {notReady.length > 0 && (
@@ -539,7 +554,7 @@ export default function WithdrawalDesk({ userProfile }) {
           <div className="flex-1 overflow-y-auto p-3 space-y-2 min-h-[120px]">
             {cartItems.length === 0 ? (
               <p className="text-center text-sm text-slate-400 py-8">
-                Bipe os materiais prontos para adicioná-los.
+                Bipe ou clique nos materiais prontos para adicioná-los.
               </p>
             ) : (
               cartItems.map((i) => (
@@ -579,7 +594,7 @@ export default function WithdrawalDesk({ userProfile }) {
   );
 }
 
-function CardSection({ title, items, empty, muted = false }) {
+function CardSection({ title, items, empty, muted = false, onSelect }) {
   return (
     <div>
       <p className="text-[11px] uppercase font-bold text-slate-400 mb-2">{title}</p>
@@ -594,7 +609,21 @@ function CardSection({ title, items, empty, muted = false }) {
             return (
               <div
                 key={i.id}
-                className={`p-3 rounded-xl border bg-white transition-colors ${muted ? "opacity-60 border-slate-200" : "border-green-200 shadow-sm"}`}
+                role={onSelect ? "button" : undefined}
+                tabIndex={onSelect ? 0 : undefined}
+                onClick={onSelect ? () => onSelect(i) : undefined}
+                onKeyDown={
+                  onSelect
+                    ? (e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onSelect(i);
+                        }
+                      }
+                    : undefined
+                }
+                title={onSelect ? "Adicionar ao carrinho" : undefined}
+                className={`p-3 rounded-xl border bg-white transition-colors ${muted ? "opacity-60 border-slate-200" : "border-green-200 shadow-sm"} ${onSelect ? "cursor-pointer hover:border-[#009DE0] hover:bg-blue-50 active:scale-[0.98]" : ""}`}
               >
                 <p className="font-mono font-bold text-[#009DE0] text-sm tracking-wider">{i.code}</p>
                 <p className="text-xs font-semibold text-slate-800 truncate" title={i.type}>
