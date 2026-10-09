@@ -7,7 +7,6 @@ import {
   where,
   onSnapshot,
   getDocs,
-  writeBatch,
   runTransaction,
   doc,
   serverTimestamp,
@@ -39,10 +38,8 @@ import WithdrawalDesk from "../components/WithdrawalDesk";
 
 import { useScanner } from "../hooks/useScanner";
 import { useStudentsDirectory } from "../hooks/useStudentsDirectory";
+import { canMoveTo, commitStatusChange } from "../utils/itemStatus";
 
-// --- DEFINIÇÃO DA ORDEM RIGOROSA ---
-// 'em_esterilizacao' mantido para compatibilidade com itens legados (DB ainda pode ter).
-const STATUS_ORDER = ["recebido", "em_esterilizacao", "pronto", "retirado"];
 
 export default function Movement({ userProfile }) {
   const [mode, setMode] = useState("list");
@@ -91,33 +88,6 @@ export default function Movement({ userProfile }) {
     enabled: !!userProfile,
   });
 
-  // --- HELPER: VALIDAÇÃO DE TRANSIÇÃO ---
-  // Fluxo simplificado: Recebido → Pronto → Retirado (Em Esterilização aceita como legado).
-  const canMoveTo = (currentStatus, nextStatus) => {
-    if (nextStatus === "problema") return { allowed: true };
-    if (currentStatus === "problema") return { allowed: true };
-
-    const currIndex = STATUS_ORDER.indexOf(currentStatus);
-    const nextIndex = STATUS_ORDER.indexOf(nextStatus);
-
-    if (currIndex === -1 || nextIndex === -1) {
-      return {
-        allowed: false,
-        error: "O status atual do item é inválido. Contate o suporte.",
-      };
-    }
-    if (currIndex === nextIndex) {
-      return { allowed: false, error: "O item já está neste status." };
-    }
-    if (nextIndex < currIndex) {
-      return {
-        allowed: false,
-        error: "O fluxo é contínuo. Não é permitido retroceder etapas.",
-      };
-    }
-
-    return { allowed: true };
-  };
 
   // --- BUSCA AUTOMÁTICA ---
   useEffect(() => {
@@ -194,64 +164,7 @@ export default function Movement({ userProfile }) {
       return;
     }
 
-    const batch = writeBatch(db);
-    const ref = doc(db, "artifacts", appId, "public", "data", "items", item.id);
-
-    const previousStatus = item.status;
-    const historyEntry = {
-      status: newStatus,
-      timestamp: new Date().toISOString(),
-      by: userProfile.name,
-    };
-    if (reason) historyEntry.reason = reason;
-
-    const history = [...(item.history || []), historyEntry];
-    batch.update(ref, {
-      status: newStatus,
-      history,
-      lastUpdated: serverTimestamp(),
-    });
-
-    if (item.studentId) {
-      const nRef = doc(
-        collection(
-          db,
-          "artifacts",
-          appId,
-          "users",
-          item.studentId,
-          "notifications",
-        ),
-      );
-      let title = "Atualização de Material";
-      let message = `Seu item ${item.code} - ${item.type} mudou para: ${STATUS_CONFIG[newStatus].label}`;
-
-      if (newStatus === "problema" && reason) {
-        title = "⚠️ Atenção: Ocorrência com Material";
-        message = `Houve uma ocorrência com seu item ${item.code} (${item.type}): "${reason}". Por favor, procure a central.`;
-      } else if (reason && reason.startsWith("Resolução:")) {
-        title = "✅ Ocorrência Resolvida";
-        message = `O problema com seu item ${item.code} foi resolvido e ele retornou para: ${STATUS_CONFIG[newStatus].label}.`;
-      }
-
-      batch.set(nRef, {
-        title,
-        message,
-        read: false,
-        createdAt: serverTimestamp(),
-      });
-    }
-
-    await batch.commit();
-
-    await logEvent("ITEM_MOVE", `Item ${item.code} movido para ${newStatus}`, {
-      itemId: item.id,
-      code: item.code,
-      studentName: item.studentName,
-      previousStatus: previousStatus,
-      newStatus: newStatus,
-      reason: reason || "Fluxo normal",
-    });
+    await commitStatusChange({ item, newStatus, reason, userProfile });
 
     if (mode === "single" && singleItem && singleItem.id === item.id) {
       setSingleItem((prev) => ({ ...prev, status: newStatus }));

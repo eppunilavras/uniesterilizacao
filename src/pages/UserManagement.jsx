@@ -51,6 +51,7 @@ import { logEvent } from "../utils/logger";
 import { maskCPF, translateFirebaseError } from "../utils/formatters";
 import { ROLE_LABELS } from "../constants";
 import DataTable from "../components/DataTable";
+import { checkCpfExists, updateUserRecord } from "../utils/userRecords";
 import {
   useUsersDirectory,
   upsertDirectoryEntry,
@@ -131,23 +132,6 @@ export default function UserManagement({ userProfile }) {
       : getApp("Secondary");
   };
 
-  const checkCpfExists = async (cpf, excludeUid = null) => {
-    const cleanCpf = cpf.replace(/\D/g, "");
-    const q = query(
-      collection(db, "artifacts", appId, "public", "data", "users_directory"),
-      where("cpf", "==", cleanCpf),
-    );
-    const snap = await getDocs(q);
-
-    if (snap.empty) return false;
-
-    if (excludeUid) {
-      return snap.docs.some((d) => d.id !== excludeUid);
-    }
-
-    return true;
-  };
-
   // Busca e listagem filtram o diretório em cache (useUsersDirectory). Antes
   // cada busca relia a coleção inteira no Firestore e estourava a cota diária.
   const {
@@ -194,78 +178,16 @@ export default function UserManagement({ userProfile }) {
       const batch = writeBatch(db);
 
       if (editing) {
-        if (!data.active) {
-          const q = query(
-            collection(db, "artifacts", appId, "public", "data", "items"),
-            where("studentId", "==", editing.uid),
-            where("status", "!=", "retirado"),
-          );
-          const snap = await getDocs(q);
-          if (!snap.empty) {
-            addToast(
-              `Não é possível inativar. Utilizador tem itens pendentes.`,
-              "error",
-            );
-            return;
-          }
-        }
-
-        if (await checkCpfExists(cleanCpf, editing.uid)) {
-          addToast("Este CPF já está a ser usado.", "error");
+        const result = await updateUserRecord({
+          editing,
+          data,
+          queryClient,
+          userProfile,
+        });
+        if (!result.ok) {
+          addToast(result.error, "error");
           return;
         }
-
-        const updates = {
-          name: data.name,
-          email: data.email,
-          cpf: cleanCpf,
-          role: data.role,
-          active: data.active,
-        };
-
-        // --- DETECÇÃO DE MUDANÇAS PARA LOG (MELHORIA) ---
-        const changesDetected = [];
-        if (editing.role !== data.role)
-          changesDetected.push(`Perfil: ${editing.role} -> ${data.role}`);
-        if (editing.active !== data.active)
-          changesDetected.push(
-            `Status: ${editing.active ? "Ativo" : "Inativo"} -> ${data.active ? "Ativo" : "Inativo"}`,
-          );
-        if (editing.name !== data.name) changesDetected.push(`Nome alterado`);
-        if (editing.email !== data.email)
-          changesDetected.push(`Email alterado`);
-        if (editing.cpf !== cleanCpf) changesDetected.push(`CPF alterado`);
-        // ------------------------------------------------
-
-        batch.update(
-          doc(db, "artifacts", appId, "users", editing.uid, "profile", "data"),
-          updates,
-        );
-        batch.update(
-          doc(
-            db,
-            "artifacts",
-            appId,
-            "public",
-            "data",
-            "users_directory",
-            editing.uid,
-          ),
-          updates,
-        );
-
-        await batch.commit();
-
-        upsertDirectoryEntry(queryClient, editing.uid, updates);
-
-        // --- LOG MELHORADO COM DETALHES ---
-        await logEvent("USER_MGMT", `Utilizador atualizado: ${data.name}`, {
-          targetUid: editing.uid,
-          updates: updates,
-          changesSummary:
-            changesDetected.join(", ") || "Atualização de dados cadastrais",
-          executor: userProfile.email,
-        });
 
         addToast("Dados atualizados!", "success");
       } else {

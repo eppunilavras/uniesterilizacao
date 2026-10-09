@@ -42,7 +42,11 @@ import { formatDate, maskCPF } from "../utils/formatters";
 import { STATUS_CONFIG, LOGOS, LOG_TYPES } from "../constants";
 import { playSound } from "../utils/audio";
 import DataTable from "../components/DataTable";
-import { generateStudentReport, SCRIPT_IMPRESSAO } from "../utils/studentReport";
+import {
+  generateStudentReport,
+  printTraceReport,
+  SCRIPT_IMPRESSAO,
+} from "../utils/studentReport";
 
 
 export default function HistoryView({ userProfile }) {
@@ -471,62 +475,7 @@ export default function HistoryView({ userProfile }) {
 
   const generateTraceReport = () => {
     if (!selectedItem) return;
-    const w = window.open("", "_blank");
-    if (!w) {
-      addToast("Pop-up bloqueado.", "error");
-      return;
-    }
-    const timeline = selectedItem.history
-      ? [...selectedItem.history].reverse()
-      : [];
-    const html = `
-        <!DOCTYPE html><html><head><title>Rastreabilidade</title>
-        <style>
-            body{font-family:'Segoe UI',sans-serif;padding:40px;color:#333}
-            .header{display:flex;justify-content:space-between;border-bottom:2px solid #009DE0;padding-bottom:20px;margin-bottom:30px}
-            .logo{height:50px}
-            .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;background:#f8fafc;padding:20px;border:1px solid #e2e8f0;border-radius:8px}
-            .label{font-size:12px;color:#64748b;font-weight:bold;text-transform:uppercase}
-            .value{font-size:16px;font-weight:600;color:#0f172a}
-            table{width:100%;border-collapse:collapse;margin-top:20px}
-            th{text-align:left;background:#021D34;color:white;padding:12px;font-size:14px}
-            td{padding:12px;border-bottom:1px solid #e2e8f0;font-size:14px}
-            .badge{padding:4px 8px;border-radius:4px;font-weight:bold;font-size:12px;background:#e2e8f0}
-            .reason{font-style:italic;color:#64748b;font-size:13px}
-        </style>
-        </head><body>
-        <div class="header">
-            <div><h2>Relatório de Rastreabilidade</h2><div style="color:#64748b">${new Date().toLocaleString()}</div></div>
-            <img src="${LOGOS.color}" class="logo"/>
-        </div>
-        <div class="info-grid">
-            <div><span class="label">Código</span><div class="value">${selectedItem.code}</div></div>
-            <div><span class="label">Material</span><div class="value">${selectedItem.type}</div></div>
-            <div><span class="label">Aluno</span><div class="value">${selectedItem.studentName}</div></div>
-            <div><span class="label">Status Atual</span><div class="value">${STATUS_CONFIG[selectedItem.status].label}</div></div>
-        </div>
-        <h3>Linha do Tempo Completa</h3>
-        <table>
-            <thead><tr><th>Data/Hora</th><th>Status</th><th>Responsável</th><th>Observações</th></tr></thead>
-            <tbody>
-                ${timeline
-                  .map(
-                    (t) => `
-                    <tr>
-                        <td>${formatDate(t.timestamp)}</td>
-                        <td><span class="badge">${STATUS_CONFIG[t.status]?.label || t.status}</span></td>
-                        <td>${t.by || "Sistema"}</td>
-                        <td class="reason">${t.reason || "-"}</td>
-                    </tr>
-                `,
-                  )
-                  .join("")}
-            </tbody>
-        </table>
-        ${SCRIPT_IMPRESSAO}
-        </body></html>`;
-    w.document.write(html);
-    w.document.close();
+    printTraceReport(selectedItem, addToast);
   };
 
   const handleMobileModeChange = (e) => {
