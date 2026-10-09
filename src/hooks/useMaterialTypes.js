@@ -13,23 +13,11 @@ export function useMaterialTypes() {
             return data.sort((a, b) => a.name.localeCompare(b.name));
         },
         
-        // --- CONFIGURAÇÃO AJUSTADA PARA ATUALIZAR NO LOGIN ---
-        
-        // 1. staleTime: 0 significa que os dados são considerados "velhos" imediatamente.
-        // Isso força o React Query a tentar buscar novos dados sempre que o componente montar.
-        staleTime: 0, 
-        
-        // 2. Mantemos o cache por 24h para garantir que funcione offline
-        cacheTime: 1000 * 60 * 60 * 24, 
-        
-        // 3. 'offlineFirst': Tenta buscar no servidor (porque staleTime é 0).
-        // Se falhar (sem internet), ele entrega os dados do cache silenciosamente sem dar erro.
-        networkMode: 'offlineFirst', 
-        
-        // 4. Garante a busca ao montar o componente (Login/MainLayout)
-        refetchOnMount: true, 
-        
-        // 5. Evita recarregar só porque trocou de aba (economiza leituras)
+        // Tipos mudam raramente. Antes (staleTime 0) cada montagem de tela
+        // relia a coleção; o botão de atualizar da Recepção força a busca.
+        staleTime: 1000 * 60 * 60,
+        gcTime: 1000 * 60 * 60 * 24,
+        networkMode: 'offlineFirst',
         refetchOnWindowFocus: false 
     });
 }

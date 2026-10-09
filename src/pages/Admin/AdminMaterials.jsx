@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   collection, 
   addDoc, 
   deleteDoc, 
   doc, 
-  onSnapshot,
   query,
   where,
   getDocs,
@@ -21,9 +21,12 @@ import { useToast } from '../../contexts/ToastContext';
 import { useDialog } from '../../contexts/DialogContext';
 import DataTable from '../../components/DataTable';
 import { logEvent } from '../../utils/logger';
+import { useMaterialTypes } from '../../hooks/useMaterialTypes';
 
 export default function AdminMaterials() {
-    const [mats, setMats] = useState([]);
+    // Mesmo cache usado pela Recepção/Histórico, em vez de um listener próprio.
+    const { data: mats = [] } = useMaterialTypes();
+    const queryClient = useQueryClient();
     const [name, setName] = useState('');
     const [search, setSearch] = useState(''); 
     const [verifying, setVerifying] = useState(false);
@@ -31,13 +34,6 @@ export default function AdminMaterials() {
     const { addToast } = useToast();
     const { confirm } = useDialog();
 
-    useEffect(() => {
-        const unsub = onSnapshot(
-            collection(db, 'artifacts', appId, 'public', 'data', 'materialTypes'), 
-            s => setMats(s.docs.map(d => ({id: d.id, ...d.data()})))
-        );
-        return () => unsub();
-    }, []);
 
     const add = async () => {
         if (!name) return;
@@ -50,6 +46,7 @@ export default function AdminMaterials() {
 
         try {
             await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'materialTypes'), { name });
+            await queryClient.invalidateQueries({ queryKey: ['materialTypes'] });
             await logEvent('ADMIN_OPT', 'Material Criado', { name });
             setName('');
             addToast('Tipo adicionado!', 'success');
@@ -108,6 +105,7 @@ export default function AdminMaterials() {
 
             if(confirmed) {
                 await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'materialTypes', id));
+                await queryClient.invalidateQueries({ queryKey: ['materialTypes'] });
                 await logEvent('ADMIN_OPT', 'Material Removido', { id, name: materialName });
                 addToast('Tipo removido.', 'success');
             }

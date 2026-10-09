@@ -37,6 +37,7 @@ import { useToast } from "../contexts/ToastContext";
 import { usePrint } from "../contexts/PrintContext";
 import { logEvent } from "../utils/logger";
 import { useMaterialTypes } from "../hooks/useMaterialTypes";
+import { useStudentsDirectory } from "../hooks/useStudentsDirectory";
 import { formatDate, maskCPF } from "../utils/formatters";
 import { STATUS_CONFIG, LOGOS, LOG_TYPES } from "../constants";
 import { playSound } from "../utils/audio";
@@ -113,25 +114,12 @@ export default function HistoryView({ userProfile }) {
   // Carrega TODOS os alunos do directory uma vez e filtra localmente.
   // Resolve case-sensitivity, acentos e busca por qualquer parte do nome.
   // =================================================================================
-  const [allStudentsDir, setAllStudentsDir] = useState([]);
-  useEffect(() => {
-    if (mode !== "student_report") return;
-    if (allStudentsDir.length > 0) return;
-    const fetchAll = async () => {
-      try {
-        const snap = await getDocs(
-          query(
-            collection(db, "artifacts", appId, "public", "data", "users_directory"),
-            where("role", "==", "student"),
-          )
-        );
-        setAllStudentsDir(snap.docs.map((d) => ({ uid: d.id, ...d.data() })));
-      } catch (e) {
-        console.error("Erro ao carregar diretório:", e);
-      }
-    };
-    fetchAll();
-  }, [mode]);
+  // Usa o diretório compartilhado (inclui inativos, para histórico de ex-alunos)
+  // em vez de baixar a coleção de novo a cada abertura da aba.
+  const { data: allStudentsDir = [] } = useStudentsDirectory({
+    enabled: mode === "student_report",
+    includeInactive: true,
+  });
 
   useEffect(() => {
     if (reportSearch.length < 2) { setReportResults([]); return; }

@@ -27,6 +27,7 @@ import { maskCPF } from "../utils/formatters";
 
 // Hooks personalizados
 import { useStudentsDirectory } from "../hooks/useStudentsDirectory";
+import { refreshDirectory } from "../hooks/useUsersDirectory";
 import { useMaterialTypes } from "../hooks/useMaterialTypes";
 import { useOnlineStatus } from "../hooks/useOnlineStatus";
 import { useQueryClient } from "@tanstack/react-query";
@@ -110,9 +111,7 @@ export default function Reception({ userProfile }) {
       return;
     }
     addToast("Atualizando lista de alunos...", "info");
-    await queryClient.invalidateQueries({
-      queryKey: ["students_full_directory_v2"],
-    });
+    await refreshDirectory(queryClient);
     addToast("Solicitação de atualização enviada.", "success");
   };
 

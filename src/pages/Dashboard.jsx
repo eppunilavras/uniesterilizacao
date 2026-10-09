@@ -124,7 +124,7 @@ export default function Dashboard({ userProfile }) {
               >
                 {isDataStale && <AlertCircle size={12} />}
                 Última verificação:{" "}
-                {stats.lastUpdated.toLocaleString("pt-BR", {
+                {new Date(stats.lastUpdated).toLocaleString("pt-BR", {
                   hour: "2-digit",
                   minute: "2-digit",
                 })}

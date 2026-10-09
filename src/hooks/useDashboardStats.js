@@ -10,8 +10,10 @@ export function useDashboardStats({ userProfile, period, customStart, customEnd 
         queryKey: ['dashboard_stats', userProfile?.uid, period, customStart, customEnd],
         
         // --- CONFIGURAÇÃO DE CACHE ---
-		staleTime: Infinity, // Os dados nunca ficam "velhos" automaticamente
-        cacheTime: 1000 * 60 * 60 * 24, // Mantém na memória por 24 horas
+        // O cache é persistido (main.jsx): recarregar a página dentro de 10 min
+        // reaproveita o resultado em vez de baixar todos os itens do período.
+        staleTime: 1000 * 60 * 10,
+        gcTime: 1000 * 60 * 60 * 24,
         networkMode: 'offlineFirst', // Aceita dados do cache/offline
         refetchOnWindowFocus: false, 
         refetchOnMount: true, // Garante que verifique dados novos ao entrar na tela
@@ -127,7 +129,7 @@ export function useDashboardStats({ userProfile, period, customStart, customEnd 
                 timeline: timelineData,
                 topStudents: topStudentsData,
                 insights: newInsights,
-                lastUpdated: new Date()
+                lastUpdated: Date.now()
             };
         }
     });

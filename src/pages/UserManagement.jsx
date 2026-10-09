@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import * as XLSX from "xlsx";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
@@ -10,11 +10,7 @@ import {
   collection,
   query,
   where,
-  orderBy,
   limit,
-  startAt,
-  endAt,
-  startAfter,
   getDocs,
   updateDoc,
   doc,
@@ -27,7 +23,6 @@ import {
   Edit2,
   Ban,
   Loader2,
-  ArrowDown,
   Upload,
   FileUp,
   X,
@@ -56,6 +51,11 @@ import { logEvent } from "../utils/logger";
 import { maskCPF, translateFirebaseError } from "../utils/formatters";
 import { ROLE_LABELS } from "../constants";
 import DataTable from "../components/DataTable";
+import {
+  useUsersDirectory,
+  upsertDirectoryEntry,
+  refreshDirectory,
+} from "../hooks/useUsersDirectory";
 
 const userSchema = z.object({
   name: z.string().min(3, "Nome deve ter pelo menos 3 caracteres"),
@@ -68,9 +68,7 @@ const userSchema = z.object({
 
 export default function UserManagement({ userProfile }) {
   const [view, setView] = useState("list");
-  const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(false);
   const [filterRole, setFilterRole] = useState("all");
 
   // Novo estado para controlar a visibilidade de inativos
@@ -98,9 +96,6 @@ export default function UserManagement({ userProfile }) {
   });
 
   const [editing, setEditing] = useState(null);
-  const [lastDoc, setLastDoc] = useState(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
 
   const [importing, setImporting] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -153,111 +148,33 @@ export default function UserManagement({ userProfile }) {
     return true;
   };
 
-  const fetchUsers = async (searchTerm = "") => {
-    setLoading(true);
-    setHasMore(true);
-    setLastDoc(null);
-    try {
-      const usersRef = collection(
-        db,
-        "artifacts",
-        appId,
-        "public",
-        "data",
-        "users_directory",
-      );
+  // Busca e listagem filtram o diretório em cache (useUsersDirectory). Antes
+  // cada busca relia a coleção inteira no Firestore e estourava a cota diária.
+  const {
+    data: directory = [],
+    isLoading: loading,
+    isFetching: refreshingDirectory,
+  } = useUsersDirectory();
 
-      if (searchTerm.length >= 2) {
-        // Busca local: carrega todos e filtra no cliente.
-        // Resolve case-sensitivity, acentos e posição do termo no nome.
-        const snapAll = await getDocs(usersRef);
-        const allUsers = snapAll.docs.map((d) => ({ uid: d.id, ...d.data() }));
+  const users = useMemo(() => {
+    const normalize = (v) =>
+      (v || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const term = normalize(search.trim());
+    const digits = search.replace(/\D/g, "");
+    const isNumeric = term.length >= 2 && /^[\d.\-\s]+$/.test(search.trim());
 
-        const normalize = (s) =>
-          (s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const term = normalize(searchTerm);
-        const isNumeric = /^\d+$/.test(searchTerm.replace(/\D/g, ""));
+    const filtered = directory.filter((u) => {
+      if (filterRole !== "all" && u.role !== filterRole) return false;
+      if (!showInactive && u.active === false) return false;
+      if (term.length < 2) return true;
+      if (isNumeric) return (u.cpf || "").replace(/\D/g, "").includes(digits);
+      return normalize(u.name).includes(term) || normalize(u.email).includes(term);
+    });
 
-        const filtered = allUsers.filter((u) => {
-          if (filterRole !== "all" && u.role !== filterRole) return false;
-          if (!showInactive && u.active === false) return false;
-          if (isNumeric) {
-            return (u.cpf || "").replace(/\D/g, "").includes(searchTerm.replace(/\D/g, ""));
-          }
-          return normalize(u.name).includes(term) || normalize(u.email).includes(term);
-        });
-
-        // Ordena por nome para resultado consistente
-        filtered.sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR"));
-        setUsers(filtered);
-        setHasMore(false);
-      } else {
-        const constraints = [];
-        if (filterRole !== "all") constraints.push(where("role", "==", filterRole));
-        if (!showInactive) constraints.push(where("active", "==", true));
-        constraints.push(orderBy("createdAt", "desc"));
-        constraints.push(limit(20));
-
-        const q = query(usersRef, ...constraints);
-        const snapshot = await getDocs(q);
-        setUsers(snapshot.docs.map((d) => ({ uid: d.id, ...d.data() })));
-        setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-        if (snapshot.docs.length < 20) setHasMore(false);
-      }
-    } catch (error) {
-      console.error("Erro utilizadores:", error);
-      if (error.code === "failed-precondition") {
-        console.warn("Falta índice composto. Verifique a consola do Firebase.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadMore = async () => {
-    if (!lastDoc || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      const usersRef = collection(
-        db,
-        "artifacts",
-        appId,
-        "public",
-        "data",
-        "users_directory",
-      );
-      const constraints = [];
-
-      if (filterRole !== "all")
-        constraints.push(where("role", "==", filterRole));
-      if (!showInactive) constraints.push(where("active", "==", true));
-
-      constraints.push(orderBy("createdAt", "desc"));
-      constraints.push(startAfter(lastDoc));
-      constraints.push(limit(20));
-
-      const q = query(usersRef, ...constraints);
-      const snapshot = await getDocs(q);
-      if (!snapshot.empty) {
-        const newUsers = snapshot.docs.map((d) => ({ uid: d.id, ...d.data() }));
-        setUsers((prev) => [...prev, ...newUsers]);
-        setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
-        if (snapshot.docs.length < 20) setHasMore(false);
-      } else {
-        setHasMore(false);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-    setLoadingMore(false);
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchUsers(search);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [search, filterRole, showInactive]);
+    return term.length >= 2
+      ? filtered.sort((a, b) => (a.name || "").localeCompare(b.name || "", "pt-BR"))
+      : filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  }, [directory, search, filterRole, showInactive]);
 
   const onSubmit = async (data) => {
     if (!editing && userProfile.role !== "admin") {
@@ -275,7 +192,6 @@ export default function UserManagement({ userProfile }) {
     try {
       const cleanCpf = data.cpf.replace(/\D/g, "");
       const batch = writeBatch(db);
-      const isStudent = data.role === "student"; // Verifica se é aluno para invalidar cache
 
       if (editing) {
         if (!data.active) {
@@ -340,13 +256,7 @@ export default function UserManagement({ userProfile }) {
 
         await batch.commit();
 
-        // --- CACHE UPDATE ---
-        if (isStudent || editing.role === "student") {
-          console.log("Aluno editado. Invalidando cache...");
-          await queryClient.invalidateQueries({
-            queryKey: ["students_full_directory_v2"],
-          });
-        }
+        upsertDirectoryEntry(queryClient, editing.uid, updates);
 
         // --- LOG MELHORADO COM DETALHES ---
         await logEvent("USER_MGMT", `Utilizador atualizado: ${data.name}`, {
@@ -408,13 +318,10 @@ export default function UserManagement({ userProfile }) {
 
         await batch.commit();
 
-        // --- CACHE UPDATE ---
-        if (isStudent) {
-          console.log("Novo aluno criado. Invalidando cache...");
-          await queryClient.invalidateQueries({
-            queryKey: ["students_full_directory_v2"],
-          });
-        }
+        upsertDirectoryEntry(queryClient, cred.user.uid, {
+          ...newData,
+          createdAt: Date.now(),
+        });
 
         await logEvent("USER_MGMT", `Novo utilizador registado: ${data.name}`, {
           targetUid: cred.user.uid,
@@ -430,7 +337,6 @@ export default function UserManagement({ userProfile }) {
       reset();
       setEditing(null);
       setView("list");
-      fetchUsers(search);
     } catch (e) {
       addToast(translateFirebaseError(e), "error");
     }
@@ -509,20 +415,13 @@ export default function UserManagement({ userProfile }) {
       );
       await batch.commit();
 
-      // Invalida cache se for aluno
-      if (u.role === "student") {
-        await queryClient.invalidateQueries({
-          queryKey: ["students_full_directory_v2"],
-        });
-      }
+      upsertDirectoryEntry(queryClient, u.uid, { active: false });
 
       await logEvent("USER_MGMT", `Utilizador inativado: ${u.name}`, {
         targetUid: u.uid,
         executor: userProfile.email,
       });
       addToast("Acesso suspenso com sucesso.", "success");
-
-      fetchUsers(search);
     } catch (e) {
       addToast("Erro ao inativar utilizador.", "error");
       console.error(e);
@@ -604,7 +503,6 @@ export default function UserManagement({ userProfile }) {
     const toImport = csvPreview.filter((item) =>
       selectedImportIndices.has(item.id),
     );
-    let importedStudents = 0;
 
     for (const user of toImport) {
       // 1. Verificação prévia de CPF (Firestore)
@@ -670,7 +568,6 @@ export default function UserManagement({ userProfile }) {
         });
 
         success++;
-        if (user.role === "student") importedStudents++;
       } catch (err) {
         errors++;
         if (err.code === "auth/email-already-in-use") {
@@ -690,11 +587,9 @@ export default function UserManagement({ userProfile }) {
 
     await signOut(secondaryAuth);
 
-    if (importedStudents > 0) {
-      await queryClient.invalidateQueries({
-        queryKey: ["students_full_directory_v2"],
-      });
-    }
+    // Importação em massa: uma releitura do diretório sai mais barata que
+    // atualizar o cache item a item.
+    if (success > 0) await refreshDirectory(queryClient);
 
     setImporting(false);
     setShowImportModal(false);
@@ -773,7 +668,6 @@ export default function UserManagement({ userProfile }) {
     } else {
       addToast(`${success} utilizadores importados com sucesso!`, "success");
     }
-    fetchUsers(search);
   };
 
   // --- Importação de Alunos por Planilha (CPF + Nome) ---
@@ -957,9 +851,7 @@ export default function UserManagement({ userProfile }) {
 
       // 4. Invalida cache de alunos
       if (created > 0 || updated > 0) {
-        await queryClient.invalidateQueries({
-          queryKey: ["students_full_directory_v2"],
-        });
+        await refreshDirectory(queryClient);
         await logEvent(
           "USER_MGMT",
           `Importação de alunos por planilha: ${created} criados, ${updated} atualizados`,
@@ -1000,8 +892,6 @@ export default function UserManagement({ userProfile }) {
           </div>
         ),
       });
-
-      fetchUsers(search);
     } catch (err) {
       console.error("Erro na importação de alunos:", err);
       addToast("Erro ao processar importação.", "error");
@@ -1341,6 +1231,17 @@ export default function UserManagement({ userProfile }) {
                   Inativos
                 </span>
               </button>
+              <button
+                onClick={() => refreshDirectory(queryClient)}
+                disabled={refreshingDirectory}
+                className="p-2 border rounded-lg bg-white text-slate-500 border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-50"
+                title="Recarregar lista do servidor"
+              >
+                <RefreshCw
+                  size={20}
+                  className={refreshingDirectory ? "animate-spin" : ""}
+                />
+              </button>
             </div>
           </div>
           {search.length > 2 && (
@@ -1447,22 +1348,6 @@ export default function UserManagement({ userProfile }) {
               );
             }}
           />
-          {!loading && hasMore && search.length <= 2 && (
-            <div className="flex justify-center pt-4">
-              <button
-                onClick={loadMore}
-                disabled={loadingMore}
-                className="bg-white border border-slate-300 text-slate-600 px-6 py-2 rounded-full text-sm font-bold hover:bg-slate-50 hover:text-[#009DE0] hover:border-[#009DE0] transition-all flex items-center gap-2 disabled:opacity-50"
-              >
-                {loadingMore ? (
-                  <Loader2 className="animate-spin w-4 h-4" />
-                ) : (
-                  <ArrowDown size={16} />
-                )}
-                {loadingMore ? "A pesquisar..." : "Ver Mais Utilizadores"}
-              </button>
-            </div>
-          )}
         </div>
       ) : (
         <div className="bg-white p-8 rounded-xl border border-slate-200 max-w-2xl mx-auto shadow-sm transition-colors">
