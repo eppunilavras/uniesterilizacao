@@ -20,6 +20,7 @@ const MainLayout = lazy(() => import("./components/MainLayout"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Movement = lazy(() => import("./pages/Movement"));
 const HistoryView = lazy(() => import("./pages/HistoryView"));
+const Students = lazy(() => import("./pages/Students"));
 const NotificationsView = lazy(() => import("./pages/NotificationsView"));
 const UserManagement = lazy(() => import("./pages/UserManagement"));
 const ProfileView = lazy(() => import("./pages/ProfileView"));
@@ -193,6 +194,14 @@ export default function App() {
                             element={
                               <Suspense fallback={<LoadingScreen />}>
                                 <HistoryView userProfile={userProfile} />
+                              </Suspense>
+                            }
+                          />
+                          <Route
+                            path="students"
+                            element={
+                              <Suspense fallback={<LoadingScreen />}>
+                                <Students userProfile={userProfile} />
                               </Suspense>
                             }
                           />

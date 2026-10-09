@@ -5,7 +5,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, PackagePlus, ScanBarcode, History, Users, 
   Settings, LogOut, Menu, X, Bell, UserCircle, Timer, WifiOff,
-  Link as LinkIcon 
+  Link as LinkIcon, GraduationCap 
 } from 'lucide-react';
 
 // Imports de Configuração e Utils
@@ -169,6 +169,7 @@ export default function MainLayout({ user, userProfile }) {
         { id: 'reception', label: 'Recepção', icon: PackagePlus, roles: ['admin', 'tech'] },
         { id: 'movement', label: 'Movimentação', icon: ScanBarcode, roles: ['admin', 'tech'] },
         { id: 'history', label: 'Histórico', icon: History, roles: ['admin', 'tech', 'student'] },
+        { id: 'students', label: 'Alunos', icon: GraduationCap, roles: ['admin', 'tech'] },
         { id: 'notifications', label: 'Avisos', icon: Bell, roles: ['student'] },
         { id: 'users', label: 'Usuários', icon: Users, roles: ['admin', 'tech'] },
         { id: 'portal-config', label: 'Portal', icon: LinkIcon, roles: ['admin'] },
