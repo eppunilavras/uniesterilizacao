@@ -85,3 +85,7 @@ export const ROLE_LABELS = {
     'tech': 'Técnico',
     'admin': 'Administrador'
 };
+
+// Tela inicial por perfil. O técnico não usa o Dashboard, que baixa todos os
+// itens do período a cada abertura; cair nele em todo login gastava leituras.
+export const getHomePath = (role) => (role === 'tech' ? 'reception' : 'dashboard');

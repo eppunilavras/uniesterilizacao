@@ -16,11 +16,9 @@ import {
 import {
   ShieldAlert,
   Loader2,
-  ArrowLeft,
   ShieldCheck,
   KeyRound,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 
 // Imports internos
 import { auth, db, appId } from "../config/firebase";
@@ -179,19 +177,6 @@ export default function LoginScreen({ globalError }) {
 
   return (
     <div className="min-h-screen bg-slate-50] flex items-center justify-center p-4 relative overflow-hidden transition-colors duration-500">
-      {/* Botão de Voltar (ADICIONADO) */}
-      <div className="absolute top-4 left-4 z-50">
-        <Link
-          to="/"
-          className="flex items-center gap-2 px-4 py-2 bg-white text-slate-600 rounded-xl shadow-sm border border-slate-200 hover:bg-slate-50 hover:text-[#009DE0] transition-all font-bold text-sm group"
-        >
-          <ArrowLeft
-            size={18}
-            className="group-hover:-translate-x-1 transition-transform"
-          />
-          Voltar para o Portal
-        </Link>
-      </div>
 
       {/* Background Effects */}
       <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-blue-200] rounded-full blur-[100px] md:blur-[150px] opacity-40 transition-all duration-500" />

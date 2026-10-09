@@ -10,7 +10,7 @@ import {
 
 // Imports de Configuração e Utils
 import { auth, db, appId } from '../config/firebase'; 
-import { LOGOS, ROLE_LABELS } from '../constants';
+import { LOGOS, ROLE_LABELS, getHomePath } from '../constants';
 import { logEvent } from '../utils/logger';
 import { useDialog } from '../contexts/DialogContext';
 import { useToast } from '../contexts/ToastContext';
@@ -183,7 +183,7 @@ export default function MainLayout({ user, userProfile }) {
         
         // Se a rota atual não estiver nos itens permitidos para o papel do usuário, redireciona
         if (!allowedItems.find(i => i.id === currentPath)) {
-            navigate('/dashboard', { replace: true });
+            navigate(`/${getHomePath(userProfile.role)}`, { replace: true });
         }
     }, [location.pathname, userProfile.role, isOnline, allowedItems, navigate]);
 

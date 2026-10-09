@@ -4,7 +4,7 @@ import { getDoc, doc } from "firebase/firestore";
 import { Routes, Route, Navigate } from "react-router-dom";
 
 import { auth, db, appId } from "./config/firebase";
-import { LOGOS } from "./constants";
+import { LOGOS, getHomePath } from "./constants";
 import { ToastProvider } from "./contexts/ToastContext";
 import { DialogProvider } from "./contexts/DialogContext";
 import { PrintProvider } from "./contexts/PrintContext";
@@ -127,8 +127,10 @@ export default function App() {
 
           <Suspense fallback={<InitialLoader />}>
             <Routes>
-              {/* ROTA PÚBLICA (HOME) */}
-              <Route path="/" element={<SystemsPortal />} />
+              {/* A raiz vai direto ao login (que redireciona quem já está logado).
+                  O portal de links não é usado no dia a dia; segue em /portal. */}
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/portal" element={<SystemsPortal />} />
 
               {/* ROTA DE LOGIN */}
               <Route
@@ -139,7 +141,7 @@ export default function App() {
                       <LoginScreen globalError={authError} />
                     </div>
                   ) : (
-                    <Navigate to="/dashboard" replace />
+                    <Navigate to={`/${getHomePath(userProfile.role)}`} replace />
                   )
                 }
               />
@@ -161,7 +163,9 @@ export default function App() {
                         >
                           <Route
                             index
-                            element={<Navigate to="dashboard" replace />}
+                            element={
+                              <Navigate to={getHomePath(userProfile.role)} replace />
+                            }
                           />
 
                           <Route
