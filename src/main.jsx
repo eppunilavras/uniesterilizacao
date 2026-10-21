@@ -46,7 +46,7 @@ const persistOptions = {
   persister,
   maxAge: ONE_DAY,
   // Mudou o formato dos dados? Troque o buster para descartar o cache antigo.
-  buster: "v1",
+  buster: "v2",
   dehydrateOptions: {
     shouldDehydrateQuery: (query) =>
       query.state.status === "success" &&
