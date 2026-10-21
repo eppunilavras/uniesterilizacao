@@ -24,7 +24,11 @@ export function useUsersDirectory({ enabled = true, select } = {}) {
             const snap = await getDocs(
                 collection(db, 'artifacts', appId, 'public', 'data', 'users_directory')
             );
-            return snap.docs.map((d) => normalizeEntry(d.id, d.data()));
+            // Cadastros duplicados já mesclados em outro (mergedInto) ficam no
+            // banco para auditoria, mas não aparecem em nenhuma tela.
+            return snap.docs
+                .filter((d) => !d.data().mergedInto)
+                .map((d) => normalizeEntry(d.id, d.data()));
         },
         // Recarregar a página não refaz a leitura: o cache persistido vale por
         // algumas horas. Alterações feitas aqui atualizam o cache na hora
