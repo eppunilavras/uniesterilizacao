@@ -82,6 +82,8 @@ src/
 └── App.jsx            # Roteamento e bootstrap
 ```
 
+Scripts de manutenção (Node + `firebase-admin`, fora do app) ficam em `scripts/maintenance/`. Veja [Manutenção](#-manutenção-mesclar-cadastros-duplicados-de-aluno).
+
 ## 🛠️ Stack Técnica
 
 | Categoria | Bibliotecas |
@@ -110,6 +112,12 @@ src/
 2. `firebase hosting:channel:deploy homolog` → testa no canal preview.
 3. Após validação: `git checkout main && git merge homolog --ff-only && git push`.
 4. `firebase deploy --only hosting` → publica em produção.
+
+> ⚠️ **Produção sempre a partir da `main`, e a `main` sempre igual ao que está no ar.** O `firebase deploy` publica o `dist/` da pasta atual, seja qual for a branch. Se alguém publicar a partir da `homolog`, a produção passa a ter código que não está na `main`, e o próximo deploy feito a partir da `main` **remove** essas funcionalidades.
+>
+> Isso aconteceu em 21/10/2026: a página Alunos estava em produção, mas só existia na `homolog`. Um deploy de correção feito a partir da `main` tirou a página do ar até a `homolog` ser mesclada na `main` e publicada de novo.
+>
+> Antes de publicar, confira se `git log main..homolog` lista só o que você quer levar. Na dúvida, verifique o que está no ar: `curl -s https://uniodonto.web.app/` mostra o bundle `index-*.js` atual.
 
 ## 🔒 Regras de Segurança (Firestore)
 
@@ -246,6 +254,42 @@ firebase hosting:channel:deploy homolog --expires 30d
 * Coleção raiz: `artifacts/{appId}/...`
 * CPFs são armazenados apenas com dígitos (sem máscara).
 * Códigos de itens: 6 caracteres alfanuméricos maiúsculos do alfabeto seguro.
+* Itens apontam para o aluno por `studentId` (uid do cadastro), não por CPF. `studentName` é uma cópia do nome no momento do registro.
+* Cadastro com `mergedInto: <uid>` foi mesclado em outro: está inativo, não tem itens e é ocultado de todas as telas (`useUsersDirectory`). Ele permanece no banco para auditoria.
+* Item com `mergedFrom: <uid>` / `mergedAt` foi transferido de um cadastro duplicado.
+* Na prática, **alunos não fazem login**: o sistema é operado só por técnicos e admin. A conta no Firebase Auth de um aluno não tem uso operacional.
+
+## 🔧 Manutenção: mesclar cadastros duplicados de aluno
+
+**Quando usar:** um aluno com dois cadastros. O caso típico é o cadastro antigo, criado com o CPF digitado errado, e o cadastro criado pela importação da planilha com o CPF correto. Como a importação procura pelo CPF, ela não reconhece o cadastro antigo e cria outro. A partir daí o histórico se divide entre os dois.
+
+**Regra:** o cadastro que fica é o que **bate com a planilha oficial**, com CPF válido. O outro é desativado. Nada é apagado.
+
+**Pré-requisito:** uma chave de conta de serviço (Firebase Console → Configurações do projeto → Contas de serviço → Gerar nova chave privada). Salve **fora do repositório**. Depois de usar, apague o arquivo e revogue a chave.
+
+```bash
+npm i --no-save firebase-admin
+
+# 1. Levantamento (somente leitura): uids, CPFs, itens e pendências de cada cadastro
+node scripts/maintenance/levantamento.mjs <chave.json> "Nome do Aluno" "Outro Aluno"
+
+# 2. Simulação: lista o que seria transferido, sem gravar nada
+node scripts/maintenance/mesclar.mjs <chave.json> <uidAntigo> <uidDefinitivo>
+
+# 3. Aplicação (grava em produção)
+node scripts/maintenance/mesclar.mjs <chave.json> <uidAntigo> <uidDefinitivo> --aplicar
+```
+
+Com `--aplicar`, o script:
+1. passa os itens para o uid definitivo, marcando `mergedFrom` e `mergedAt`;
+2. desativa o cadastro antigo com `mergedInto`;
+3. grava um log `USER_MGMT` ("Mesclagem de cadastros") em `system_logs`, com os dois uids, os CPFs e a lista de itens.
+
+Se o cadastro já tiver sido mesclado, o script recusa rodar de novo. Para conferir o dígito verificador dos CPFs, use o levantamento: um CPF inválido indica o cadastro errado.
+
+**Depois de mesclar:** os navegadores guardam a lista de alunos em cache por até 4 h. Use o botão de atualizar na Recepção ou na tela de Usuários, ou faça Ctrl+Shift+R. Evite rodar o script durante o atendimento do aluno envolvido.
+
+**Histórico:** em 21/10/2026 foram mescladas duas alunas com CPF digitado errado no cadastro antigo (150 itens transferidos no total). Os detalhes estão em `system_logs` (tipo `USER_MGMT`, mensagem "Mesclagem de cadastros").
 
 ## 📄 Licença
 
